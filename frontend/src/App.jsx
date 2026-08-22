@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import lazyLoad from './utils/lazyLoad';
 import ProtectedRoute from './users/routes/ProtectedRoute';
 import PublicRoute from './users/routes/PublicRoute';
@@ -16,6 +16,7 @@ const AuditLogs = lazyLoad(() => import('./admin/pages/AuditLogs'));
 const Overview = lazyLoad(() => import('./admin/pages/Overview'));
 const Bookings = lazyLoad(() => import('./admin/pages/Bookings'));
 const GuestHouseManagement = lazyLoad(() => import('./admin/pages/GuestHouseManagement.jsx'));
+const AddHotelPage = lazyLoad(() => import('./admin/pages/AddHotelPage'));
 const UsersList = lazyLoad(() => import('./admin/pages/UsersList'));
 const NotFound = lazyLoad(() => import('./components/NotFound'));
 const Settings = lazyLoad(() => import('./admin/pages/Settings'));
@@ -33,7 +34,6 @@ const ContactUs = lazyLoad(() => import('./commonPages/ContactUs'));
 const TermsAndPolicy = lazyLoad(() => import('./commonPages/TermsAndPolicy'));
 const FAQ = lazyLoad(() => import('./commonPages/FAQ'));
 import ScrollToTop from './components/ScrollToTop';
-import { Navigate } from 'react-router-dom';
 import { getAuthenticatedRedirectPath } from './utils/auth';
 
 import { ToastContainer } from "react-toastify";
@@ -85,6 +85,7 @@ function App() {
         <Route path="/contact" element={<ContactUs />} />
         <Route path="/terms" element={<TermsAndPolicy />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/checkout" element={<Navigate to="/admin/checkout" replace />} />
 
         {/* ------------------ USER PROTECTED ROUTES ------------------ */}
         <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
@@ -112,6 +113,7 @@ function App() {
           <Route path="/admin/book-room" element={<AdminRoomBooking />} />
           <Route path="/admin/guest-house-bookings" element={<GuestHouseBookings />} />
           <Route path="/admin/payment" element={<PaymentPage />} />
+          <Route path="/admin/checkout" element={<PaymentPage />} />
           <Route path="/admin/invoice" element={<InvoicePage />} />
           <Route path="/admin/receipts" element={<Receipts />} />
           <Route path="/admin/invoice-list" element={<InvoiceList />} />
@@ -121,6 +123,7 @@ function App() {
           <Route path="/super-admin/users" element={<UsersList />} />
           <Route path="/super-admin/dashboard" element={<Overview />} />
           <Route path="/super-admin/guesthouses" element={<GuestHouseManagement />} />
+          <Route path="/super-admin/add-hotel" element={<AddHotelPage />} />
           <Route path="/super-admin/rooms" element={<AddRooms />} />
           <Route path="/super-admin/beds" element={<AddBeds />} />
           <Route path="/super-admin/audits" element={<AuditLogs />} />

@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaFileExcel } from "react-icons/fa";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
+import editIcon from "../../assets/edit.svg";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -12,6 +14,7 @@ const formatDate = (dateStr) => {
 const LIMIT = 10;
 
 const Bookings = () => {
+  const navigate = useNavigate();
   const [bookings, setBookings]               = useState([]);
   const [loading, setLoading]                 = useState(true);
   const [refreshing, setRefreshing]           = useState(false);
@@ -189,7 +192,7 @@ const Bookings = () => {
           <thead>
             <tr>
               <th className="center">#</th>
-              <th>Guest House</th>
+              <th>Hotel</th>
               <th>Guest</th>
               <th>Check In</th>
               <th>Check Out</th>
@@ -205,6 +208,8 @@ const Bookings = () => {
             ) : (
               bookings.map((b, i) => {
                 const index = (currentPage - 1) * LIMIT + i + 1;
+                const isEditDisabled = Boolean(b.isCheckedOut || b.status === "cancelled");
+
                 return (
                   <tr key={b._id}>
                     <td className="center">{index}</td>
@@ -241,6 +246,25 @@ const Bookings = () => {
                             </button>
                           </>
                         )}
+                        <button
+                          className="btn-action edit"
+                          disabled={isEditDisabled}
+                          onClick={() => {
+                            if (isEditDisabled) return;
+                            navigate("/admin/book-room", { state: { bookingId: b._id } });
+                          }}
+                          title={b.isCheckedOut ? "Cannot edit a checked-out booking" : b.status === "cancelled" ? "Cannot edit a cancelled booking" : "Edit booking"}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            boxShadow: 'none',
+                            padding: '4px',
+                            opacity: isEditDisabled ? 0.35 : 1,
+                            cursor: isEditDisabled ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <img src={editIcon} alt="Edit" style={{ width: 16, height: 16 }} />
+                        </button>
                         <button className="btn-action view" onClick={() => setSelected(b)}>View</button>
                       </div>
                     </td>
@@ -283,7 +307,7 @@ const Bookings = () => {
                 <p><strong>Guest</strong>{selected.userId?.firstName || selected.fullName || "—"} {selected.userId?.lastName || ""}</p>
                 <p><strong>Email</strong>{selected.userId?.email || selected.email || "—"}</p>
                 <p><strong>Phone</strong>{selected.userId?.phone || selected.phone || "—"}</p>
-                <p><strong>Guest House</strong>{selected.guestHouseId?.guestHouseName || "—"}</p>
+                <p><strong>Hotel</strong>{selected.guestHouseId?.guestHouseName || "—"}</p>
                 <p><strong>Room</strong>{selected.roomId?.roomNumber ? `Room ${selected.roomId.roomNumber}` : "—"}</p>
                 <p><strong>Bed</strong>{selected.bedId?.bedNumber ? `Bed ${selected.bedId.bedNumber} (${selected.bedId.bedType})` : "—"}</p>
                 <p><strong>Check-In</strong>{formatDate(selected.checkIn)}</p>

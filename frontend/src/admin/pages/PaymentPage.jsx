@@ -184,7 +184,6 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
         setBooking((b) => ({ ...(b || {}), isCheckedOut: true }));
       } catch (err) {
         console.error('Failed to save payment record:', err);
-        // proceed but warn
         toast.warn('Payment recorded locally but failed to persist to server.');
       }
 
@@ -214,6 +213,10 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
       toast.success('Invoice PDF generated and downloaded successfully.');
       if (onInvoiceGenerated) {
         onInvoiceGenerated(invoice);
+      } else if (!isOpen) {
+        setTimeout(() => {
+          navigate('/admin/dashboard');
+        }, 1200);
       }
     } catch (err) {
       console.error(err);
@@ -254,15 +257,14 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
 
     if (activeStep === 1) {
       return (
-        <div style={{ display: 'grid', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
             {[
-              { label: 'Guest', value: `${booking.userId?.firstName || '—'} ${booking.userId?.lastName || ''}`.trim() || '—' },
+              { label: 'Guest Name', value: `${booking.userId?.firstName || '—'} ${booking.userId?.lastName || ''}`.trim() || '—' },
               { label: 'Email', value: booking.userId?.email || '—' },
               { label: 'Phone', value: booking.userId?.phone || '—' },
-              { label: 'Guest House', value: booking.guestHouseId?.guestHouseName || booking.guestHouseId || '—' },
-              { label: 'Room', value: booking.roomId?.roomNumber ? `Room ${booking.roomId.roomNumber}` : '—' },
-              { label: 'Bed', value: booking.bedId?.bedNumber ? `Bed ${booking.bedId.bedNumber}` : '—' },
+              { label: 'Hotel', value: booking.guestHouseId?.guestHouseName || booking.guestHouseId || '—' },
+              { label: 'Room / Bed', value: `${booking.roomId?.roomNumber ? `Room ${booking.roomId.roomNumber}` : '—'}${booking.bedId?.bedNumber ? ` / Bed ${booking.bedId.bedNumber}` : ''}` },
               { label: 'Check In', value: formatDate(booking.checkIn) },
               { label: 'Check Out', value: formatDate(booking.checkOut) },
               { label: 'Guests', value: (booking.familyMembers?.length || 0) + 1 },
@@ -271,9 +273,9 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
               { label: 'Taxes', value: currency(taxesTotal) },
               { label: 'Booking Subtotal', value: currency(subtotal) },
             ].map((item) => (
-              <div key={item.label} style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ marginBottom: '8px', fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>{item.label}</div>
-                <div style={{ fontSize: '0.95rem', color: '#0f172a' }}>{item.value}</div>
+              <div key={item.label} style={{ padding: '10px 14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ marginBottom: '4px', fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>{item.label}</div>
+                <div style={{ fontSize: '0.9rem', color: '#0f172a', fontWeight: 700 }}>{item.value}</div>
               </div>
             ))}
           </div>
@@ -288,20 +290,20 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
             <div key={index} style={extraCardStyle}>
               <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1.4fr 0.7fr 0.9fr auto', alignItems: 'end' }}>
                 <label style={{ display: 'grid', gap: '4px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Extra / Activity</span>
-                  <input value={item.name} onChange={(event) => updateExtra(index, 'name', event.target.value)} placeholder="Extra Bed" style={inputStyle} />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Extra / Activity</span>
+                  <input value={item.name} onChange={(event) => updateExtra(index, 'name', event.target.value)} placeholder="Extra Bed / Service" style={inputStyle} />
                 </label>
                 <label style={{ display: 'grid', gap: '4px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Qty</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Qty</span>
                   <input type="number" min="1" value={item.quantity} onChange={(event) => updateExtra(index, 'quantity', event.target.value)} style={inputStyle} />
                 </label>
                 <label style={{ display: 'grid', gap: '4px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Unit Price</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Unit Price</span>
                   <input type="number" min="0" value={item.unitPrice} onChange={(event) => updateExtra(index, 'unitPrice', event.target.value)} style={inputStyle} />
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Total</span>
-                  <strong>{currency(item.total || 0)}</strong>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Total</span>
+                  <strong style={{ fontSize: '0.95rem' }}>{currency(item.total || 0)}</strong>
                   <button type="button" onClick={() => removeExtra(index)} style={removeButtonStyle}>Remove</button>
                 </div>
               </div>
@@ -313,84 +315,104 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
     }
 
     return (
-        <div style={{ display: 'grid', gap: '22px' }}>
-        <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <div style={{ ...summaryCardStyle, borderLeft: '4px solid #2563eb' }}>
-            <span style={{ color: '#64748b' }}>Total Due</span>
-            <strong style={{ fontSize: '1.6rem' }}>{currency(bookingTotal)}</strong>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'start' }}>
+        {/* Left Column: Summary & Taxes */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ ...summaryCardStyle, borderLeft: '4px solid #2563eb', padding: '10px 14px' }}>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>Total Due</span>
+              <strong style={{ fontSize: '1.25rem', color: '#0f172a' }}>{currency(bookingTotal)}</strong>
+            </div>
+            <div style={{ ...summaryCardStyle, borderLeft: '4px solid #dc2626', padding: '10px 14px' }}>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>Remaining Balance</span>
+              <strong style={{ fontSize: '1.25rem', color: '#dc2626' }}>{currency(remainingBalance)}</strong>
+            </div>
           </div>
-          <div style={{ ...summaryCardStyle, borderLeft: '4px solid #dc2626' }}>
-            <span style={{ color: '#64748b' }}>Remaining After Payment</span>
-            <strong style={{ fontSize: '1.6rem' }}>{currency(remainingBalance)}</strong>
-          </div>
-        </div>
 
           {taxBreakdown.length > 0 && (
-            <div style={{ background: '#fff', padding: '12px', borderRadius: '10px', border: '1px solid #e6edf3' }}>
-              <div style={{ marginBottom: 8, fontWeight: 700 }}>Taxes</div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ background: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ marginBottom: '6px', fontWeight: 700, fontSize: '0.85rem', color: '#334155' }}>Tax Breakdown</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {taxBreakdown.map((t) => (
-                  <div key={t._id} style={{ minWidth: 160, background: '#f8fafc', padding: 8, borderRadius: 8, border: '1px solid #eef2f6' }}>
-                    <div style={{ fontSize: '0.9rem', color: '#475569' }}>{t.name} ({t.percentage}%)</div>
-                    <div style={{ fontWeight: 700 }}>{currency(t.amount)}</div>
+                  <div key={t._id} style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem' }}>
+                    <span style={{ color: '#64748b' }}>{t.name} ({t.percentage}%): </span>
+                    <strong style={{ color: '#0f172a' }}>{currency(t.amount)}</strong>
                   </div>
                 ))}
-                <div style={{ minWidth: 160, background: '#fff7ed', padding: 8, borderRadius: 8, border: '1px solid #fde2bf' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#975a16' }}>Total Taxes</div>
-                  <div style={{ fontWeight: 700 }}>{currency(taxesTotal)}</div>
+                <div style={{ background: '#fff7ed', padding: '6px 10px', borderRadius: '6px', border: '1px solid #fde2bf', fontSize: '0.8rem' }}>
+                  <span style={{ color: '#975a16' }}>Total Taxes: </span>
+                  <strong style={{ color: '#975a16' }}>{currency(taxesTotal)}</strong>
                 </div>
               </div>
             </div>
           )}
-
-        <div>
-          <h3 style={{ marginBottom: '12px' }}>Select Payment Method</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-            {paymentMethods.map((method) => (
-              <button
-                key={method}
-                type="button"
-                onClick={() => setPaymentMethod(method)}
-                style={{
-                  ...methodButtonStyle,
-                  minHeight: '72px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: paymentMethod === method ? '#2563eb' : '#f8fafc',
-                  color: paymentMethod === method ? '#fff' : '#0f172a',
-                  borderColor: paymentMethod === method ? '#2563eb' : '#dbe3ee',
-                }}
-              >
-                {method}
-              </button>
-            ))}
-          </div>
         </div>
 
-        <label style={{ display: 'grid', gap: '6px' }}>
-          <span style={{ fontWeight: 600 }}>Payment Amount</span>
-          <input type="number" min="0" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} style={inputStyle} />
-          {!isPaymentValid && paymentAmount && (
-            <small style={{ color: '#dc2626' }}>Payment amount cannot exceed the outstanding balance.</small>
-          )}
-        </label>
+        {/* Right Column: Payment Method & Amount */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+              Select Payment Method
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px' }}>
+              {paymentMethods.map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setPaymentMethod(method)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    background: paymentMethod === method ? '#2563eb' : '#ffffff',
+                    color: paymentMethod === method ? '#ffffff' : '#334155',
+                    borderColor: paymentMethod === method ? '#2563eb' : '#cbd5e1',
+                  }}
+                >
+                  {method}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>Payment Amount</span>
+            <input
+              type="number"
+              min="0"
+              value={paymentAmount}
+              onChange={(event) => setPaymentAmount(event.target.value)}
+              style={inputStyle}
+            />
+            {!isPaymentValid && paymentAmount && (
+              <small style={{ color: '#dc2626', fontSize: '0.78rem' }}>
+                Payment amount cannot exceed the outstanding balance.
+              </small>
+            )}
+          </label>
+        </div>
       </div>
     );
   };
 
   const content = (
-    <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <div style={{ padding: '16px 20px', maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: '0 0 6px' }}>Checkout / Payment</h2>
+          <h2 style={{ margin: '0 0 2px', fontSize: '1.4rem', fontWeight: 700 }}>Checkout / Payment</h2>
         </div>
         {isOpen && onClose ? (
           <button type="button" onClick={onClose} style={backButtonStyle}>✕ Close</button>
-        ) : null}
+        ) : (
+          <button type="button" onClick={() => navigate(-1)} style={backButtonStyle}>← Back</button>
+        )}
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {steps.map((label, index) => {
           const stepNumber = index + 1;
           const isActive = stepNumber === activeStep;
@@ -403,8 +425,8 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
         })}
       </div>
 
-      <div style={{ display: 'grid', gap: '16px' }}>
-        <div style={{ background: '#ffffff', borderRadius: '16px', padding: '20px', boxShadow: '0 8px 28px rgba(15, 23, 42, 0.08)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ background: '#ffffff', borderRadius: '14px', padding: '16px', boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)', border: '1px solid #e2e8f0' }}>
           {renderStepContent()}
         </div>
 
@@ -453,17 +475,14 @@ const modalStyle = {
   boxShadow: '0 20px 60px rgba(15, 23, 42, 0.2)',
 };
 
-const tableHeaderStyle = { padding: '10px 12px', textAlign: 'left', background: '#f8fafc', width: '180px' };
-const tableCellStyle = { padding: '10px 12px' };
-const inputStyle = { padding: '8px 10px', border: '1px solid #dbe3ee', borderRadius: '8px', fontSize: '0.95rem' };
-const primaryButtonStyle = { padding: '10px 16px', border: 'none', borderRadius: '8px', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600 };
-const navButtonStyle = { padding: '10px 16px', border: '1px solid #dbe3ee', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontWeight: 600 };
-const backButtonStyle = { padding: '8px 12px', border: 'none', borderRadius: '8px', background: '#e2e8f0', color: '#0f172a', cursor: 'pointer' };
-const secondaryButtonStyle = { padding: '10px 14px', border: '1px dashed #2563eb', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontWeight: 600, width: 'fit-content' };
-const extraCardStyle = { border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', background: '#f8fafc' };
-const removeButtonStyle = { padding: '6px 8px', border: 'none', borderRadius: '6px', background: '#fee2e2', color: '#b91c1c', cursor: 'pointer', fontSize: '0.8rem' };
-const methodButtonStyle = { padding: '10px', borderRadius: '10px', border: '1px solid #dbe3ee', cursor: 'pointer', fontWeight: 600 };
-const summaryCardStyle = { padding: '12px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'grid', gap: '4px' };
-const stepPillStyle = { padding: '8px 12px', borderRadius: '999px', fontSize: '0.9rem', fontWeight: 600 };
+const inputStyle = { padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', width: '100%' };
+const primaryButtonStyle = { padding: '9px 18px', border: 'none', borderRadius: '8px', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem' };
+const navButtonStyle = { padding: '9px 18px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem' };
+const backButtonStyle = { padding: '6px 12px', border: 'none', borderRadius: '6px', background: '#e2e8f0', color: '#0f172a', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' };
+const secondaryButtonStyle = { padding: '8px 12px', border: '1px dashed #2563eb', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontWeight: 600, width: 'fit-content', fontSize: '0.82rem' };
+const extraCardStyle = { border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 12px', background: '#f8fafc' };
+const removeButtonStyle = { padding: '4px 8px', border: 'none', borderRadius: '4px', background: '#fee2e2', color: '#b91c1c', cursor: 'pointer', fontSize: '0.78rem' };
+const summaryCardStyle = { padding: '10px 12px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '2px' };
+const stepPillStyle = { padding: '6px 12px', borderRadius: '999px', fontSize: '0.82rem', fontWeight: 600 };
 
 export default PaymentPage;

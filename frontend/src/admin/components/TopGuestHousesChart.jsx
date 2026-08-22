@@ -49,7 +49,7 @@ const TopGuestHousesChart = ({ data = [], loading, rangeLabel }) => {
       <div className="chart-header">
         <div>
           <p className="chart-label"></p>
-          <h3>Most Booked Guest Houses</h3>
+          <h3>Most Booked Hotels</h3>
         </div>
         {rangeLabel && <span className="chart-range">{rangeLabel}</span>}
       </div>
@@ -68,4 +68,3 @@ const TopGuestHousesChart = ({ data = [], loading, rangeLabel }) => {
 };
 
 export default TopGuestHousesChart;
-

@@ -1,7 +1,6 @@
-import Tax from '../models/Tax.js';
-
 export const listTaxes = async (req, res) => {
   try {
+    const { Tax } = req.tenantModels;
     const taxes = await Tax.find().sort({ createdAt: -1 });
     return res.json({ taxes });
   } catch (err) {
@@ -12,6 +11,7 @@ export const listTaxes = async (req, res) => {
 
 export const createTax = async (req, res) => {
   try {
+    const { Tax } = req.tenantModels;
     const { name, percentage } = req.body;
     if (!name || percentage == null) {
       return res.status(400).json({ message: 'Name and percentage are required' });
@@ -32,6 +32,7 @@ export const createTax = async (req, res) => {
 
 export const updateTax = async (req, res) => {
   try {
+    const { Tax } = req.tenantModels;
     const { id } = req.params;
     const { name, percentage, isActive } = req.body;
 
@@ -52,10 +53,10 @@ export const updateTax = async (req, res) => {
 
 export const deleteTax = async (req, res) => {
   try {
+    const { Tax } = req.tenantModels;
     const { id } = req.params;
     const tax = await Tax.findById(id);
     if (!tax) return res.status(404).json({ message: 'Tax not found' });
-    // Soft delete
     tax.isActive = false;
     await tax.save();
     return res.json({ message: 'Tax disabled' });

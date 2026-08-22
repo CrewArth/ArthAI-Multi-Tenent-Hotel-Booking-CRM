@@ -3,8 +3,8 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
-import PaymentPage from '../pages/PaymentPage';
 import '../styles/todayBookings.css';
+
 const getLocalDate = (date = new Date()) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -13,9 +13,9 @@ const getLocalDate = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-const getOneWeekAgo = () => {
+const getTwoDaysAgo = () => {
   const date = new Date();
-  date.setDate(date.getDate() - 7);
+  date.setDate(date.getDate() - 2);
   return getLocalDate(date);
 };
 
@@ -52,11 +52,11 @@ const isCheckoutEligible = (booking) => {
 
 export default function TodayBookings() {
   const today = getLocalDate();
-  const oneWeekAgo = getOneWeekAgo();
+  const twoDaysAgo = getTwoDaysAgo();
   const navigate = useNavigate();
-  const [fromDate, setFromDate] = useState(today);
+  const [fromDate, setFromDate] = useState(twoDaysAgo);
   const [toDate, setToDate] = useState(today);
-  const [appliedFilter, setAppliedFilter] = useState({ startDate: today, endDate: today });
+  const [appliedFilter, setAppliedFilter] = useState({ startDate: twoDaysAgo, endDate: today });
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -66,7 +66,6 @@ export default function TodayBookings() {
   // Cancel confirmation modal state
   const [cancelTarget, setCancelTarget] = useState(null); // booking to cancel
   const [cancelling, setCancelling] = useState(false);
-  const [checkoutTarget, setCheckoutTarget] = useState(null);
 
   // If the admin has an assigned guest house, scope all queries to it
   const assignedGuestHouse = useSelector((state) => state.auth.user?.assignedGuestHouseId);
@@ -105,9 +104,9 @@ export default function TodayBookings() {
   };
 
   const showToday = () => {
-    setFromDate(today);
+    setFromDate(twoDaysAgo);
     setToDate(today);
-    setAppliedFilter({ startDate: today, endDate: today });
+    setAppliedFilter({ startDate: twoDaysAgo, endDate: today });
   };
 
   const totalPages = Math.max(1, Math.ceil(bookings.length / rowsPerPage));
@@ -156,20 +155,6 @@ export default function TodayBookings() {
   return (
     <section className="today-bookings" aria-labelledby="today-bookings-title">
       {/* ── Cancel confirmation modal ── */}
-      {checkoutTarget && (
-        <PaymentPage
-          isOpen
-          bookingId={checkoutTarget._id}
-          onClose={() => setCheckoutTarget(null)}
-          onInvoiceGenerated={() => {
-            // mark the booking as checked out in local state so UI updates immediately
-            setBookings((prev) => prev.map((b) => (b._id === checkoutTarget._id ? { ...b, isCheckedOut: true } : b)));
-            setCheckoutTarget(null);
-          }}
-        />
-      )}
-
-
       {cancelTarget && (
         <div className="tb-modal-backdrop" onClick={() => setCancelTarget(null)}>
           <div className="tb-modal" onClick={(e) => e.stopPropagation()}>
@@ -227,7 +212,7 @@ export default function TodayBookings() {
             <thead>
               <tr>
                 <th>Guest</th>
-                <th>Guest House</th>
+                <th>Hotel</th>
                 <th>Check In</th>
                 <th>Check Out</th>
                 <th>Room / Bed</th>
@@ -261,8 +246,7 @@ export default function TodayBookings() {
                           type="button"
                           className="tb-checkout-btn"
                           onClick={() => {
-                            console.log('opening checkout modal', booking._id);
-                            setCheckoutTarget(booking);
+                            navigate('/admin/checkout', { state: { bookingId: booking._id } });
                           }}
                           disabled={!isCheckoutEligible(booking) || booking.isCheckedOut}
                           title={booking.isCheckedOut ? 'Already checked out' : isCheckoutEligible(booking) ? 'Proceed to payment' : 'Checkout available on the checkout date'}

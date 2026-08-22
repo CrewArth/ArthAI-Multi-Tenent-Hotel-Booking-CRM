@@ -1,21 +1,10 @@
-// controller/adminController.js
-import mongoose from 'mongoose';
-import User from '../models/User.js';
-import GuestHouse from '../models/GuestHouse.js';
-import Booking from '../models/Booking.js';
 import { sendEmail } from '../utils/emailService.js';
 import { adminCreatedUserEmail } from '../utils/emailTemplates/adminCreatedUser.js';
 import { logAction } from '../utils/auditLogger.js';
 import { normalizeUser } from '../utils/roles.js';
 import { isObjectId } from '../utils/isObjectId.js';
 
-/**
- * Returns a MongoDB filter object scoped to the user's assigned guest house.
- * SUPER_ADMIN → no filter (empty object, sees everything).
- * ADMIN with assignedGuestHouseId → { guestHouseId: <ObjectId> }.
- * ADMIN without assignment → no restriction (same as SUPER_ADMIN).
- */
-const getGuestHouseFilter = async (user) => {
+const getGuestHouseFilter = async (user, GuestHouse) => {
   if (user?.role === 'ADMIN' && user.assignedGuestHouseId) {
     const ghId = typeof user.assignedGuestHouseId === 'object'
       ? user.assignedGuestHouseId.guestHouseId
@@ -37,13 +26,13 @@ const getGuestHouseFilter = async (user) => {
 // Fetch Dashboard Summary (LIVE STATS)
 export const getAdminSummary = async (req, res) => {
   try {
-    const bookingQuery = await getGuestHouseFilter(req.user);
+    const { User, GuestHouse, Booking } = req.tenantModels;
+    const bookingQuery = await getGuestHouseFilter(req.user, GuestHouse);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
-    // Single aggregation query for all booking counts + todaysBookings
     const isTodayBooking = {
       $cond: {
         if: {
@@ -141,6 +130,7 @@ const buildDateRange = (startDateParam, endDateParam, rangeParam) => {
 
 export const getBookingsPerDay = async (req, res) => {
   try {
+    const { Booking, GuestHouse } = req.tenantModels;
     const { startDate, endDate } = buildDateRange(
       req.body.startDate,
       req.body.endDate,
@@ -148,7 +138,7 @@ export const getBookingsPerDay = async (req, res) => {
     );
 
     const matchStage = {
-      ...await getGuestHouseFilter(req.user),
+      ...await getGuestHouseFilter(req.user, GuestHouse),
       createdAt: { $gte: startDate, $lte: endDate },
     };
 
@@ -188,6 +178,7 @@ export const getBookingsPerDay = async (req, res) => {
 
 export const getTopGuestHouses = async (req, res) => {
   try {
+    const { Booking, GuestHouse } = req.tenantModels;
     const { startDate, endDate } = buildDateRange(
       req.body.startDate,
       req.body.endDate,
@@ -197,7 +188,7 @@ export const getTopGuestHouses = async (req, res) => {
     const limit = Math.min(parseInt(req.body.limit, 10) || 5, 20);
 
     const matchStage = {
-      ...await getGuestHouseFilter(req.user),
+      ...await getGuestHouseFilter(req.user, GuestHouse),
       createdAt: { $gte: startDate, $lte: endDate },
     };
 
@@ -217,7 +208,7 @@ export const getTopGuestHouses = async (req, res) => {
       { $limit: limit },
       {
         $lookup: {
-          from: "guesthouses",
+          from: GuestHouse.collection.name,
           localField: "_id",
           foreignField: "_id",
           as: "guestHouse",
@@ -244,11 +235,11 @@ export const getTopGuestHouses = async (req, res) => {
   }
 };
 
-// PATCH /api/admin/users/:id/assign-guesthouse  (SUPER_ADMIN only)
 export const assignGuestHouse = async (req, res) => {
   try {
+    const { User, GuestHouse } = req.tenantModels;
     const { id } = req.params;
-    const { guestHouseId } = req.body; // null to unassign
+    const { guestHouseId } = req.body;
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'Admin not found' });
@@ -276,9 +267,8 @@ export const assignGuestHouse = async (req, res) => {
       entityId: user._id,
       performedBy: req.user?.email || 'SuperAdmin',
       details: { assignedGuestHouseId: assignedId },
-    });
+    }, req.tenantDb);
 
-    // Manually populate assignedGuestHouse
     const userObj = user.toObject();
     if (guestHouse) {
       userObj.assignedGuestHouseId = guestHouse;
@@ -291,13 +281,12 @@ export const assignGuestHouse = async (req, res) => {
   }
 };
 
-// GET /api/admin/me  — returns the logged-in admin with their assigned guest house
 export const getMe = async (req, res) => {
   try {
+    const { User, GuestHouse } = req.tenantModels;
     const user = await User.findById(req.user._id).lean();
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Manually populate assignedGuestHouseId if exists
     if (user.assignedGuestHouseId) {
       const guestHouse = await GuestHouse.findOne({ guestHouseId: user.assignedGuestHouseId }).lean();
       user.assignedGuestHouseId = guestHouse;
@@ -310,17 +299,15 @@ export const getMe = async (req, res) => {
   }
 };
 
-
-// 🧾 GET /api/admin/users?page=1&limit=10
 export const listUsers = async (req, res) => {
   try {
+    const { User, GuestHouse } = req.tenantModels;
     const page = parseInt(req.body.page) || 1;
     const limit = parseInt(req.body.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Fetch paginated users — only ADMIN and SUPER_ADMIN, not guest USER records
     let users = await User.find(
-      { role: { $in: ["ADMIN", "SUPER_ADMIN"] } },
+      { role: "ADMIN" },
       "firstName lastName email phone address role isActive createdAt assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl"
     )
       .sort({ createdAt: -1 })
@@ -328,7 +315,6 @@ export const listUsers = async (req, res) => {
       .limit(limit)
       .lean();
 
-    // Manually populate assignedGuestHouseId
     const guestHouseIds = [...new Set(users.map(u => u.assignedGuestHouseId).filter(Boolean))];
     const guestHouses = await GuestHouse.find({ guestHouseId: { $in: guestHouseIds } }).lean();
     const guestHouseMap = {};
@@ -339,7 +325,7 @@ export const listUsers = async (req, res) => {
       assignedGuestHouseId: guestHouseMap[user.assignedGuestHouseId] || user.assignedGuestHouseId
     }));
 
-    const totalUsers = await User.countDocuments({ role: { $in: ["ADMIN", "SUPER_ADMIN"] } });
+    const totalUsers = await User.countDocuments({ role: "ADMIN" });
     const totalPages = Math.ceil(totalUsers / limit);
 
     return res.json({
@@ -354,13 +340,12 @@ export const listUsers = async (req, res) => {
   }
 };
 
-// ✨ POST /api/admin/users - Create user by admin
 export const createUserByAdmin = async (req, res) => {
   try {
+    const { User } = req.tenantModels;
     const { firstName, lastName, email, phone, address, password } = req.body;
     const eSignatureUrl = req.eSignatureUrl || null;
 
-    // Validate required fields
     if (!firstName || !lastName || !email || !phone || !password) {
       return res.status(400).json({ 
         error: "First name, last name, email, phone, and password are required." 
@@ -373,7 +358,6 @@ export const createUserByAdmin = async (req, res) => {
       });
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ 
@@ -381,7 +365,6 @@ export const createUserByAdmin = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ 
       $or: [{ email }, { phone: String(phone).trim() }] 
     });
@@ -399,7 +382,6 @@ export const createUserByAdmin = async (req, res) => {
       }
     }
 
-    // Create new admin account
     const newUser = new User({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -414,10 +396,8 @@ export const createUserByAdmin = async (req, res) => {
 
     await newUser.save();
 
-    // Get admin email from request (if available) or use "Admin"
     const performerEmail = req.user?.email || "Admin";
 
-    // Send response immediately
     res.status(201).json({
       message: "Admin account created successfully.",
       user: {
@@ -425,7 +405,6 @@ export const createUserByAdmin = async (req, res) => {
       },
     });
 
-    // Send email asynchronously (don't block response)
     sendEmail({
       to: newUser.email,
       subject: "Your Rishabh Guest House Account Has Been Created",
@@ -434,7 +413,6 @@ export const createUserByAdmin = async (req, res) => {
       console.error("❌ Email send error for admin-created user:", err);
     });
 
-    // Log action asynchronously (don't block response)
     logAction({
       action: "USER_REGISTERED",
       entityType: "User",
@@ -446,22 +424,17 @@ export const createUserByAdmin = async (req, res) => {
         phone: newUser.phone,
         createdByAdmin: true,
       },
-    }).catch(err => {
+    }, req.tenantDb).catch(err => {
       console.error("❌ Audit log error:", err);
     });
-
   } catch (error) {
     console.error("Error creating user by admin:", error);
-    
-    // Handle duplicate key error (MongoDB unique constraint)
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
       return res.status(400).json({
         error: `User with this ${field} already exists.`
       });
     }
-
-    // Handle validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -475,9 +448,9 @@ export const createUserByAdmin = async (req, res) => {
   }
 };
 
-// PATCH /api/admin/users/:id/widgets (SUPER_ADMIN only)
 export const updateUserWidgets = async (req, res) => {
   try {
+    const { User } = req.tenantModels;
     const { id } = req.params;
     const { allowedWidgets } = req.body;
 
@@ -497,7 +470,7 @@ export const updateUserWidgets = async (req, res) => {
       entityId: user._id,
       performedBy: req.user?.email || "SuperAdmin",
       details: { allowedWidgets },
-    });
+    }, req.tenantDb);
 
     res.json({
       message: "Widget permissions updated successfully",

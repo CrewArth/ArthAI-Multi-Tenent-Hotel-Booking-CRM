@@ -1,4 +1,3 @@
-import User from "../models/User.js";
 import { logAction } from "../utils/auditLogger.js";
 
 const getTrackedDetails = (payload = {}) => {
@@ -21,7 +20,6 @@ const getTrackedDetails = (payload = {}) => {
     }
     return acc;
   }, {});
-  
 };
 
 const performer = (req) => req.user?.email || "Admin";
@@ -29,6 +27,7 @@ const hasSuperAdminRole = (req) => req.user?.role === "SUPER_ADMIN";
 
 export const updateUser = async (req, res) => {
   try {
+    const { User } = req.tenantModels;
     const { id } = req.params;
     const isSuperAdmin = req.user?.role === "SUPER_ADMIN";
     const isSameUser = String(req.user?._id || "") === String(id);
@@ -82,40 +81,30 @@ export const updateUser = async (req, res) => {
       entityId: updatedUser._id,
       performedBy: performer(req),
       details: getTrackedDetails(updatedData),
-    });
+    }, req.tenantDb);
 
-    console.log("Updated user:", updatedUser);
     res.json({ user: updatedUser });
   } catch (error) {
     console.error("Update User Error: ", error);
-    
-    // Handle duplicate key error (MongoDB error code 11000)
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern || {})[0];
       let message = `${field} is already taken`;
-      
-      // Provide more specific messages
       if (field === 'phone') {
         message = "Phone number is already taken. Please use a different phone number.";
       } else if (field === 'email') {
         message = "Email is already taken. Please use a different email address.";
       }
-      
       return res.status(400).json({ message });
     }
-    
-    // Handle validation errors
+
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ 
         message: validationErrors.join(', ') || "Validation error occurred"
       });
     }
-    
-    // Handle other errors
-    res
-      .status(500)
-      .json({ message: error.message || "Server error while updating user." });
+
+    res.status(500).json({ message: error.message || "Server error while updating user." });
   }
 };
 
@@ -125,6 +114,7 @@ export const deleteUser = async (req, res) => {
   }
 
   try {
+    const { User } = req.tenantModels;
     const deleted = await User.findByIdAndDelete(req.params.id);
 
     if (!deleted) {
@@ -140,7 +130,7 @@ export const deleteUser = async (req, res) => {
         email: deleted.email,
         name: `${deleted.firstName} ${deleted.lastName}`.trim(),
       },
-    });
+    }, req.tenantDb);
 
     res.json({ success: true, message: "User deleted successfully" });
   } catch (error) {
@@ -155,6 +145,7 @@ export const deactivateUser = async (req, res) => {
   }
 
   try {
+    const { User } = req.tenantModels;
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
@@ -169,7 +160,7 @@ export const deactivateUser = async (req, res) => {
       entityId: user._id,
       performedBy: performer(req),
       details: { isActive: user.isActive },
-    });
+    }, req.tenantDb);
 
     res.json({ message: "User deactivated successfully", user });
   } catch (error) {
@@ -184,6 +175,7 @@ export const toggleUserStatus = async (req, res) => {
   }
 
   try {
+    const { User } = req.tenantModels;
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -196,7 +188,7 @@ export const toggleUserStatus = async (req, res) => {
       entityId: user._id,
       performedBy: performer(req),
       details: { isActive: user.isActive },
-    });
+    }, req.tenantDb);
 
     res.json({
       message: user.isActive ? "User activated" : "User deactivated",

@@ -1,15 +1,12 @@
-import GuestHouse from '../models/GuestHouse.js';
-import Room from '../models/Room.js';
-import Bed from '../models/Bed.js';
 import { logAction } from '../utils/auditLogger.js';
 import { deleteFromS3 } from "../utils/s3Client.js";
 import { generateId } from '../utils/generateId.js';
-
 
 const MAX_GUEST_HOUSES = 4;
 
 export const createGuestHouse = async (req, res) => {
   try {
+    const { GuestHouse } = req.tenantModels;
     const { guestHouseName, description } = req.body;
 
     // Check guest house limit
@@ -22,7 +19,6 @@ export const createGuestHouse = async (req, res) => {
       });
     }
 
-    // Parse location string back to JSON
     const location = JSON.parse(req.body.location);
 
     if (!guestHouseName || !location?.city || !location?.state) {
@@ -30,7 +26,7 @@ export const createGuestHouse = async (req, res) => {
     }
 
     const imageUrl = req.optimizedImageUrl || null;
-    const newGuestHouseId = await generateId('guesthouse');
+    const newGuestHouseId = await generateId('guesthouse', req.tenantDb);
 
     const guestHouse = await GuestHouse.create({
       guestHouseId: newGuestHouseId,
@@ -40,7 +36,6 @@ export const createGuestHouse = async (req, res) => {
       image: imageUrl,
     });
 
-    // ✅ Guest House Created
     await logAction({
       action: 'GUESTHOUSE_CREATED',
       entityType: 'GuestHouse',
@@ -50,14 +45,12 @@ export const createGuestHouse = async (req, res) => {
         guestHouseName: guestHouse.guestHouseName,
         location: guestHouse.location,
       },
-    });
+    }, req.tenantDb);
 
     res.status(201).json({
       message: "Guest House Created Successfully",
       guestHouse,
     });
-
-
   } catch (error) {
     console.error("Error creating GuestHouse ", error);
     if (error.code === 11000) {
@@ -76,17 +69,19 @@ export const createGuestHouse = async (req, res) => {
 // Get all the Guest Houses
 export const getGuestHouses = async (req, res) => {
   try {
+    const { GuestHouse } = req.tenantModels;
     const guestHouses = await GuestHouse.find().sort({ guestHouseId: 1 });
     res.status(200).json(guestHouses);
   } catch (error) {
     console.error("Error fetching guest houses:", error);
     res.status(500).json({ message: "Server error" });
   }
-}
+};
 
 // Toggle Maintenance Mode
 export const toggleMaintenanceMode = async (req, res) => {
   try {
+    const { GuestHouse } = req.tenantModels;
     const { guestHouseId } = req.params;
 
     const guestHouse = await GuestHouse.findOne({ guestHouseId });
@@ -95,28 +90,24 @@ export const toggleMaintenanceMode = async (req, res) => {
       return res.status(404).json({ message: 'Guest house not found' });
     }
 
-    // Toggle the maintenance flag
     guestHouse.maintenance = !guestHouse.maintenance;
     await guestHouse.save();
 
-    // ✅ Maintenance Status Toggled
     await logAction({
       action: 'MAINTENANCE_TOGGLED',
       entityType: 'GuestHouse',
       entityId: guestHouse.guestHouseId,
       performedBy: req.user?.email || 'Admin',
       details: {
-        previousStatus: guestHouse.maintenance,
-        newStatus: !guestHouse.maintenance,
+        previousStatus: !guestHouse.maintenance,
+        newStatus: guestHouse.maintenance,
       },
-    });
+    }, req.tenantDb);
 
     res.json({
       message: `Maintenance mode ${guestHouse.maintenance ? 'activated' : 'deactivated'}`,
       guestHouse,
     });
-
-
   } catch (error) {
     console.error('Error toggling maintenance mode:', error);
     res.status(500).json({ message: 'Server error while toggling maintenance mode' });
@@ -125,35 +116,24 @@ export const toggleMaintenanceMode = async (req, res) => {
 
 // Delete Guest House
 export const deleteGuestHouse = async (req, res) => {
+  const { GuestHouse, Room, Bed } = req.tenantModels;
   const guestHouseId = req.params.guestHouseId;
 
   try {
-    // 1️⃣ Validate Guest House
     const guestHouse = await GuestHouse.findOne({ guestHouseId });
     if (!guestHouse) {
       return res.status(404).json({ error: "Guest House not found" });
     }
 
-    // 2️⃣ Delete image from AWS S3 (if exists)
-    console.log("🟡 Calling deleteFromS3 for:", guestHouse.image);
     await deleteFromS3(guestHouse.image);
-    console.log("🟢 deleteFromS3 finished");
 
-
-    // 3️⃣ Get all rooms under guest house
     const rooms = await Room.find({ guestHouseId });
-
-    // 4️⃣ Delete all beds under those rooms
     const roomIds = rooms.map((room) => room._id);
+
     await Bed.deleteMany({ roomId: { $in: roomIds } });
-
-    // 5️⃣ Delete all rooms
     await Room.deleteMany({ guestHouseId });
-
-    // 6️⃣ Delete the guest house itself
     await GuestHouse.deleteOne({ guestHouseId });
 
-    // 7️⃣ Log action (safe wrapped)
     try {
       await logAction({
         action: 'GUESTHOUSE_DELETED',
@@ -163,18 +143,17 @@ export const deleteGuestHouse = async (req, res) => {
         details: {
           message: 'Guest house deleted permanently, including image on S3',
         },
-      });
+      }, req.tenantDb);
     } catch (logError) {
       console.warn("Audit log error (continued):", logError.message);
     }
 
     return res.json({
       success: true,
-      message:
-        "Guest House, image, and associated Rooms & Beds deleted successfully",
+      message: "Guest House, image, and associated Rooms & Beds deleted successfully",
     });
   } catch (error) {
-    console.error("❌ Error deleting guest house:", error);
+    console.error("Error deleting guest house:", error);
     res.status(500).json({ error: "Server error while deleting Guest House" });
   }
 };
@@ -182,9 +161,9 @@ export const deleteGuestHouse = async (req, res) => {
 // Guest House Update Code  
 export const updateGuestHouse = async (req, res) => {
   try {
+    const { GuestHouse } = req.tenantModels;
     const { guestHouseId } = req.params;
 
-    // Parse location if exists
     let location = {};
     if (req.body.location) {
       try {
@@ -194,7 +173,6 @@ export const updateGuestHouse = async (req, res) => {
       }
     }
 
-    // Construct update object
     const updateData = {
       guestHouseName: req.body.guestHouseName,
       description: req.body.description,
@@ -205,8 +183,6 @@ export const updateGuestHouse = async (req, res) => {
       updateData.image = req.optimizedImageUrl;
     }
 
-
-    // Update guest house
     const updatedGuestHouse = await GuestHouse.findOneAndUpdate(
       { guestHouseId },
       updateData,
@@ -217,14 +193,13 @@ export const updateGuestHouse = async (req, res) => {
       return res.status(404).json({ message: "Guest House not found" });
     }
 
-    // ✅ Log update
     await logAction({
       action: 'GUESTHOUSE_UPDATED',
       entityType: 'GuestHouse',
       entityId: updatedGuestHouse.guestHouseId,
       performedBy: req.user?.email || 'Admin',
       details: updateData,
-    });
+    }, req.tenantDb);
 
     res.status(200).json({
       message: "Guest House updated successfully",
@@ -248,6 +223,7 @@ export const updateGuestHouse = async (req, res) => {
 // Get single guest house by ID
 export const getGuestHouseById = async (req, res) => {
   try {
+    const { GuestHouse } = req.tenantModels;
     const guestHouseId = req.params.guestHouseId;
 
     const guestHouse = await GuestHouse.findOne({ guestHouseId });

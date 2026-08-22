@@ -10,7 +10,7 @@ const AboutUs = () => {
       <div className="common-page-content">
         <div className="common-page-header">
           <h1>About Us</h1>
-          <p>Your Trusted Partner in Guest House Management</p>
+          <p>Your Trusted Partner in Hotel Management</p>
         </div>
 
         <div className="common-section">
@@ -40,7 +40,7 @@ const AboutUs = () => {
           <div className="highlight-box">
             <h3>Our Mission</h3>
             <p>
-              To provide exceptional guest house management solutions that combine cutting-edge technology with personalized service, ensuring a seamless experience for both guests and administrators.
+              To provide exceptional hotel management solutions that combine cutting-edge technology with personalized service, ensuring a seamless experience for both guests and administrators.
             </p>
           </div>
 
@@ -62,4 +62,3 @@ const AboutUs = () => {
 };
 
 export default AboutUs;
-

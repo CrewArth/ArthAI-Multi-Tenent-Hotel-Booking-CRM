@@ -20,7 +20,7 @@ const saveToStorage = (settings) => {
 };
 
 const defaults = {
-  siteName: 'Arth Guest House',
+  siteName: 'Arth Hotel',
   logoUrl: null, // null → use the bundled logo.png fallback
 };
 

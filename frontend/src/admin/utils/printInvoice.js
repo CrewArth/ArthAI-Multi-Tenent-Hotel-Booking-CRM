@@ -169,7 +169,7 @@ export const printInvoice = (booking, invoiceData) => {
       <div class="box-title">Payment Details</div>
       <p>Method: <strong>${inv.paymentMethod || '—'}</strong></p>
       <p>Paid On: <strong>${fmt(inv.createdAt)}</strong></p>
-      <p>Guest House: ${g.guestHouseName}</p>
+      <p>Hotel: ${g.guestHouseName}</p>
     </div>
   </div>
   <table>

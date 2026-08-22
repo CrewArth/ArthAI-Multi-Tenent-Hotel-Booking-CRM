@@ -15,6 +15,7 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
   });
   const [eSignatureFile, setESignatureFile] = useState(null);
   const [eSignaturePreview, setESignaturePreview] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -39,20 +40,27 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = new FormData();
-    payload.append("firstName", form.firstName);
-    payload.append("lastName", form.lastName);
-    payload.append("phone", form.phone);
-    payload.append("address", form.address);
-    payload.append("isActive", String(form.isActive));
+    setIsSaving(true);
+    try {
+      const payload = new FormData();
+      payload.append("firstName", form.firstName);
+      payload.append("lastName", form.lastName);
+      payload.append("phone", form.phone);
+      payload.append("address", form.address);
+      payload.append("isActive", String(form.isActive));
 
-    if (eSignatureFile) {
-      payload.append("eSignature", eSignatureFile);
+      if (eSignatureFile) {
+        payload.append("eSignature", eSignatureFile);
+      }
+
+      await onSubmit(payload);
+    } catch (err) {
+      console.error("Edit user submit error:", err);
+    } finally {
+      setIsSaving(false);
     }
-
-    onSubmit(payload);
   };
 
   const handleESignatureChange = async (event) => {
@@ -80,99 +88,128 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
   };
 
   if (!user) return null;
+
   return (
-    <div className="modal-backdrop">
-      <div className="modal">
-        <h2>Edit Admin</h2>
-        <p className="subtitle">Editing: {user.email}</p>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="modal-header">
+          <div>
+            <h2>Edit Admin Account</h2>
+            <p className="subtitle">{user.email}</p>
+          </div>
+          <button type="button" className="btn-close" onClick={onClose}>
+            ✕
+          </button>
+        </div>
 
+        {/* Form */}
         <form className="modal-form" onSubmit={handleSubmit}>
-          <label>
-            First Name
-            <input
-              type="text"
-              name="firstName"
-              value={form.firstName}
-              onChange={handleChange}
-              required
-            />
-          </label>
+          {/* First & Last Name Grid */}
+          <div className="form-grid-2">
+            <label className="form-label">
+              First Name *
+              <input
+                type="text"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                required
+                className="form-input"
+              />
+            </label>
 
-          <label>
-            Last Name
-            <input
-              type="text"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-              required
-            />
-          </label>
+            <label className="form-label">
+              Last Name *
+              <input
+                type="text"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+                className="form-input"
+              />
+            </label>
+          </div>
 
-          <label>
-            Email
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              disabled
-              className="disabled-input"
-            />
-          </label>
+          {/* Email & Phone Grid */}
+          <div className="form-grid-2">
+            <label className="form-label">
+              Email Address
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                disabled
+                className="form-input disabled-input"
+              />
+            </label>
 
-          <label>
-            Phone
-            <input
-              type="text"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-            />
-          </label>
+            <label className="form-label">
+              Phone Number
+              <input
+                type="text"
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                className="form-input"
+              />
+            </label>
+          </div>
 
-          <label>
-            ESignature
-            <input
-              type="file"
-              name="eSignature"
-              accept="image/*"
-              onChange={handleESignatureChange}
-            />
-          </label>
-          {eSignaturePreview ? (
-            <img
-              src={eSignaturePreview}
-              alt="ESignature preview"
-              style={{ maxWidth: "100%", maxHeight: "90px", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "6px" }}
-            />
-          ) : null}
-
-          <label>
+          {/* Address */}
+          <label className="form-label">
             Address
             <textarea
               name="address"
               value={form.address}
               onChange={handleChange}
-              rows="3"
+              rows="2"
+              className="form-input textarea-input"
             />
           </label>
 
-          <label className="checkbox-label">
+          {/* ESignature Section */}
+          <label className="form-label">
+            E-Signature Image
+            <input
+              type="file"
+              name="eSignature"
+              accept="image/*"
+              onChange={handleESignatureChange}
+              className="form-input-file"
+            />
+          </label>
+
+          {eSignaturePreview && (
+            <div className="signature-preview-box">
+              <span className="signature-label">Current Signature:</span>
+              <img
+                src={eSignaturePreview}
+                alt="ESignature preview"
+                className="signature-img"
+              />
+            </div>
+          )}
+
+          {/* Active Status Checkbox */}
+          <label className="checkbox-row">
             <input
               type="checkbox"
               name="isActive"
               checked={form.isActive}
               onChange={handleChange}
             />
-            Active Account?
+            <span>Active Account</span>
           </label>
 
+          {/* Modal Actions */}
           <div className="modal-actions">
-            <button type="button" className="btn cancel" onClick={onClose}>
+            <button type="button" className="btn cancel" onClick={onClose} disabled={isSaving}>
               Cancel
             </button>
-            <button type="submit" className="btn confirm">
-              Save Changes
+            <button type="submit" className="btn confirm" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

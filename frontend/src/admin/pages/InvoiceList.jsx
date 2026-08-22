@@ -216,7 +216,7 @@ const InvoiceList = () => {
       <div class="box-title">Payment Details</div>
       <p>Method: <strong>${invoiceData.paymentMethod || '—'}</strong></p>
       <p>Paid On: <strong>${fmt(invoiceData.createdAt)}</strong></p>
-      <p>Guest House: ${guestHouseName}</p>
+      <p>Hotel: ${guestHouseName}</p>
       <p>Status: <strong>Checked Out</strong></p>
     </div>
   </div>

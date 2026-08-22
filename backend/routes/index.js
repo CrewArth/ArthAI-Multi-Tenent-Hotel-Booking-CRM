@@ -12,6 +12,8 @@ import contactRoutes from './contactRoutes.js';
 import reportRoutes from '../reports/routes/reportRoutes.js';
 import taxRoutes from './taxRoutes.js';
 import paymentRoutes from './paymentRoutes.js';
+import tenantRoutes from './tenantRoutes.js';
+import subscriptionRoutes from './subscriptionRoutes.js';
 
 const router = express.Router();
 
@@ -28,5 +30,7 @@ router.use('/contact', contactRoutes);
 router.use('/reports', reportRoutes);
 router.use('/taxes', taxRoutes);
 router.use('/payments', paymentRoutes);
+router.use('/tenants', tenantRoutes);
+router.use('/subscription', subscriptionRoutes);
 
 export default router;

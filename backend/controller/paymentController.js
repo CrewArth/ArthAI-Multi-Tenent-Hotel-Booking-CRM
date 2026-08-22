@@ -1,17 +1,11 @@
-import mongoose from 'mongoose';
-import Payment from '../models/Payment.js';
-import Booking from '../models/Booking.js';
-import Invoice from '../models/Invoice.js';
-import GuestHouse from '../models/GuestHouse.js';
-import User from '../models/User.js';
 import { isObjectId } from '../utils/isObjectId.js';
 
 export const createPayment = async (req, res) => {
   try {
+    const { Payment, Booking, Invoice } = req.tenantModels;
     const { bookingId, amountPaid, paymentMethod, taxesTotal, taxBreakdown, invoiceId } = req.body;
     if (!bookingId || amountPaid == null) return res.status(400).json({ message: 'bookingId and amountPaid required' });
 
-    // ensure booking exists
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
@@ -27,16 +21,12 @@ export const createPayment = async (req, res) => {
       createdBy: req.user?._id,
     });
 
-    // create or UPDATE invoice document (ONE invoice per booking)
     let invoiceDoc = null;
     try {
       const invoicePayload = req.body.invoice || {};
-
-      // Check if invoice already exists for this booking
       const existingInvoice = await Invoice.findOne({ bookingId }).sort({ createdAt: 1 });
 
       if (existingInvoice) {
-        // ── OUTSTANDING PAYMENT: UPDATE EXISTING INVOICE ──
         const prevPaid = Number(existingInvoice.paidAmount) || Number(existingInvoice.amountPaid) || 0;
         const newPaid = prevPaid + payAmt;
         const totalAmt = Number(existingInvoice.totalAmount)
@@ -45,7 +35,6 @@ export const createPayment = async (req, res) => {
           || 0;
         const newOutstanding = Math.max(0, totalAmt - newPaid);
 
-        // Top-level fields (new flattened schema)
         existingInvoice.paidAmount = newPaid;
         existingInvoice.outstandingAmount = newOutstanding;
         if (paymentMethod) existingInvoice.paymentMethod = paymentMethod;
@@ -53,12 +42,10 @@ export const createPayment = async (req, res) => {
         if (taxBreakdown?.length) existingInvoice.taxBreakdown = taxBreakdown;
         if (req.body.note) existingInvoice.notes = req.body.note;
 
-        // Add payment to paymentIds (no duplicates)
         if (!existingInvoice.paymentIds.map(String).includes(String(payment._id))) {
           existingInvoice.paymentIds.push(payment._id);
         }
 
-        // Legacy fields (sync invoiceData for backward compat)
         existingInvoice.amountPaid = newPaid;
         existingInvoice.taxesTotal = taxesAmt || existingInvoice.taxesTotal;
         existingInvoice.invoiceData = {
@@ -73,7 +60,6 @@ export const createPayment = async (req, res) => {
         await existingInvoice.save();
         invoiceDoc = existingInvoice;
       } else {
-        // ── CHECKOUT PAYMENT: CREATE NEW INVOICE ──
         const totalAmt = Number(invoicePayload.bookingTotal) || 0;
         const initOutstanding = Math.max(0, totalAmt - payAmt);
 
@@ -81,8 +67,6 @@ export const createPayment = async (req, res) => {
         invoiceDoc = await Invoice.create({
           bookingId,
           paymentId: payment._id,
-          invoiceId: undefined, // will be set to _id by pre-save hook
-          // ── Flattened fields (new schema) ──
           totalAmount: totalAmt,
           taxAmount: taxesAmt,
           taxBreakdown: taxBd,
@@ -94,7 +78,6 @@ export const createPayment = async (req, res) => {
           notes: req.body.note || invoicePayload.note,
           paymentIds: [payment._id],
           createdBy: req.user?._id,
-          // ── Legacy fields (for backward compat) ──
           invoiceData: {
             ...invoicePayload,
             amountPaid: payAmt,
@@ -108,14 +91,12 @@ export const createPayment = async (req, res) => {
         await invoiceDoc.save();
       }
 
-      // link invoice id to payment
       payment.invoiceId = invoiceDoc._id;
       await payment.save();
     } catch (invErr) {
       console.error('Failed to create/update invoice document:', invErr);
     }
 
-    // mark booking as checked out
     booking.isCheckedOut = true;
     await booking.save();
 
@@ -128,6 +109,7 @@ export const createPayment = async (req, res) => {
 
 export const getInvoiceByBookingId = async (req, res) => {
   try {
+    const { Invoice } = req.tenantModels;
     const { bookingId } = req.params;
 
     if (!bookingId) {
@@ -140,7 +122,6 @@ export const getInvoiceByBookingId = async (req, res) => {
       return res.status(404).json({ message: 'Invoice not found for this booking' });
     }
 
-    // Merge legacy invoiceData with new top-level fields (top-level takes precedence)
     const legacy = rawInvoice.invoiceData || {};
     const mergedInvoiceData = {
       ...legacy,
@@ -171,10 +152,10 @@ export const getInvoiceByBookingId = async (req, res) => {
 
 export const listOutstandingReceipts = async (req, res) => {
   try {
+    const { Payment, Booking, Invoice, GuestHouse, User } = req.tenantModels;
     const body = req.method === 'POST' ? req.body : req.query;
     const { search = '', fromDate = '', toDate = '', paid = false } = body;
 
-    // Scope to assigned guest house
     const assignedGH = req.user?.assignedGuestHouseId;
     const scopedGuestHouseId = assignedGH ? (assignedGH.guestHouseId || assignedGH) : null;
     let scopedGuestHouseObjectId = null;
@@ -186,9 +167,7 @@ export const listOutstandingReceipts = async (req, res) => {
       if (gh) scopedGuestHouseObjectId = gh._id;
     }
 
-    // ── PAID MODE: query Payment collection — one row per payment transaction ──
     if (paid) {
-      // Step 1: match bookings scoped to guest house / search
       const bookingMatch = { isCheckedOut: true };
       if (scopedGuestHouseObjectId) bookingMatch.guestHouseId = scopedGuestHouseObjectId;
       if (fromDate || toDate) {
@@ -202,12 +181,10 @@ export const listOutstandingReceipts = async (req, res) => {
         bookingMatch.userId = { $in: users.map((u) => u._id) };
       }
 
-      // Step 2: find qualifying bookings
       const bookings = await Booking.find(bookingMatch, '_id').lean();
       const bookingIds = bookings.map((b) => b._id);
       if (bookingIds.length === 0) return res.json({ receipts: [] });
 
-      // Step 3: for each booking, find its invoice (to get cumulative amounts)
       const invoices = await Invoice.find({ bookingId: { $in: bookingIds } }, {
         bookingId: 1, totalAmount: 1, paidAmount: 1, outstandingAmount: 1,
         invoiceData: 1, amountPaid: 1, taxesTotal: 1, taxBreakdown: 1,
@@ -216,17 +193,8 @@ export const listOutstandingReceipts = async (req, res) => {
       const invByBooking = {};
       invoices.forEach((inv) => { invByBooking[String(inv.bookingId)] = inv; });
 
-      // Step 4: find all payments (except first/initial checkout payment per booking if
-      //         outstandingBalance after first is still owed, we need to include subsequent ones)
-      //         Actually, simpler: we include ALL payments that happened AFTER the booking was
-      //         checked out, and for each booking we compute "previouslyPaid" as cumulative
-      //         up to (but not including) this payment.
-      //         To get "paid outstanding" (not initial) payments: exclude the FIRST payment
-      //         per booking (since first payment is always at checkout).
-      //         This matches the OLD behavior of invoiceRank >= 2!
       const allPayments = await Payment.find({ bookingId: { $in: bookingIds } }).sort({ createdAt: 1 }).lean();
 
-      // Group payments by bookingId
       const paymentsByBooking = {};
       allPayments.forEach((p) => {
         const k = String(p.bookingId);
@@ -234,17 +202,14 @@ export const listOutstandingReceipts = async (req, res) => {
         paymentsByBooking[k].push(p);
       });
 
-      // Rank payments per booking: 1 = checkout, 2+ = outstanding (keep 2+)
-      // Also calculate "previouslyPaid" = sum of all payments before this one
       const outstandingPayments = [];
-      Object.keys(paymentsByBooking).forEach((bookingId) => {
-        const payments = paymentsByBooking[bookingId];
+      Object.keys(paymentsByBooking).forEach((bId) => {
+        const payments = paymentsByBooking[bId];
         let cumulative = 0;
         payments.forEach((p, idx) => {
           const rank = idx + 1;
           if (rank >= 2) {
-            // Build invoiceData for this row
-            const inv = invByBooking[bookingId];
+            const inv = invByBooking[bId];
             const legacy = inv?.invoiceData || {};
             const totalBill = inv?.totalAmount ?? legacy.bookingTotal ?? 0;
             const currentOutstanding = inv?.outstandingAmount ?? legacy.outstandingBalance ?? 0;
@@ -254,19 +219,18 @@ export const listOutstandingReceipts = async (req, res) => {
               bookingId: p.bookingId,
               createdAt: p.createdAt,
               outstandingBalance: currentOutstanding,
-              // Payment transaction details
               invoiceData: {
                 ...legacy,
                 bookingTotal: totalBill,
                 paymentMethod: p.paymentMethod || inv?.paymentMethod || '',
-                amountPaid: p.amountPaid,          // THIS TRANSACTION ONLY
-                previouslyPaid: cumulative,        // sum of all before (checkout + prior outstandings)
+                amountPaid: p.amountPaid,
+                previouslyPaid: cumulative,
                 taxesTotal: p.taxesTotal || inv?.taxAmount || 0,
                 taxBreakdown: p.taxBreakdown || inv?.taxBreakdown || [],
                 outstandingBalance: currentOutstanding,
                 createdAt: p.createdAt,
               },
-              booking: null, // filled in by join below
+              booking: null,
             });
           }
           cumulative += Number(p.amountPaid) || 0;
@@ -275,7 +239,6 @@ export const listOutstandingReceipts = async (req, res) => {
 
       if (outstandingPayments.length === 0) return res.json({ receipts: [] });
 
-      // Step 5: Now join booking + user + room (same as before) via Mongoose queries
       const pmtBookingIds = outstandingPayments.map((r) => r.bookingId);
       const bookingsWithJoins = await Booking.find({ _id: { $in: pmtBookingIds } })
         .populate('userId', 'firstName lastName email phone')
@@ -285,7 +248,6 @@ export const listOutstandingReceipts = async (req, res) => {
       const bookingMap = {};
       bookingsWithJoins.forEach((b) => { bookingMap[String(b._id)] = b; });
 
-      // Attach booking to each outstandingPayment row
       const receipts = outstandingPayments
         .map((p) => ({
           ...p,
@@ -296,7 +258,6 @@ export const listOutstandingReceipts = async (req, res) => {
       return res.json({ receipts });
     }
 
-    // ── UNPAID MODE: query Bookings — one row per booking with outstanding balance ──
     const matchStage = { isCheckedOut: true };
     if (scopedGuestHouseObjectId) matchStage.guestHouseId = scopedGuestHouseObjectId;
     if (fromDate || toDate) {
@@ -314,7 +275,7 @@ export const listOutstandingReceipts = async (req, res) => {
       { $match: matchStage },
       {
         $lookup: {
-          from: 'invoices',
+          from: Invoice.collection.name,
           let: { bookingId: '$_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$bookingId', '$$bookingId'] } } },
@@ -322,7 +283,6 @@ export const listOutstandingReceipts = async (req, res) => {
             { $limit: 1 },
             {
               $addFields: {
-                // Compute normalized outstandingBalance: prefer top-level outstandingAmount
                 normalizedOutstanding: {
                   $ifNull: [
                     '$outstandingAmount',
@@ -340,7 +300,7 @@ export const listOutstandingReceipts = async (req, res) => {
       { $match: { 'latestInvoice.normalizedOutstanding': { $gt: 0 } } },
       {
         $lookup: {
-          from: 'users',
+          from: User.collection.name,
           let: { userId: '$userId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$userId'] } } },
@@ -402,6 +362,7 @@ export const listOutstandingReceipts = async (req, res) => {
 
 export const listPayments = async (req, res) => {
   try {
+    const { Payment } = req.tenantModels;
     const payments = await Payment.find().sort({ createdAt: -1 });
     return res.json({ payments });
   } catch (err) {
@@ -412,12 +373,12 @@ export const listPayments = async (req, res) => {
 
 export const listCheckedOutBookings = async (req, res) => {
   try {
+    const { Booking, GuestHouse, User, Room, Bed, Invoice } = req.tenantModels;
     const { page = 1, limit = 20, guestHouseId, search = '' } = req.body;
     const pageNum = Math.max(1, Number(page));
     const limitNum = Math.min(100, Math.max(1, Number(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    // Scope to assigned guest house for non-super-admin
     const assignedGH = req.user?.assignedGuestHouseId;
     const rawGHId = guestHouseId || (assignedGH ? (assignedGH.guestHouseId || assignedGH) : null);
 
@@ -433,7 +394,6 @@ export const listCheckedOutBookings = async (req, res) => {
       if (gh) scopedGHObjectId = gh._id;
     }
 
-    // ── Stage 1: match checked-out bookings ──────────────────────────
     const matchStage = { isCheckedOut: true };
     if (scopedGHObjectId) matchStage.guestHouseId = scopedGHObjectId;
     if (search && search.trim()) {
@@ -445,17 +405,14 @@ export const listCheckedOutBookings = async (req, res) => {
 
     const pipeline = [
       { $match: matchStage },
-
-      // ── Stage 2: join latest invoice for each booking ────────────────
       {
         $lookup: {
-          from: 'invoices',
+          from: Invoice.collection.name,
           let: { bookingId: '$_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$bookingId', '$$bookingId'] } } },
             { $sort: { createdAt: -1 } },
             { $limit: 1 },
-            // Normalize legacy + new top-level fields
             {
               $addFields: {
                 _bookingTotal: {
@@ -504,13 +461,10 @@ export const listCheckedOutBookings = async (req, res) => {
           as: 'invoice',
         },
       },
-      // Flatten array → single object (null if no invoice)
       { $addFields: { invoice: { $arrayElemAt: ['$invoice', 0] } } },
-
-      // ── Stage 3: join guest user ─────────────────────────────────────
       {
         $lookup: {
-          from: 'users',
+          from: User.collection.name,
           let: { userId: '$userId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$userId'] } } },
@@ -520,11 +474,9 @@ export const listCheckedOutBookings = async (req, res) => {
         },
       },
       { $addFields: { userId: { $arrayElemAt: ['$userId', 0] } } },
-
-      // ── Stage 4: join primary room ───────────────────────────────────
       {
         $lookup: {
-          from: 'rooms',
+          from: Room.collection.name,
           let: { roomId: '$roomId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$roomId'] } } },
@@ -534,11 +486,9 @@ export const listCheckedOutBookings = async (req, res) => {
         },
       },
       { $addFields: { roomId: { $arrayElemAt: ['$roomId', 0] } } },
-
-      // ── Stage 5: join roomIds array (multi-room bookings) ────────────
       {
         $lookup: {
-          from: 'rooms',
+          from: Room.collection.name,
           let: { roomIds: '$roomIds' },
           pipeline: [
             { $match: { $expr: { $in: ['$_id', { $ifNull: ['$$roomIds', []] }] } } },
@@ -547,11 +497,9 @@ export const listCheckedOutBookings = async (req, res) => {
           as: 'roomIds',
         },
       },
-
-      // ── Stage 6: join bed ────────────────────────────────────────────
       {
         $lookup: {
-          from: 'beds',
+          from: Bed.collection.name,
           let: { bedId: '$bedId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$bedId'] } } },
@@ -561,11 +509,9 @@ export const listCheckedOutBookings = async (req, res) => {
         },
       },
       { $addFields: { bedId: { $arrayElemAt: ['$bedId', 0] } } },
-
-      // ── Stage 7: join guest house (ObjectId → _id join) ─────────────
       {
         $lookup: {
-          from: 'guesthouses',
+          from: GuestHouse.collection.name,
           let: { ghId: '$guestHouseId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$ghId'] } } },
@@ -585,11 +531,7 @@ export const listCheckedOutBookings = async (req, res) => {
         },
       },
       { $unset: 'guestHouseDoc' },
-
-      // ── Stage 8: sort ────────────────────────────────────────────────
       { $sort: { checkOut: -1 } },
-
-      // ── Stage 9: facet for data + count in one round-trip ────────────
       {
         $facet: {
           data: [

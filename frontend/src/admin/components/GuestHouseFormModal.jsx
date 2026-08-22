@@ -67,11 +67,11 @@ const GuestHouseFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   return (
     <div className="modal-backdrop">
       <div className="modal-container">
-        <h2>{initialData ? "Edit Guest House" : "Add New Guest House"}</h2>
+        <h2>{initialData ? "Edit Hotel" : "Add New Hotel"}</h2>
 
         <form onSubmit={handleSubmit} className="gh-form" encType="multipart/form-data">
           <label>
-            Guest House Name
+            Hotel Name
             <input
               type="text"
               name="guestHouseName"

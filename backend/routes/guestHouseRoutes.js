@@ -9,12 +9,17 @@ import {
 } from '../controller/guestHouseController.js';
 
 import { upload, processAndUploadImage } from '../middlewares/imageUpload.js';
+import { authenticate } from '../middlewares/auth.js';
+import { resolveSubscriptionPlan, checkHotelLimit } from '../middlewares/subscriptionMiddleware.js';
 
 const router = express.Router();
 
-// Create Guest House (with image optimization)
+// Create Guest House (with subscription limit check & image optimization)
 router.post(
   '/',
+  authenticate,
+  resolveSubscriptionPlan,
+  checkHotelLimit,
   upload,                 // multer memory upload
   processAndUploadImage,  // sharp → optimized → upload to S3
   createGuestHouse

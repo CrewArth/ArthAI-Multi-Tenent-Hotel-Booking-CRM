@@ -1,21 +1,14 @@
-// controllers/bookingController.js
 import mongoose from "mongoose";
-import Booking from "../models/Booking.js";
-import Bed from "../models/Bed.js";
-import Room from "../models/Room.js";
 import { logAction } from "../utils/auditLogger.js";
 import { sendEmail } from '../utils/emailService.js';
 import { sendBookingWhatsApp, sendCancelWhatsApp } from '../utils/whatsappService.js';
-import User from '../models/User.js';
-import GuestHouse from '../models/GuestHouse.js';
 import { bookingRequest } from "../utils/emailTemplates/bookingRequest.js";
 import { bookingStatusUpdate } from "../utils/emailTemplates/bookingStatusUpdate.js";
 import { upsertNormalUser } from "../utils/upsertNormalUser.js";
 import { isObjectId } from "../utils/isObjectId.js";
+
 const parseFamilyMembers = (familyMembers) => {
-  if (!familyMembers) {
-    return [];
-  }
+  if (!familyMembers) return [];
 
   const parsedFamilyMembers = typeof familyMembers === "string"
     ? JSON.parse(familyMembers)
@@ -83,7 +76,7 @@ const formatBookingRoomsLabel = (booking) => {
     .join(", ");
 };
 
-const checkRoomAvailability = async ({ roomIds, bedId, checkInDate, checkOutDate, excludeId }) => {
+const checkRoomAvailability = async ({ Booking, roomIds, bedId, checkInDate, checkOutDate, excludeId }) => {
   if (bedId && roomIds.length === 1) {
     const query = {
       bedId,
@@ -119,23 +112,11 @@ const checkRoomAvailability = async ({ roomIds, bedId, checkInDate, checkOutDate
 
 export const createAdminBooking = async (req, res) => {
   try {
+    const { Booking, GuestHouse, Room, Bed } = req.tenantModels;
     const {
-      guestHouseId,
-      bedId,
-      checkIn,
-      checkOut,
-      fullName,
-      email,
-      phone,
-      address,
-      dateOfBirth,
-      gender,
-      nationality,
-      identityType,
-      identityNumber,
-      emergencyContactName,
-      emergencyContactPhone,
-      specialRequests,
+      guestHouseId, bedId, checkIn, checkOut,
+      fullName, email, phone, address, dateOfBirth, gender, nationality,
+      identityType, identityNumber, emergencyContactName, emergencyContactPhone, specialRequests,
     } = req.body;
 
     const roomIds = parseRoomIds(req.body);
@@ -161,14 +142,12 @@ export const createAdminBooking = async (req, res) => {
       return res.status(400).json({ message: "Each family member needs a name, relation, and valid age" });
     }
 
-    // Attach family member verification image URLs (populated by middleware)
     const familyMemberImageUrls = req.familyMemberImageUrls || {};
     const familyMembersWithImages = familyMembers.map((member, i) => ({
       ...member,
       ...(familyMemberImageUrls[i] ? { verificationImage: familyMemberImageUrls[i] } : {}),
     }));
 
-    // Resolve GuestHouse by string guestHouseId OR ObjectId
     const isObjId = isObjectId(guestHouseId);
     const [guestHouse, rooms, bed, overlapResult] = await Promise.all([
       GuestHouse.findOne({
@@ -179,7 +158,7 @@ export const createAdminBooking = async (req, res) => {
       }),
       Room.find({ _id: { $in: roomIds } }),
       selectedBedId ? Bed.findById(selectedBedId) : Promise.resolve(null),
-      checkRoomAvailability({ roomIds, bedId: selectedBedId, checkInDate, checkOutDate }),
+      checkRoomAvailability({ Booking, roomIds, bedId: selectedBedId, checkInDate, checkOutDate }),
     ]);
 
     if (!guestHouse) {
@@ -207,16 +186,15 @@ export const createAdminBooking = async (req, res) => {
       return res.status(409).json({ message: overlapResult.message });
     }
 
-    // Upsert guest into User collection and get userId
     const guestUser = await upsertNormalUser({
       fullName, email, phone, address,
       dateOfBirth: dateOfBirth || null,
       gender: gender || null,
       nationality, identityType, identityNumber,
       emergencyContactName, emergencyContactPhone,
-      guestHouseId: guestHouse._id, // register which hotel the user first booked
-      bookingId: null, // will update after booking created
-    });
+      guestHouseId: guestHouse._id,
+      bookingId: null,
+    }, req.tenantDb);
 
     const booking = await Booking.create({
       userId: guestUser._id,
@@ -234,16 +212,15 @@ export const createAdminBooking = async (req, res) => {
       createdBy: req.user?._id,
     });
 
-    // Link booking back to user
     upsertNormalUser({
       fullName, email, phone, address,
       dateOfBirth: dateOfBirth || null,
       gender: gender || null,
       nationality, identityType, identityNumber,
       emergencyContactName, emergencyContactPhone,
-      guestHouseId: guestHouse._id, // only used on CREATE, safe to pass every time
+      guestHouseId: guestHouse._id,
       bookingId: booking._id,
-    }).catch((error) => console.error("NormalUser upsert error:", error));
+    }, req.tenantDb).catch((error) => console.error("NormalUser upsert error:", error));
 
     sendEmail({
       to: email,
@@ -266,10 +243,9 @@ export const createAdminBooking = async (req, res) => {
   }
 };
 
-
-// 🟢 Create a new booking (user)
 export const createBooking = async (req, res) => {
   try {
+    const { Booking, User, GuestHouse } = req.tenantModels;
     const { guestHouseId, roomId, bedId, checkIn, checkOut } = req.body;
     const userId = req.user?._id || req.body.userId;
     const roomIds = parseRoomIds(req.body);
@@ -284,7 +260,6 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: "Bed selection is only available when booking a single room" });
     }
 
-    // Resolve GuestHouse by string guestHouseId OR ObjectId
     const isObjectIdGH = isObjectId(guestHouseId);
     const [user, guestHouse, overlap] = await Promise.all([
       User.findById(userId),
@@ -326,20 +301,16 @@ export const createBooking = async (req, res) => {
       specialRequests: req.body.specialRequests,
     });
 
-    // ✅ Save it in MongoDB
     await newBooking.save();
 
-    // Send response immediately
     res.status(201).json({ message: "Booking request submitted", newBooking });
 
-    // Fire-and-forget: Send email asynchronously (don't block response)
     sendEmail({
       to: user.email || req.body.email,
       subject: "Room Booked Successfully",
       html: bookingRequest(user, newBooking, guestHouse),
     }).catch(err => console.error("Email send error:", err));
 
-    // Fire-and-forget: Send WhatsApp notification
     sendBookingWhatsApp({
       to: req.body.phone || user.phone,
       guestHouseName: guestHouse.guestHouseName,
@@ -348,24 +319,22 @@ export const createBooking = async (req, res) => {
       roomNumber: "Pending assignment",
     }).catch(err => console.error("WhatsApp send error:", err));
 
-    // Fire-and-forget: Log action asynchronously (don't block response)
     logAction({
       action: "BOOKING_CREATED",
       entityType: "Booking",
       entityId: newBooking._id,
       performedBy: req.user?.email || "User",
       details: { guestHouseId, roomId, bedId, checkIn, checkOut },
-    }).catch(err => console.error("Audit log error:", err));
-
+    }, req.tenantDb).catch(err => console.error("Audit log error:", err));
   } catch (error) {
     console.error("Error creating booking:", error);
     res.status(500).json({ message: "Server error creating booking" });
   }
 };
 
-// 🟡 Get all bookings (admin)
 export const getAllBookings = async (req, res) => {
   try {
+    const { Booking, GuestHouse } = req.tenantModels;
     const { startDate, endDate, guestHouseId, status } = req.body;
     const page  = Math.max(1, parseInt(req.body.page)  || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.body.limit) || 10));
@@ -382,12 +351,10 @@ export const getAllBookings = async (req, res) => {
         ]
       }).lean();
 
-      // Query by _id (ObjectId) since Booking.guestHouseId is now ObjectId
-      const targetId = gh ? gh._id : (isObjectId ? new mongoose.Types.ObjectId(guestHouseId) : null);
+      const targetId = gh ? gh._id : (isObjId ? new mongoose.Types.ObjectId(guestHouseId) : null);
       if (targetId) query.guestHouseId = targetId;
     }
 
-    // Status filter
     if (status && status !== "all") {
       query.status = status;
     }
@@ -406,15 +373,10 @@ export const getAllBookings = async (req, res) => {
         if (Number.isNaN(end.getTime())) {
           return res.status(400).json({ message: "Invalid end date" });
         }
-        if (query.checkOut) {
-          query.checkIn = { $lt: end };
-        } else {
-          query.checkIn = { $lt: end };
-        }
+        query.checkIn = { $lt: end };
       }
     }
 
-    // Run count and paginated fetch in parallel
     const [totalCount, bookings] = await Promise.all([
       Booking.countDocuments(query),
       Booking.find(query)
@@ -438,9 +400,9 @@ export const getAllBookings = async (req, res) => {
   }
 };
 
-//Exporting Daily Bookings
 export const exportDailyBookings = async (req, res) => {
   try {
+    const { Booking } = req.tenantModels;
     const { date } = req.body;
 
     if (!date) {
@@ -462,24 +424,13 @@ export const exportDailyBookings = async (req, res) => {
       .lean();
 
     const headers = [
-      "Applied On",
-      "Status",
-      "Guest House",
-      "User Name",
-      "User Email",
-      "User Phone",
-      "Check In",
-      "Check Out",
-      "Room",
-      "Bed",
-      "Special Requests"
+      "Applied On", "Status", "Guest House", "User Name", "User Email", "User Phone",
+      "Check In", "Check Out", "Room", "Bed", "Special Requests"
     ];
 
     const escapeValue = (value) => {
       if (value === null || value === undefined) return '""';
-      const stringValue = typeof value === 'object'
-        ? JSON.stringify(value)
-        : String(value);
+      const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
       return `"${stringValue.replace(/"/g, '""')}"`;
     };
 
@@ -493,36 +444,24 @@ export const exportDailyBookings = async (req, res) => {
       escapeValue(new Date(b.checkIn).toISOString()),
       escapeValue(new Date(b.checkOut).toISOString()),
       escapeValue(formatBookingRoomsLabel(b)),
-      escapeValue(
-        b.bedId?.bedNumber
-          ? `Bed ${b.bedId.bedNumber} (${b.bedId.bedType})`
-          : ""
-      ),
+      escapeValue(b.bedId?.bedNumber ? `Bed ${b.bedId.bedNumber} (${b.bedId.bedType})` : ""),
       escapeValue(b.specialRequests || ""),
     ]);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
-    ].join("\n");
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 
     res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="bookings-${date}.csv"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="bookings-${date}.csv"`);
     return res.status(200).send(csvContent);
   } catch (error) {
     console.error("Error exporting daily bookings:", error);
-    return res
-      .status(500)
-      .json({ success: false, error: "Server error while exporting bookings" });
+    return res.status(500).json({ success: false, error: "Server error while exporting bookings" });
   }
 };
 
-// 🟢 Get bookings for current user
 export const getMyBookings = async (req, res) => {
   try {
+    const { Booking } = req.tenantModels;
     const userId = req.user?._id || req.body.userId;
     const bookings = await Booking.find({ userId })
       .populate("guestHouseId", "guestHouseId guestHouseName location")
@@ -539,16 +478,14 @@ export const getMyBookings = async (req, res) => {
   }
 };
 
-// 🟢 Approve booking (Optimized for performance)
 export const approveBooking = async (req, res) => {
   try {
+    const { Booking, Bed, User, GuestHouse, Room } = req.tenantModels;
     const { id } = req.params;
 
-    // 1️⃣ Fetch booking first
     const booking = await Booking.findById(id);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // 2️⃣ Parallelize: Fetch user and guest house simultaneously
     const [user, guestHouse] = await Promise.all([
       User.findById(booking.userId),
       GuestHouse.findById(booking.guestHouseId)
@@ -558,23 +495,19 @@ export const approveBooking = async (req, res) => {
       return res.status(404).json({ message: "User or Guest House not found" });
     }
 
-    // 3️⃣ Update booking status and bed availability in parallel
     const [updatedBooking] = await Promise.all([
       Booking.findByIdAndUpdate(id, { status: "approved" }, { new: true }),
       Bed.findByIdAndUpdate(booking.bedId, { isAvailable: false })
     ]);
 
-    // 4️⃣ Send response immediately (don't wait for email/audit/cache)
     res.json({ message: "Booking approved successfully", booking: updatedBooking });
 
-    // 5️⃣ Fire-and-forget: Send email asynchronously (non-blocking)
     sendEmail({
       to: user.email,
       subject: "✅ Booking Approved",
       html: bookingStatusUpdate(user, updatedBooking, guestHouse, "approved"),
     }).catch(err => console.error("❌ Failed to send approval email:", err));
 
-    // Fire-and-forget: Send WhatsApp notification
     Room.find({ _id: { $in: updatedBooking.roomIds?.length ? updatedBooking.roomIds : [updatedBooking.roomId] } })
       .then(rooms => sendBookingWhatsApp({
         to: user.phone,
@@ -585,32 +518,27 @@ export const approveBooking = async (req, res) => {
       }))
       .catch(err => console.error("❌ WhatsApp send error (approve):", err));
 
-    // 6️⃣ Fire-and-forget: Log audit action asynchronously (non-blocking)
     logAction({
       action: "BOOKING_APPROVED",
       entityType: "Booking",
       entityId: updatedBooking._id,
       performedBy: req.user?.email || "Admin",
       details: { status: "approved" },
-    }).catch(err => console.error("❌ Audit log error:", err));
-
+    }, req.tenantDb).catch(err => console.error("❌ Audit log error:", err));
   } catch (error) {
     console.error("Error approving booking:", error);
     res.status(500).json({ message: "Server error approving booking" });
   }
 };
 
-
-// 🟠 Reject booking (Optimized for performance)
 export const rejectBooking = async (req, res) => {
   try {
+    const { Booking, User, GuestHouse, Room } = req.tenantModels;
     const { id } = req.params;
 
-    // 1️⃣ Fetch booking first
     const booking = await Booking.findById(id);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // 2️⃣ Parallelize: Fetch user and guest house simultaneously
     const [user, guestHouse] = await Promise.all([
       User.findById(booking.userId),
       GuestHouse.findById(booking.guestHouseId)
@@ -620,24 +548,20 @@ export const rejectBooking = async (req, res) => {
       return res.status(404).json({ message: "User or Guest House not found" });
     }
 
-    // 3️⃣ Update booking status
     const updatedBooking = await Booking.findByIdAndUpdate(
       id, 
       { status: "rejected" }, 
       { new: true }
     );
 
-    // 4️⃣ Send response immediately (don't wait for email/audit/cache)
     res.json({ message: "Booking rejected successfully", booking: updatedBooking });
 
-    // 5️⃣ Fire-and-forget: Send rejection email asynchronously (non-blocking)
     sendEmail({
       to: user.email,
       subject: "❌ Booking Rejected",
       html: bookingStatusUpdate(user, updatedBooking, guestHouse, "rejected"),
     }).catch(err => console.error("❌ Failed to send rejection email:", err));
 
-    // Fire-and-forget: Send WhatsApp notification
     Room.find({ _id: { $in: updatedBooking.roomIds?.length ? updatedBooking.roomIds : [updatedBooking.roomId] } })
       .then(rooms => sendBookingWhatsApp({
         to: user.phone,
@@ -648,33 +572,28 @@ export const rejectBooking = async (req, res) => {
       }))
       .catch(err => console.error("❌ WhatsApp send error (reject):", err));
 
-    // 6️⃣ Fire-and-forget: Log audit action asynchronously (non-blocking)
     logAction({
       action: "BOOKING_REJECTED",
       entityType: "Booking",
       entityId: updatedBooking._id,
       performedBy: req.user?.email || "Admin",
       details: { status: "rejected" },
-    }).catch(err => console.error("❌ Audit log error:", err));
-
+    }, req.tenantDb).catch(err => console.error("❌ Audit log error:", err));
   } catch (error) {
     console.error("Error rejecting booking:", error);
     res.status(500).json({ message: "Server error rejecting booking" });
   }
 };
 
-
-
-// Check Room & Bed Availability for selected Guest House and Date Range
 export const checkAvailability = async (req, res) => {
   try {
+    const { GuestHouse, Booking, Room, Bed } = req.tenantModels;
     const { guestHouseId, checkIn, checkOut, excludeBookingId } = req.body;
 
     if (!guestHouseId || !checkIn || !checkOut) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Resolve GuestHouse by string guestHouseId OR ObjectId
     const isObjId = isObjectId(guestHouseId);
     const guestHouse = await GuestHouse.findOne({
       $or: [
@@ -687,7 +606,6 @@ export const checkAvailability = async (req, res) => {
       return res.status(404).json({ message: "Guest house not found" });
     }
 
-    // Query by ObjectId — Booking.guestHouseId is now ObjectId
     const bookingQuery = {
       guestHouseId: guestHouse._id,
       status: "approved",
@@ -712,7 +630,6 @@ export const checkAvailability = async (req, res) => {
       ...new Set(overlappingBookings.map(b => b.bedId?._id.toString())),
     ];
 
-    // Room.guestHouseId is still a String — keep using string comparison here
     const rooms = await Room.find({
       guestHouseId: guestHouse.guestHouseId,
       isActive: true,
@@ -753,9 +670,9 @@ export const checkAvailability = async (req, res) => {
   }
 };
 
-// 🔴 Cancel booking (admin — marks approved booking as cancelled and frees the bed)
 export const cancelBooking = async (req, res) => {
   try {
+    const { Booking, Bed, User, GuestHouse, Room } = req.tenantModels;
     const { id } = req.params;
 
     const booking = await Booking.findById(id);
@@ -776,12 +693,10 @@ export const cancelBooking = async (req, res) => {
       { new: true }
     );
 
-    // Free the bed back up
     await Bed.findByIdAndUpdate(booking.bedId, { isAvailable: true });
 
     res.json({ message: "Booking cancelled successfully", booking: updatedBooking });
 
-    // Fire-and-forget: email notification
     if (user && guestHouse) {
       sendEmail({
         to: user.email,
@@ -798,26 +713,25 @@ export const cancelBooking = async (req, res) => {
         .catch(err => console.error("❌ WhatsApp send error (cancel):", err));
     }
 
-    // Fire-and-forget: audit log
     logAction({
       action: "BOOKING_CANCELLED",
       entityType: "Booking",
       entityId: updatedBooking._id,
       performedBy: req.user?.email || "Admin",
       details: { status: "cancelled" },
-    }).catch(err => console.error("❌ Audit log error:", err));
-
+    }, req.tenantDb).catch(err => console.error("❌ Audit log error:", err));
   } catch (error) {
     console.error("Error cancelling booking:", error);
     res.status(500).json({ message: "Server error cancelling booking" });
   }
 };
+
 export const getApprovedBookingsForCalendar = async (req, res) => {
   try {
+    const { Booking, GuestHouse } = req.tenantModels;
     const query = { status: { $in: ["approved", "cancelled"] } };
     const user = req.user;
 
-    // Scope to assigned guest house for ADMIN — resolve string → ObjectId
     if (user?.role === 'ADMIN' && user.assignedGuestHouseId) {
       const ghId = typeof user.assignedGuestHouseId === 'object'
         ? user.assignedGuestHouseId.guestHouseId
@@ -847,9 +761,9 @@ export const getApprovedBookingsForCalendar = async (req, res) => {
   }
 };
 
-// Get a single booking by ID (admin)
 export const getBookingById = async (req, res) => {
   try {
+    const { Booking } = req.tenantModels;
     const booking = await Booking.findById(req.params.id)
       .populate("userId", "firstName lastName email phone address dateOfBirth gender nationality identityType identityNumber emergencyContactName emergencyContactPhone")
       .populate("guestHouseId", "guestHouseId guestHouseName location")
@@ -867,9 +781,9 @@ export const getBookingById = async (req, res) => {
   }
 };
 
-// Update an existing admin booking (edit)
 export const updateAdminBooking = async (req, res) => {
   try {
+    const { Booking, GuestHouse, Room, Bed } = req.tenantModels;
     const { id } = req.params;
     const {
       guestHouseId, bedId,
@@ -907,7 +821,7 @@ export const updateAdminBooking = async (req, res) => {
       }),
       Room.find({ _id: { $in: roomIds } }),
       bedId ? Bed.findById(bedId) : Promise.resolve(null),
-      checkRoomAvailability({ roomIds, bedId, checkInDate, checkOutDate, excludeId: id }),
+      checkRoomAvailability({ Booking, roomIds, bedId, checkInDate, checkOutDate, excludeId: id }),
     ]);
 
     if (!guestHouse) {
@@ -942,7 +856,6 @@ export const updateAdminBooking = async (req, res) => {
       ...(familyMemberImageUrls[i] ? { verificationImage: familyMemberImageUrls[i] } : {}),
     }));
 
-    // Sync updated guest details back to User document
     const existingBooking = await Booking.findById(id).lean();
     if (existingBooking?.userId) {
       upsertNormalUser({
@@ -952,7 +865,7 @@ export const updateAdminBooking = async (req, res) => {
         nationality, identityType, identityNumber,
         emergencyContactName, emergencyContactPhone,
         bookingId: id,
-      }).catch((err) => console.error("NormalUser upsert error:", err));
+      }, req.tenantDb).catch((err) => console.error("NormalUser upsert error:", err));
     }
 
     const primaryRoomId = roomIds[0];
@@ -968,7 +881,6 @@ export const updateAdminBooking = async (req, res) => {
       specialRequests: specialRequests?.trim(),
     };
 
-    // Only update verification image if a new one was uploaded
     if (req.verificationImageUrl) {
       updateData.verificationImage = req.verificationImageUrl;
     }
@@ -982,7 +894,7 @@ export const updateAdminBooking = async (req, res) => {
       entityId: updated._id,
       performedBy: req.user?.email || "Admin",
       details: { guestHouseId, roomIds, bedId, checkIn, checkOut },
-    }).catch((err) => console.error("Audit log error:", err));
+    }, req.tenantDb).catch((err) => console.error("Audit log error:", err));
 
     return res.status(200).json({ message: "Booking updated successfully", booking: updated });
   } catch (error) {

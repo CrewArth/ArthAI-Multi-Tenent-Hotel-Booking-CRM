@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import api from '../../utils/api';
 
 /**
- * Modal that lets a SUPER_ADMIN assign (or unassign) a guest house to an admin.
+ * Modal that lets a SUPER_ADMIN assign (or unassign) a hotel to an admin.
  * Props:
  *   user       – the admin user object
  *   onClose    – close callback
@@ -19,7 +19,7 @@ export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
   useEffect(() => {
     api.post('/api/guesthouses/list')
       .then((res) => setGuestHouses(Array.isArray(res.data) ? res.data : res.data.guestHouses || []))
-      .catch(() => toast.error('Unable to load guest houses'));
+      .catch(() => toast.error('Unable to load hotels'));
   }, []);
 
   const handleSave = async () => {
@@ -28,11 +28,11 @@ export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
       await api.patch(`/api/admin/users/${user._id}/assign-guesthouse`, {
         guestHouseId: selected || null,
       });
-      toast.success(selected ? 'Guest house assigned successfully' : 'Guest house unassigned');
+      toast.success(selected ? 'Hotel assigned successfully' : 'Hotel unassigned');
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to assign guest house');
+      toast.error(err.response?.data?.error || 'Failed to assign hotel');
     } finally {
       setSaving(false);
     }
@@ -43,7 +43,7 @@ export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
       <div className="page-modal-card" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
 
         <div className="page-modal-header">
-          <h3>Assign Guest House</h3>
+          <h3>Assign Hotel</h3>
           <button className="page-modal-close" onClick={onClose}>✕</button>
         </div>
 
@@ -52,7 +52,7 @@ export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
             Admin: <strong style={{ color: '#1e293b' }}>{user.firstName} {user.lastName}</strong>
           </p>
           <label style={{ display: 'grid', gap: 6, fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
-            Guest House
+            Hotel
             <select
               value={selected}
               onChange={(e) => setSelected(e.target.value)}

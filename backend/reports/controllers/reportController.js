@@ -6,7 +6,6 @@ import {
   updateAdminReportPermissions,
 } from '../services/reportService.js';
 
-// GET /api/reports - List reports permitted for current user
 export const getReportsList = async (req, res) => {
   try {
     const reports = listAllowedReportsForUser(req.user);
@@ -17,11 +16,10 @@ export const getReportsList = async (req, res) => {
   }
 };
 
-// GET /api/reports/:reportName/filters - Get filter configuration and dropdown options
 export const getFilters = async (req, res) => {
   try {
     const { reportName } = req.params;
-    const filterOptions = await getReportFilterOptions(reportName, req.user);
+    const filterOptions = await getReportFilterOptions(reportName, req.user, req.tenantModels);
     res.json(filterOptions);
   } catch (err) {
     console.error("Error getting report filters:", err);
@@ -29,13 +27,15 @@ export const getFilters = async (req, res) => {
   }
 };
 
-// POST /api/reports/:reportName/generate - Generate & stream PDF report
 export const generatePdf = async (req, res) => {
   try {
     const { reportName } = req.params;
     const filters = req.body || {};
 
-    const pdfBuffer = await generateReportPdf(reportName, filters, req.user);
+    const pdfBuffer = await generateReportPdf(reportName, filters, req.user, {
+      tenantModels: req.tenantModels,
+      tenantDb: req.tenantDb,
+    });
 
     const fileName = `${reportName}-${Date.now()}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
@@ -54,11 +54,10 @@ export const generatePdf = async (req, res) => {
   }
 };
 
-// GET /api/reports/permissions/:adminId (SUPER_ADMIN only)
 export const getPermissions = async (req, res) => {
   try {
     const { adminId } = req.params;
-    const user = await getAdminReportPermissions(adminId);
+    const user = await getAdminReportPermissions(adminId, req.tenantModels);
     res.json({ user });
   } catch (err) {
     console.error("Error fetching report permissions:", err);
@@ -66,7 +65,6 @@ export const getPermissions = async (req, res) => {
   }
 };
 
-// PUT /api/reports/permissions/:adminId (SUPER_ADMIN only)
 export const updatePermissions = async (req, res) => {
   try {
     const { adminId } = req.params;
@@ -75,7 +73,8 @@ export const updatePermissions = async (req, res) => {
     const updatedUser = await updateAdminReportPermissions(
       adminId,
       allowedReports,
-      req.user?.email
+      req.user?.email,
+      { tenantModels: req.tenantModels, tenantDb: req.tenantDb }
     );
 
     res.json({

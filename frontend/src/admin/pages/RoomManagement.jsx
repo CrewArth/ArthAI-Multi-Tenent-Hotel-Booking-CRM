@@ -92,7 +92,7 @@ const RoomManagement = () => {
         <div>
           <h1 className="page-title">Room Management</h1>
           <p className="page-subtitle">
-            {guestHouse ? guestHouse.guestHouseName : selectedGHId ? 'Loading…' : 'Select a guest house to view rooms'}
+            {guestHouse ? guestHouse.guestHouseName : selectedGHId ? 'Loading…' : 'Select a hotel to view rooms'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -101,7 +101,7 @@ const RoomManagement = () => {
             value={selectedGHId || ''}
             onChange={(e) => setSelectedGHId(e.target.value || null)}
           >
-            <option value="">Select Guest House</option>
+            <option value="">Select Hotel</option>
             {guestHouses.map((g) => (
               <option key={g.guestHouseId || g._id} value={g.guestHouseId || g._id}>
                 {g.guestHouseName}
@@ -112,7 +112,7 @@ const RoomManagement = () => {
             className="btn-primary-cta"
             disabled={!selectedGHId}
             onClick={() => {
-              if (!selectedGHId) { alert('Please select a Guest House first.'); return; }
+              if (!selectedGHId) { alert('Please select a Hotel first.'); return; }
               setIsModalOpen(true);
             }}
           >
@@ -140,7 +140,7 @@ const RoomManagement = () => {
             </thead>
             <tbody>
               {rooms.length === 0 ? (
-                <tr><td colSpan="7" className="table-empty">No rooms found. Select a guest house or add a new room.</td></tr>
+                <tr><td colSpan="7" className="table-empty">No rooms found. Select a hotel or add a new room.</td></tr>
               ) : (
                 rooms.map((room) => {
                   const price    = room.price    ?? 0;

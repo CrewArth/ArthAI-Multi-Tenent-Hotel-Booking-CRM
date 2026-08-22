@@ -1,142 +1,159 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import Multiselect from 'multiselect-react-dropdown';
 import PhoneInput from 'react-phone-number-input';
-import { Multiselect } from 'multiselect-react-dropdown';
 import 'react-phone-number-input/style.css';
+import { toast } from 'react-toastify';
 import api from '../../utils/api';
-import loadingIcon from '../../assets/loading.svg';
 import '../styles/adminRoomBooking.css';
+
+const STEPS = ['Stay Details', 'Guest Info', 'Identity & Emergency', 'Review'];
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
-const initialForm = {
-  guestHouseId: '',
-  roomIds: [],
-  bedId: '',
-  checkIn: '',
-  checkOut: '',
-  fullName: '',
-  email: '',
-  phone: '',
-  address: '',
-  dateOfBirth: '',
-  gender: '',
-  nationality: '',
-  identityType: '',
-  identityNumber: '',
-  emergencyContactName: '',
-  emergencyContactPhone: '',
-  specialRequests: '',
+const formatDate = (val) => {
+  if (!val) return '—';
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN');
 };
 
-const STEPS = ['Stay Details', 'Guest Details', 'Identity & Emergency', 'Review & Confirm'];
-
-const normalizeGuestHouseId = (value) => {
-  if (!value) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'object') return value.guestHouseId || value._id || '';
-  return '';
-};
-
-export default function AdminRoomBooking() {
+const AdminRoomBooking = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const editBookingId = location.state?.bookingId || null;  // set when coming from calendar Edit
-  const isEditMode = !!editBookingId;
+
+  // If navigating from "Edit booking", state may contain bookingId
+  const editBookingId = location.state?.bookingId || null;
+  const isEditMode    = Boolean(editBookingId);
+
+  const currentUser = useSelector((state) => state.auth?.user);
+  const assignedGuestHouse = currentUser?.assignedGuestHouseId;
 
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState(initialForm);
   const [guestHouses, setGuestHouses] = useState([]);
-  const [rooms, setRooms] = useState([]);
-  const [beds, setBeds] = useState([]);
-  const [familyMembers, setFamilyMembers] = useState([]);        // [{ name, relation, age, image: File|null }]
-  const [verificationImage, setVerificationImage] = useState(null);
+  const [rooms, setRooms]             = useState([]);
+  const [beds, setBeds]               = useState([]);
+
+  // Availability state
   const [unavailableRooms, setUnavailableRooms] = useState([]);
-  const [unavailableBeds, setUnavailableBeds] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [assignedGuestHouse, setAssignedGuestHouse] = useState(null);
+  const [unavailableBeds, setUnavailableBeds]   = useState([]);
 
-  const selectedGuestHouse = useMemo(
-    () => assignedGuestHouse || guestHouses.find((gh) => normalizeGuestHouseId(gh.guestHouseId) === form.guestHouseId || gh._id === form.guestHouseId),
-    [form.guestHouseId, guestHouses, assignedGuestHouse]
-  );
-  const selectedBed  = useMemo(() => beds.find((b) => b._id === form.bedId),   [form.bedId, beds]);
-  const selectedRoomNames = useMemo(() => {
-    if (!Array.isArray(form.roomIds) || form.roomIds.length === 0) return [];
-    return form.roomIds
-      .map((roomId) => {
-        const room = rooms.find((item) => item._id === roomId);
-        return room ? `Room ${room.roomNumber} · ${room.roomType}` : null;
-      })
-      .filter(Boolean);
-  }, [form.roomIds, rooms]);
+  // Form State
+  const [form, setForm] = useState({
+    guestHouseId: '',
+    roomIds: [],
+    bedId: '',
+    checkIn: todayStr(),
+    checkOut: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    nationality: 'Indian',
+    address: '',
+    identityType: '',
+    identityNumber: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    specialRequests: '',
+  });
 
-  // ── data fetching ───────────────────────────────────────────
+  const [verificationImage, setVerificationImage] = useState(null);
+  const [familyMembers, setFamilyMembers]         = useState([]);
+  const [loading, setLoading]                     = useState(false);
+  const [submitting, setSubmitting]               = useState(false);
+
+  // ── Auto-assign guestHouseId if admin has assignedGuestHouse ──────
   useEffect(() => {
-    const init = async () => {
-      try {
-        const meRes = await api.post('/api/admin/me');
-        const assigned = meRes.data.user?.assignedGuestHouseId;
-        if (assigned) {
-          setAssignedGuestHouse(assigned);
-          // Assigned could be an object or just the guestHouseId string
-          const guestHouseId = typeof assigned === 'object' ? assigned.guestHouseId : assigned;
-          setForm((f) => ({ ...f, guestHouseId }));
-        } else {
-          const ghRes = await api.post('/api/guesthouses/list');
-          setGuestHouses(Array.isArray(ghRes.data) ? ghRes.data : ghRes.data.guestHouses || []);
-        }
+    if (assignedGuestHouse) {
+      const ghId = typeof assignedGuestHouse === 'object'
+        ? assignedGuestHouse.guestHouseId
+        : assignedGuestHouse;
+      setForm((f) => ({ ...f, guestHouseId: ghId }));
+    }
+  }, [assignedGuestHouse]);
 
-        // If editing, load existing booking and prefill
-        if (editBookingId) {
-          const bRes = await api.get(`/api/bookings/${editBookingId}`);
-          const b = bRes.data.booking;
-          const u = b.userId || {};   // populated user doc
-          setForm({
-            guestHouseId: normalizeGuestHouseId(b.guestHouseId),
-            roomIds: Array.isArray(b.roomIds)
-              ? b.roomIds.map((room) => room?._id || room).filter(Boolean)
-              : [b.roomId?._id || b.roomId || ''].filter(Boolean),
-            bedId:        b.bedId?._id         || b.bedId         || '',
-            checkIn:      b.checkIn ? b.checkIn.split('T')[0] : '',
-            checkOut:     b.checkOut ? b.checkOut.split('T')[0] : '',
-            fullName:     u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : '',
-            email:        u.email               || '',
-            phone:        u.phone               || '',
-            address:      u.address             || '',
-            dateOfBirth:  u.dateOfBirth ? u.dateOfBirth.split('T')[0] : '',
-            gender:       u.gender              || '',
-            nationality:  u.nationality         || '',
-            identityType: u.identityType        || '',
-            identityNumber: u.identityNumber    || '',
-            emergencyContactName:  u.emergencyContactName  || '',
-            emergencyContactPhone: u.emergencyContactPhone || '',
-            specialRequests: b.specialRequests  || '',
-          });
-          if (b.familyMembers?.length) {
-            setFamilyMembers(b.familyMembers.map((m) => ({
-              name: m.name, relation: m.relation, age: m.age ?? '', image: null,
-            })));
-          }
-        }
-      } catch { toast.error('Unable to load form data.'); }
-      finally { setLoading(false); }
-    };
-    init();
-  }, []);
+  // ── Pre-fill if Edit Mode ────────────────────────────────────
+  useEffect(() => {
+    if (!editBookingId) return;
+    setLoading(true);
+    api.get(`/api/bookings/${editBookingId}`)
+      .then((res) => {
+        const b = res.data?.booking;
+        if (!b) return;
+        const ghId = typeof b.guestHouseId === 'object'
+          ? b.guestHouseId?.guestHouseId || b.guestHouseId?._id
+          : b.guestHouseId;
 
+        const rIds = Array.isArray(b.roomIds) && b.roomIds.length
+          ? b.roomIds.map((r) => (typeof r === 'object' ? r._id : r))
+          : b.roomId
+          ? [typeof b.roomId === 'object' ? b.roomId._id : b.roomId]
+          : [];
+
+        const bId = typeof b.bedId === 'object' ? b.bedId?._id : b.bedId;
+
+        setForm({
+          guestHouseId: ghId || '',
+          roomIds: rIds,
+          bedId: bId || '',
+          checkIn: b.checkIn ? new Date(b.checkIn).toISOString().split('T')[0] : todayStr(),
+          checkOut: b.checkOut ? new Date(b.checkOut).toISOString().split('T')[0] : '',
+          fullName: b.userId?.firstName
+            ? `${b.userId.firstName} ${b.userId.lastName || ''}`.trim()
+            : b.fullName || '',
+          email: b.userId?.email || b.email || '',
+          phone: b.userId?.phone || b.phone || '',
+          dateOfBirth: b.dateOfBirth ? new Date(b.dateOfBirth).toISOString().split('T')[0] : '',
+          gender: b.gender || '',
+          nationality: b.nationality || 'Indian',
+          address: b.address || '',
+          identityType: b.identityType || '',
+          identityNumber: b.identityNumber || '',
+          emergencyContactName: b.emergencyContactName || '',
+          emergencyContactPhone: b.emergencyContactPhone || '',
+          specialRequests: b.specialRequests || '',
+        });
+
+        if (Array.isArray(b.familyMembers)) {
+          setFamilyMembers(b.familyMembers.map((m) => ({ ...m, image: null })));
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error('Failed to load booking for editing.');
+      })
+      .finally(() => setLoading(false));
+  }, [editBookingId]);
+
+  // ── Fetch Guest Houses (if super admin) ───────────────────────
+  useEffect(() => {
+    if (!assignedGuestHouse) {
+      api.post('/api/guesthouses/list')
+        .then((res) => setGuestHouses(Array.isArray(res.data) ? res.data : res.data.guestHouses || []))
+        .catch(() => toast.error('Unable to load hotels.'));
+    }
+  }, [assignedGuestHouse]);
+
+  // ── Resolve currently selected guest house object ─────────────
+  const selectedGuestHouse = assignedGuestHouse
+    ? (typeof assignedGuestHouse === 'object' ? assignedGuestHouse : { guestHouseId: assignedGuestHouse, guestHouseName: 'Assigned Hotel' })
+    : guestHouses.find((g) => g.guestHouseId === form.guestHouseId || g._id === form.guestHouseId);
+
+  // ── Fetch Rooms when guestHouseId changes ─────────────────────
   useEffect(() => {
     if (!selectedGuestHouse) { setRooms([]); return; }
-    api.post('/api/rooms/by-guesthouse', { guestHouseId: selectedGuestHouse.guestHouseId })
+    const ghParam = selectedGuestHouse.guestHouseId || selectedGuestHouse._id;
+    api.post('/api/rooms/by-guesthouse', { guestHouseId: ghParam })
       .then((res) => setRooms(res.data.rooms || []))
       .catch(() => toast.error('Unable to load rooms.'));
   }, [selectedGuestHouse]);
 
+  // ── Fetch Beds when roomIds changes ───────────────────────────
   useEffect(() => {
-    if (!form.roomIds[0]) { setBeds([]); return; }
-    api.post('/api/beds/list', { roomId: form.roomIds[0] })
+    if (!form.roomIds.length) { setBeds([]); return; }
+    api.post('/api/beds/by-rooms', { roomIds: form.roomIds })
       .then((res) => setBeds(res.data.beds || []))
       .catch(() => toast.error('Unable to load beds.'));
   }, [form.roomIds]);
@@ -179,94 +196,122 @@ export default function AdminRoomBooking() {
     const nextRoomIds = Array.isArray(selectedItems)
       ? selectedItems.map((item) => item._id || item.value || item).filter(Boolean)
       : [];
-    setForm((f) => ({ ...f, roomIds: nextRoomIds, bedId: '' }));
+
+    setForm((f) => ({
+      ...f,
+      roomIds: nextRoomIds,
+      bedId: f.roomIds.includes(f.bedId) ? f.bedId : '',
+    }));
   };
 
-  const handlePhoneChange = (value) => {
-    setForm((f) => ({ ...f, phone: value || '' }));
+  const addMember = () => setFamilyMembers((prev) => [...prev, { name: '', relation: '', age: '', image: null }]);
+  const removeMember = (idx) => setFamilyMembers((prev) => prev.filter((_, i) => i !== idx));
+  const updateMember = (idx, field, value) => {
+    setFamilyMembers((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], [field]: value };
+      return copy;
+    });
   };
 
-  const addMember    = () => setFamilyMembers((ms) => [...ms, { name: '', relation: '', age: '', image: null }]);
-  const removeMember = (i) => setFamilyMembers((ms) => ms.filter((_, idx) => idx !== i));
-  const updateMember = (i, field, value) =>
-    setFamilyMembers((ms) => ms.map((m, idx) => idx === i ? { ...m, [field]: value } : m));
-
-  const goNext = () => setStep((s) => s + 1);
-  const goBack = () => setStep((s) => s - 1);
+  const goNext = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
+  const goBack = () => setStep((s) => Math.max(0, s - 1));
 
   const handleStaySubmit = (e) => {
     e.preventDefault();
-    if (form.roomIds.length === 0) {
-      toast.error('Please select at least one room for this booking.');
-      return;
-    }
+    if (!form.roomIds.length) { toast.error('Please select at least one room.'); return; }
+    if (!form.checkIn || !form.checkOut) { toast.error('Please select valid check-in and check-out dates.'); return; }
+    if (form.checkOut <= form.checkIn) { toast.error('Check-out date must be after check-in date.'); return; }
     goNext();
   };
 
-  const submitBooking = async () => {
-    if (!isEditMode && !verificationImage) { toast.error('Upload a verification image before booking.'); return; }
-    const invalid = familyMembers.some((m) => !m.name || !m.relation || m.age === '');
-    if (invalid) { toast.error('Complete or remove each family member row.'); return; }
+  const handleSubmitBooking = async () => {
+    if (!selectedGuestHouse) { toast.error('Please select a hotel.'); return; }
+    if (!form.roomIds.length) { toast.error('Please select at least one room.'); return; }
+    if (!form.fullName.trim()) { toast.error('Guest name is required.'); return; }
+    if (!form.email.trim()) { toast.error('Guest email is required.'); return; }
 
-    if (form.roomIds.length === 0) {
-      toast.error('Please select at least one room for this booking.');
-      return;
-    }
-
-    const data = new FormData();
-    Object.entries(form).forEach(([k, v]) => {
-      if (k === 'roomIds') return;
-      if (v !== '') data.append(k, v);
-    });
-    form.roomIds.forEach((roomId) => data.append('roomIds[]', roomId));
-    data.append('familyMembers', JSON.stringify(familyMembers.map(({ name, relation, age }) => ({ name, relation, age }))));
-    if (verificationImage) data.append('verificationImage', verificationImage);
-    familyMembers.forEach((m, i) => {
-      if (m.image) {
-        const renamedFile = new File([m.image], `idx_${i}_${m.image.name}`, { type: m.image.type });
-        data.append('familyMemberImages', renamedFile);
-      }
-    });
-
+    setSubmitting(true);
     try {
-      setSubmitting(true);
+      const payload = new FormData();
+      payload.append('guestHouseId', selectedGuestHouse.guestHouseId || selectedGuestHouse._id);
+      payload.append('roomId', form.roomIds[0]);
+      payload.append('roomIds', JSON.stringify(form.roomIds));
+
+      if (form.bedId) payload.append('bedId', form.bedId);
+
+      payload.append('checkIn', form.checkIn);
+      payload.append('checkOut', form.checkOut);
+
+      const names = form.fullName.trim().split(' ');
+      payload.append('firstName', names[0]);
+      payload.append('lastName', names.slice(1).join(' '));
+      payload.append('email', form.email.trim());
+      payload.append('phone', form.phone || '');
+
+      if (form.dateOfBirth) payload.append('dateOfBirth', form.dateOfBirth);
+      if (form.gender)      payload.append('gender', form.gender);
+      if (form.nationality) payload.append('nationality', form.nationality);
+      if (form.address)     payload.append('address', form.address);
+
+      if (form.identityType)   payload.append('identityType', form.identityType);
+      if (form.identityNumber) payload.append('identityNumber', form.identityNumber);
+      if (verificationImage)   payload.append('verificationImage', verificationImage);
+
+      if (form.emergencyContactName)  payload.append('emergencyContactName', form.emergencyContactName);
+      if (form.emergencyContactPhone) payload.append('emergencyContactPhone', form.emergencyContactPhone);
+      if (form.specialRequests)       payload.append('specialRequests', form.specialRequests);
+
+      // Sanitize family members (drop File objects before stringify)
+      const cleanMembers = familyMembers.map(({ image, ...rest }) => rest);
+      payload.append('familyMembers', JSON.stringify(cleanMembers));
+
+      familyMembers.forEach((m, idx) => {
+        if (m.image) payload.append(`familyMemberImage_${idx}`, m.image);
+      });
+
       if (isEditMode) {
-        await api.put(`/api/bookings/${editBookingId}/admin`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
-        toast.success('Booking updated successfully.');
+        await api.put(`/api/bookings/${editBookingId}/admin`, payload);
+        toast.success('Booking updated successfully!');
       } else {
-        await api.post('/api/bookings/admin', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-        toast.success('Room booked successfully.');
+        await api.post('/api/bookings/admin', payload);
+        toast.success('Room booked successfully!');
       }
-      navigate('/admin/dashboard', { replace: true });
+
+      navigate('/admin/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Unable to save booking.');
+      console.error(err);
+      const msg = err.response?.data?.message || err.response?.data?.error || (isEditMode ? 'Failed to update booking.' : 'Failed to create booking.');
+      toast.error(msg);
+    } finally {
       setSubmitting(false);
     }
   };
 
-  const formatDate = (d) => d
-    ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—';
+  const selectedBed = beds.find((b) => b._id === form.bedId);
+  const selectedRoomNames = rooms
+    .filter((r) => form.roomIds.includes(r._id))
+    .map((r) => `Room ${r.roomNumber}`);
 
-  if (loading) return (
-    <div className="page-root"><p className="arb-loading">Loading…</p></div>
-  );
+  if (loading) {
+    return <div className="page-root"><p style={{ color: '#64748b' }}>Loading booking details…</p></div>;
+  }
 
   return (
-    <div className="page-root">
+    <div className="page-root arb-root">
+      <div className="page-header-row">
+        <div>
+          <h1 className="page-title">{isEditMode ? 'Edit Booking' : 'Book a Room'}</h1>
+        </div>
+      </div>
 
-        {/* heading + stepper row */}
-        <div className="arb-header-row">
-          {/* heading */}
-          <div className="arb-heading">
-            <h1>{isEditMode ? 'Edit Booking' : 'Book Room'}</h1>
-          </div>
-
-          {/* stepper */}
-          <div className="arb-stepper">
+      <div className="arb-container">
+        {/* Step Indicator */}
+        <div className="arb-stepper">
+          <div className="arb-steps-track">
             {STEPS.map((label, i) => (
-              <div key={i} className={`arb-step ${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`}>
-                <div className="arb-step-circle">{i < step ? '✓' : i + 1}</div>
+              <div key={label} className={`arb-step ${i === step ? 'active' : i < step ? 'done' : ''}`}>
+                <div className="arb-step-circle">{i + 1}</div>
                 <span className="arb-step-label">{label}</span>
                 {i < STEPS.length - 1 && <div className="arb-step-line" />}
               </div>
@@ -280,12 +325,12 @@ export default function AdminRoomBooking() {
             <h2>Stay Details</h2>
             <div className="arb-grid">
               <label>
-                Guest House <span>*</span>
+                Hotel <span>*</span>
                 {assignedGuestHouse ? (
                   <input value={assignedGuestHouse.guestHouseName} disabled />
                 ) : (
                   <select name="guestHouseId" value={form.guestHouseId} onChange={updateForm} required>
-                    <option value="">Select guest house</option>
+                    <option value="">Select hotel</option>
                     {guestHouses.filter((gh) => !gh.maintenance).map((gh) => (
                       <option key={gh._id} value={gh.guestHouseId}>{gh.guestHouseName}</option>
                     ))}
@@ -321,7 +366,7 @@ export default function AdminRoomBooking() {
                   onSelect={handleRoomSelection}
                   onRemove={handleRoomSelection}
                   displayValue="name"
-                  placeholder={selectedGuestHouse ? 'Select rooms' : 'Choose guest house first'}
+                  placeholder={selectedGuestHouse ? 'Select rooms' : 'Choose hotel first'}
                   disable={!selectedGuestHouse}
                   showCheckbox
                   closeIcon="cancel"
@@ -373,9 +418,8 @@ export default function AdminRoomBooking() {
                   defaultCountry="IN"
                   countryCallingCodeEditable={false}
                   value={form.phone}
-                  onChange={handlePhoneChange}
-                  className="arb-phone-input"
-                  inputProps={{ required: true, name: 'phone' }}
+                  onChange={(v) => setForm((f) => ({ ...f, phone: v || '' }))}
+                  required
                 />
               </label>
               <label>
@@ -490,12 +534,10 @@ export default function AdminRoomBooking() {
         {step === 3 && (
           <div className="arb-card">
             <h2 style={{fontWeight: "bolder"}}>Review & Confirm</h2>
-            <p className="arb-review-hint">Please review the booking details before confirming.</p>
-
             <div className="arb-review-section">
               <h3>Stay Details</h3>
               <div className="arb-review-grid">
-                <div><span>Guest House</span><strong>{selectedGuestHouse?.guestHouseName || '—'}</strong></div>
+                <div><span>Hotel</span><strong>{selectedGuestHouse?.guestHouseName || '—'}</strong></div>
                 <div><span>Rooms</span><strong>{selectedRoomNames.length ? selectedRoomNames.join(', ') : '—'}</strong></div>
                 <div><span>Bed</span><strong>{selectedBed ? `Bed ${selectedBed.bedNumber} · ${selectedBed.bedType}` : '—'}</strong></div>
                 <div><span>Check In</span><strong>{formatDate(form.checkIn)}</strong></div>
@@ -510,9 +552,9 @@ export default function AdminRoomBooking() {
                 <div><span>Email</span><strong>{form.email || '—'}</strong></div>
                 <div><span>Phone</span><strong>{form.phone || '—'}</strong></div>
                 {form.dateOfBirth && <div><span>Date of Birth</span><strong>{formatDate(form.dateOfBirth)}</strong></div>}
-                {form.gender && <div><span>Gender</span><strong style={{ textTransform: 'capitalize' }}>{form.gender.replace('_', ' ')}</strong></div>}
+                {form.gender && <div><span>Gender</span><strong>{form.gender}</strong></div>}
                 {form.nationality && <div><span>Nationality</span><strong>{form.nationality}</strong></div>}
-                <div className="arb-review-full"><span>Address</span><strong>{form.address || '—'}</strong></div>
+                {form.address && <div className="full"><span>Address</span><strong>{form.address}</strong></div>}
               </div>
             </div>
 
@@ -520,55 +562,38 @@ export default function AdminRoomBooking() {
               <h3>Identity & Emergency</h3>
               <div className="arb-review-grid">
                 <div><span>ID Type</span><strong>{form.identityType || '—'}</strong></div>
-                {form.identityNumber && <div><span>ID Number</span><strong>{form.identityNumber}</strong></div>}
-                <div><span>Verification Image</span><strong>{verificationImage?.name || '—'}</strong></div>
-                {form.emergencyContactName && <div><span>Emergency Name</span><strong>{form.emergencyContactName}</strong></div>}
-                {form.emergencyContactPhone && <div><span>Emergency Phone</span><strong>{form.emergencyContactPhone}</strong></div>}
+                <div><span>ID Number</span><strong>{form.identityNumber || '—'}</strong></div>
+                <div><span>Emergency Contact</span><strong>{form.emergencyContactName || '—'}</strong></div>
+                <div><span>Emergency Phone</span><strong>{form.emergencyContactPhone || '—'}</strong></div>
+                {form.specialRequests && <div className="full"><span>Special Requests</span><strong>{form.specialRequests}</strong></div>}
               </div>
             </div>
 
             {familyMembers.length > 0 && (
               <div className="arb-review-section">
-                <h3>Family Members</h3>
-                <table className="arb-review-table">
-                  <thead><tr><th>Name</th><th>Relation</th><th>Age</th><th>Document</th></tr></thead>
-                  <tbody>
-                    {familyMembers.map((m, i) => (
-                      <tr key={i}>
-                        <td>{m.name}</td>
-                        <td>{m.relation}</td>
-                        <td>{m.age}</td>
-                        <td>{m.image ? m.image.name : <span style={{ color: '#94a3b8' }}>—</span>}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {form.specialRequests && (
-              <div className="arb-review-section">
-                <h3>Special Requests</h3>
-                <p className="arb-review-note">{form.specialRequests}</p>
+                <h3>Family Members ({familyMembers.length})</h3>
+                <div className="arb-review-grid">
+                  {familyMembers.map((m, i) => (
+                    <div key={i}>
+                      <span>Member {i + 1}</span>
+                      <strong>{m.name || '—'} ({m.relation || '—'}, {m.age || '—'} yrs)</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             <div className="arb-actions">
-              <button type="button" className="arb-btn-secondary" onClick={goBack}>← Back</button>
-              <button type="button" className="arb-btn-primary" onClick={submitBooking} disabled={submitting}>
-                {isEditMode ? 'Save Changes' : 'Confirm Booking'}
+              <button type="button" className="arb-btn-secondary" onClick={goBack} disabled={submitting}>← Back</button>
+              <button type="button" className="arb-btn-primary" onClick={handleSubmitBooking} disabled={submitting}>
+                {submitting ? (isEditMode ? 'Updating…' : 'Booking…') : (isEditMode ? 'Confirm & Update' : 'Confirm & Book')}
               </button>
             </div>
           </div>
         )}
-
-        {/* ── Fullscreen loading overlay ── */}
-        {submitting && (
-          <div className="arb-loading-overlay">
-            <img src={loadingIcon} alt="Processing…" className="arb-loading-icon" />
-          </div>
-        )}
-
+      </div>
     </div>
   );
-}
+};
+
+export default AdminRoomBooking;

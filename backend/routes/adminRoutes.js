@@ -10,6 +10,7 @@ import {
   getMe,
 } from '../controller/adminController.js';
 import { authenticate, authorize } from '../middlewares/auth.js';
+import { resolveSubscriptionPlan, checkAdminLimit } from '../middlewares/subscriptionMiddleware.js';
 import { uploadESignature, processAndUploadESignature } from '../middlewares/imageUpload.js';
 
 const router = express.Router();
@@ -21,6 +22,8 @@ router.post(
   '/users',
   authenticate,
   authorize('SUPER_ADMIN'),
+  resolveSubscriptionPlan,
+  checkAdminLimit,
   uploadESignature,
   processAndUploadESignature,
   createUserByAdmin

@@ -83,7 +83,7 @@ const MyBookings = () => {
           <table className="my-bookings-table">
             <thead>
               <tr>
-                <th>Guest House</th>
+                <th>Hotel</th>
                 <th>Room</th>
                 <th>Bed</th>
                 <th>Check-In</th>

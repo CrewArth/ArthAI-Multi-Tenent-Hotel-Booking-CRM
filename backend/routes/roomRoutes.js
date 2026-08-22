@@ -8,16 +8,17 @@ import {
   softDeleteRoom,
   updateRoom
 } from '../controller/roomController.js';
+import { authenticate } from '../middlewares/auth.js';
+import { resolveSubscriptionPlan, checkRoomLimit } from '../middlewares/subscriptionMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', createRoom);
-router.post('/by-guesthouse', getRoomsByGuestHouse); // ✅ place before /:id
+router.post('/', authenticate, resolveSubscriptionPlan, checkRoomLimit, createRoom);
+router.post('/by-guesthouse', getRoomsByGuestHouse);
 router.post('/list', listRooms);
 router.get('/:id', getRoomById);
 router.put('/:id', updateRoom);
 router.patch('/:id/availability', setAvailability);
 router.delete('/:id', softDeleteRoom);
-
 
 export default router;

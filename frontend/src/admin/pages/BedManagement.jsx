@@ -102,7 +102,7 @@ const BedManagement = () => {
       <div className="page-header-row">
         <div>
           <h1 className="page-title">Bed Management</h1>
-          <p className="page-subtitle">Select a guest house and room to manage beds</p>
+          <p className="page-subtitle">Select a hotel and room to manage beds</p>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ const BedManagement = () => {
           value={selectedGH || ''}
           onChange={(e) => setSelectedGH(e.target.value || null)}
         >
-          <option value="">Select Guest House</option>
+          <option value="">Select Hotel</option>
           {guestHouses.map((g) => (
             <option key={g.guestHouseId || g._id} value={g.guestHouseId || g._id}>
               {g.guestHouseName}
@@ -170,7 +170,7 @@ const BedManagement = () => {
             {beds.length === 0 ? (
               <tr>
                 <td colSpan="4" className="table-empty">
-                  {selectedRoom ? 'No beds found for this room.' : 'Select a guest house and room to view beds.'}
+                  {selectedRoom ? 'No beds found for this room.' : 'Select a hotel and room to view beds.'}
                 </td>
               </tr>
             ) : (

@@ -23,10 +23,10 @@ const GuestHouseCard = ({ showOnlyThree = false }) => {
     navigate("/booking", { state: { guestHouse: house } });
   };
 
-  if (loading) return <p>Loading guest houses...</p>;
+  if (loading) return <p>Loading hotels...</p>;
   if (error) return <p style={{ color: "crimson" }}>Error: {error}</p>;
   if (!guestHouses || guestHouses.length === 0)
-    return <p>No guest houses found.</p>;
+    return <p>No hotels found.</p>;
 
   // Slice guest houses if we want only 3 for homepage
   const displayHouses = showOnlyThree
@@ -35,7 +35,7 @@ const GuestHouseCard = ({ showOnlyThree = false }) => {
 
   return (
     <section className="featured-guest-house-section">
-      <h2 className="featured-title">Featured Guest Houses</h2>
+      <h2 className="featured-title">Featured Hotels</h2>
       <div className="guest-house-grid">
         {displayHouses.map((house) => (
           <div
@@ -46,7 +46,7 @@ const GuestHouseCard = ({ showOnlyThree = false }) => {
               <img
                 src={
                   house.image ||
-                  "https://via.placeholder.com/600x360?text=Guest+House"
+                  "https://via.placeholder.com/600x360?text=Hotel"
                 }
                 alt={house.guestHouseName}
               />

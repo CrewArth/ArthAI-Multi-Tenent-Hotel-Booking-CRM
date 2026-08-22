@@ -86,7 +86,7 @@ const Overview = ({ showTodayBookings = false }) => {
   const allStatCards = [
     { id: "totalBookings", label: "Total Bookings", val: stats.totalBookings },
     { id: "totalUsers", label: "Total Admins", val: stats.totalUsers },
-    { id: "totalGuestHouses", label: "Guest Houses", val: stats.totalGuestHouses },
+    { id: "totalGuestHouses", label: "Hotels", val: stats.totalGuestHouses },
     { id: "cancelledBookings", label: "Cancelled", val: stats.cancelledBookings, cls: "danger" },
     { id: "pendingBookings", label: "Pending", val: stats.pendingBookings, cls: "warning" },
     { id: "approvedBookings", label: "Approved", val: stats.approvedBookings, cls: "success" },

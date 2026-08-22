@@ -1,22 +1,12 @@
-import Invoice from '../../models/Invoice.js';
-import GuestHouse from '../../models/GuestHouse.js';
 import { isObjectId } from '../../utils/isObjectId.js';
 
-/**
- * Aggregation for "Payment Method Wise Report".
- *
- * @param {Object} filters
- * @param {string[]} filters.paymentMethods  - e.g. ['Cash', 'UPI']
- * @param {string}   [filters.fromDate]      - YYYY-MM-DD
- * @param {string}   [filters.toDate]        - YYYY-MM-DD
- * @param {string}   [filters.guestHouseId]  - scoped for ADMIN role (injected by service)
- */
-export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toDate, guestHouseId }) => {
+export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toDate, guestHouseId }, tenantModels) => {
   if (!Array.isArray(paymentMethods) || paymentMethods.length === 0) {
     throw new Error('At least one payment method is required');
   }
 
-  // Resolve guestHouseId string → ObjectId if provided
+  const { Invoice, GuestHouse, Booking, User, Room } = tenantModels;
+
   let scopedGuestHouseObjectId = null;
   if (guestHouseId) {
     const isObjId = isObjectId(guestHouseId);
@@ -26,7 +16,6 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     if (gh) scopedGuestHouseObjectId = gh._id;
   }
 
-  // ── Stage 1: match invoices by payment method and optional date range ───
   const matchStage = {
     'invoiceData.paymentMethod': { $in: paymentMethods },
   };
@@ -41,10 +30,9 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     { $match: matchStage },
     { $sort: { createdAt: -1 } },
 
-    // Join Booking — also enforce guest house scope if set
     {
       $lookup: {
-        from: 'bookings',
+        from: Booking.collection.name,
         let: { bookingId: '$bookingId' },
         pipeline: [
           {
@@ -60,13 +48,11 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     },
     { $addFields: { booking: { $arrayElemAt: ['$booking', 0] } } },
 
-    // Drop invoices whose booking didn't match (wrong guest house or not found)
     { $match: { booking: { $ne: null } } },
 
-    // Join User (guest)
     {
       $lookup: {
-        from: 'users',
+        from: User.collection.name,
         let: { userId: '$booking.userId' },
         pipeline: [
           { $match: { $expr: { $eq: ['$_id', '$$userId'] } } },
@@ -77,10 +63,9 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     },
     { $addFields: { userDoc: { $arrayElemAt: ['$userDoc', 0] } } },
 
-    // Join Room
     {
       $lookup: {
-        from: 'rooms',
+        from: Room.collection.name,
         let: { roomId: '$booking.roomId' },
         pipeline: [
           { $match: { $expr: { $eq: ['$_id', '$$roomId'] } } },
@@ -91,10 +76,9 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     },
     { $addFields: { roomDoc: { $arrayElemAt: ['$roomDoc', 0] } } },
 
-    // Join GuestHouse (ObjectId → _id)
     {
       $lookup: {
-        from: 'guesthouses',
+        from: GuestHouse.collection.name,
         let: { ghId: '$booking.guestHouseId' },
         pipeline: [
           { $match: { $expr: { $eq: ['$_id', '$$ghId'] } } },
@@ -105,7 +89,6 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     },
     { $addFields: { ghDoc: { $arrayElemAt: ['$ghDoc', 0] } } },
 
-    // Project final shape
     {
       $project: {
         _id: 1,
@@ -135,7 +118,6 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
       },
     },
 
-    // Summary facet — totals per payment method + grand total
     {
       $facet: {
         rows: [{ $sort: { paymentMethod: 1, createdAt: -1 } }],

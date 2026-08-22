@@ -20,8 +20,8 @@ export const WIDGETS = [
   },
   {
     id: "totalGuestHouses",
-    name: "Guest Houses",
-    description: "Stat card showing total guest house properties.",
+    name: "Hotels",
+    description: "Stat card showing total hotel properties.",
     defaultEnabled: true,
   },
   {
@@ -45,7 +45,7 @@ export const WIDGETS = [
   {
     id: "occupancyRate",
     name: "Occupancy Rate",
-    description: "Stat card showing current guest house occupancy percentage.",
+    description: "Stat card showing current hotel occupancy percentage.",
     defaultEnabled: true,
   },
   {

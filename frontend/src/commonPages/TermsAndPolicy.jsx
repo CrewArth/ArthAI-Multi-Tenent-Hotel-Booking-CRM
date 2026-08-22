@@ -18,14 +18,14 @@ const TermsAndPolicy = () => {
           <div className="info-card">
             <h3>1. Acceptance of Terms</h3>
             <p>
-              By accessing and using the Rishabh Guest House Booking System, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+              By accessing and using the Rishabh Hotel Booking System, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </div>
 
           <div className="info-card">
             <h3>2. Use License</h3>
             <p>
-              Permission is granted to temporarily use the Rishabh Guest House Booking System for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+              Permission is granted to temporarily use the Rishabh Hotel Booking System for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
             </p>
             <ul>
               <li>Modify or copy the materials</li>
@@ -42,7 +42,7 @@ const TermsAndPolicy = () => {
             </p>
             <ul>
               <li>Bookings are confirmed only after administrative approval</li>
-              <li>Cancellation policies apply as per the guest house rules</li>
+              <li>Cancellation policies apply as per the hotel rules</li>
               <li>Guests are responsible for providing accurate information during booking</li>
               <li>Any false information may result in cancellation of the booking</li>
             </ul>
@@ -133,4 +133,3 @@ const TermsAndPolicy = () => {
 };
 
 export default TermsAndPolicy;
-

@@ -6,8 +6,8 @@ import './commonPages.css';
 const FAQ = () => {
   const faqs = [
     {
-      question: "How do I book a guest house room?",
-      answer: "To book a guest house room, you need to first sign up or log in to your account. Then, browse available guest houses, select your preferred dates, choose a room and bed, fill in your details, and submit the booking request. Your booking will be confirmed after administrative approval."
+      question: "How do I book a hotel room?",
+      answer: "To book a hotel room, you need to first sign up or log in to your account. Then, browse available hotels, select your preferred dates, choose a room and bed, fill in your details, and submit the booking request. Your booking will be confirmed after administrative approval."
     },
     {
       question: "How long does it take for a booking to be approved?",
@@ -19,7 +19,7 @@ const FAQ = () => {
     },
     {
       question: "What information do I need to provide for booking?",
-      answer: "You need to provide your full name, email address, phone number, address, check-in and check-out dates, and select a guest house, room, and bed. You may also include any special requests or requirements."
+      answer: "You need to provide your full name, email address, phone number, address, check-in and check-out dates, and select a hotel, room, and bed. You may also include any special requests or requirements."
     },
     {
       question: "Can I modify my booking after submission?",
@@ -91,4 +91,3 @@ const FAQ = () => {
 };
 
 export default FAQ;
-

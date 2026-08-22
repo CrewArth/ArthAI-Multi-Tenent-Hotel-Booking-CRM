@@ -4,15 +4,13 @@ import { generateBookingByGuestHousePdf } from '../pdf/templates/bookingByGuestH
 import { generateMonthlyRevenueByGuestHousePdf } from '../pdf/templates/monthlyRevenueByGuestHousePdf.js';
 import { generateInvoicePdf } from '../pdf/templates/invoicePdf.js';
 import { generatePaymentMethodReportPdf } from '../pdf/templates/paymentMethodReportPdf.js';
-import User from '../../models/User.js';
-import GuestHouse from '../../models/GuestHouse.js';
 import { logAction } from '../../utils/auditLogger.js';
 
 export const listAllowedReportsForUser = (user) => {
   return REPORTS.filter((report) => isReportAllowed(user, report.id));
 };
 
-export const getReportFilterOptions = async (reportId, user) => {
+export const getReportFilterOptions = async (reportId, user, tenantModels) => {
   const reportConfig = getReportById(reportId);
   if (!reportConfig) {
     throw new Error(`Report '${reportId}' not found`);
@@ -22,7 +20,7 @@ export const getReportFilterOptions = async (reportId, user) => {
     throw new Error(`Permission denied for report '${reportId}'`);
   }
 
-  // Fetch dynamic dropdown choices for filters
+  const { GuestHouse } = tenantModels;
   const guestHouses = await GuestHouse.find({ maintenance: false }, "guestHouseId guestHouseName location").lean();
 
   return {
@@ -31,7 +29,8 @@ export const getReportFilterOptions = async (reportId, user) => {
   };
 };
 
-export const generateReportPdf = async (reportId, filters, user) => {
+export const generateReportPdf = async (reportId, filters, user, reqContext = {}) => {
+  const { tenantModels, tenantDb } = reqContext;
   const reportConfig = getReportById(reportId);
   if (!reportConfig) {
     throw new Error(`Report '${reportId}' not found`);
@@ -41,7 +40,6 @@ export const generateReportPdf = async (reportId, filters, user) => {
     throw new Error(`Access denied for report '${reportId}'`);
   }
 
-  // Enforce guest house restriction for ADMIN role
   const { logoUrl, ...reportFilters } = filters;
 
   if (user.role === 'ADMIN' && user.assignedGuestHouseId) {
@@ -53,7 +51,6 @@ export const generateReportPdf = async (reportId, filters, user) => {
       throw new Error(`You are only permitted to generate reports for your assigned guest house.`);
     }
 
-    // Also enforce the assigned guest house if none was provided
     if (assignedId && !reportFilters.guestHouseId) {
       reportFilters.guestHouseId = assignedId;
     }
@@ -61,10 +58,8 @@ export const generateReportPdf = async (reportId, filters, user) => {
 
   let data = {};
   if (reportId !== 'invoice') {
-    // Fetch report dataset via Aggregation Pipelines
-    data = await fetchReportData(reportId, reportFilters);
+    data = await fetchReportData(reportId, reportFilters, tenantModels);
 
-    // Reject if no data found — caller will return a non-PDF error response
     const rowCount = data?.bookings?.length ?? data?.rows?.length ?? 0;
     if (rowCount === 0) {
       const noDataError = new Error('No data found for the selected filters.');
@@ -114,19 +109,19 @@ export const generateReportPdf = async (reportId, filters, user) => {
       throw new Error(`PDF generation template for report '${reportId}' is not implemented.`);
   }
 
-  // Audit log action
   logAction({
     action: "REPORT_GENERATED",
     entityType: "Report",
     entityId: reportId,
     performedBy: user.email || "Admin",
     details: { reportId, filters: reportFilters },
-  }).catch((err) => console.error("Report generation audit log error:", err));
+  }, tenantDb).catch((err) => console.error("Report generation audit log error:", err));
 
   return pdfBuffer;
 };
 
-export const getAdminReportPermissions = async (adminId) => {
+export const getAdminReportPermissions = async (adminId, tenantModels) => {
+  const { User } = tenantModels;
   const user = await User.findById(adminId, "firstName lastName email role allowedReports");
   if (!user) {
     throw new Error("Admin not found");
@@ -134,11 +129,13 @@ export const getAdminReportPermissions = async (adminId) => {
   return user;
 };
 
-export const updateAdminReportPermissions = async (adminId, allowedReports, performerEmail) => {
+export const updateAdminReportPermissions = async (adminId, allowedReports, performerEmail, tenantContext = {}) => {
+  const { tenantModels, tenantDb } = tenantContext;
   if (allowedReports !== null && !Array.isArray(allowedReports)) {
     throw new Error("allowedReports must be an array of report IDs or null");
   }
 
+  const { User } = tenantModels;
   const user = await User.findById(adminId);
   if (!user) {
     throw new Error("Admin not found");
@@ -153,7 +150,7 @@ export const updateAdminReportPermissions = async (adminId, allowedReports, perf
     entityId: user._id,
     performedBy: performerEmail || "SuperAdmin",
     details: { allowedReports },
-  }).catch((err) => console.error("Audit log error:", err));
+  }, tenantDb).catch((err) => console.error("Audit log error:", err));
 
   return user;
 };

@@ -1,16 +1,11 @@
-import Room from '../models/Room.js';
-import GuestHouse from '../models/GuestHouse.js';
-import mongoose from 'mongoose';
 import { createRoomSchema, updateRoomSchema, listRoomsQuerySchema } from '../validators/room.schema.js';
 import { logAction } from '../utils/auditLogger.js';
 import { isObjectId } from '../utils/isObjectId.js';
 
-// Helper: consistent error payload
 const sendError = (res, status, message, details) =>
   res.status(status).json({ success: false, message, ...(details ? { details } : {}) });
 
-// Helper: resolve guestHouseId (either string like GH001 or ObjectId) to GuestHouse document
-const resolveGuestHouse = async (guestHouseIdParam) => {
+const resolveGuestHouse = async (GuestHouse, guestHouseIdParam) => {
   if (!guestHouseIdParam) return null;
   const isObjId = isObjectId(guestHouseIdParam);
   return await GuestHouse.findOne({
@@ -22,16 +17,15 @@ const resolveGuestHouse = async (guestHouseIdParam) => {
 };
 
 // Create Room 
-// POST /api/rooms
 export const createRoom = async (req, res) => {
   try {
+    const { Room, GuestHouse } = req.tenantModels;
     const { error, value } = createRoomSchema.validate(req.body, { abortEarly: false });
     if (error) return sendError(res, 400, 'Validation failed', error.details);
 
     const { guestHouseId, roomNumber, roomType, roomCapacity, price, discountPercentage, isAvailable } = value;
 
-    // Ensure GuestHouse exists (resolve string GH001 or ObjectId to doc)
-    const gh = await resolveGuestHouse(guestHouseId);
+    const gh = await resolveGuestHouse(GuestHouse, guestHouseId);
     if (!gh) return sendError(res, 404, `Guest House ${guestHouseId} not found`);
 
     const room = await Room.create({
@@ -44,8 +38,6 @@ export const createRoom = async (req, res) => {
       isAvailable
     });
 
-
-    // ✅ Room Created
     await logAction({
       action: 'ROOM_CREATED',
       entityType: 'Room',
@@ -56,11 +48,10 @@ export const createRoom = async (req, res) => {
         roomNumber: room.roomNumber,
         roomType: room.roomType,
       },
-    });
+    }, req.tenantDb);
 
     return res.status(201).json({ success: true, message: 'Room created', room });
   } catch (err) {
-    // Handle duplicate key error nicely
     if (err?.code === 11000) {
       return sendError(res, 409, 'Room already exists for this guest house (duplicate roomNumber).');
     }
@@ -72,6 +63,7 @@ export const createRoom = async (req, res) => {
 // GET /api/rooms
 export const listRooms = async (req, res) => {
   try {
+    const { Room } = req.tenantModels;
     const { error, value } = listRoomsQuerySchema.validate(req.body, { abortEarly: false });
     if (error) return sendError(res, 400, 'Invalid query', error.details);
 
@@ -82,7 +74,7 @@ export const listRooms = async (req, res) => {
     if (roomType !== undefined) filter.roomType = roomType;
     if (isAvailable !== undefined) filter.isAvailable = isAvailable;
     if (isActive !== undefined) filter.isActive = isActive;
-    else filter.isActive = true; // default: active only
+    else filter.isActive = true;
 
     const sortObj = { [sort]: order === 'asc' ? 1 : -1 };
 
@@ -105,9 +97,10 @@ export const listRooms = async (req, res) => {
   }
 };
 
-// GET /api/rooms/:id  (Mongo _id, not guestHouseId)
+// GET /api/rooms/:id
 export const getRoomById = async (req, res) => {
   try {
+    const { Room } = req.tenantModels;
     const room = await Room.findById(req.params.id);
     if (!room || !room.isActive) return sendError(res, 404, 'Room not found');
     return res.json({ success: true, room });
@@ -120,22 +113,22 @@ export const getRoomById = async (req, res) => {
 // PUT /api/rooms/:id
 export const updateRoom = async (req, res) => {
   try {
+    const { Room } = req.tenantModels;
     const { error, value } = updateRoomSchema.validate(req.body, { abortEarly: false });
     if (error) return sendError(res, 400, 'Validation failed', error.details);
 
-    // Prevent moving a room across guest houses via this endpoint (optional guard)
     if (Object.prototype.hasOwnProperty.call(value, 'guestHouseId')) {
       return sendError(res, 400, 'guestHouseId cannot be updated via this endpoint');
     }
 
-    // If roomNumber is changed, the unique index still protects constraints.
     const room = await Room.findByIdAndUpdate(
       req.params.id,
       { $set: value },
       { new: true, runValidators: true }
     );
 
-    // ✅ Room Updated
+    if (!room) return sendError(res, 404, 'Room not found');
+
     await logAction({
       action: 'ROOM_UPDATED',
       entityType: 'Room',
@@ -144,8 +137,8 @@ export const updateRoom = async (req, res) => {
       details: {
         updatedFields: req.body,
       },
-    });
-    if (!room) return sendError(res, 404, 'Room not found');
+    }, req.tenantDb);
+
     return res.json({ success: true, message: 'Room updated', room });
   } catch (err) {
     if (err?.code === 11000) {
@@ -159,6 +152,7 @@ export const updateRoom = async (req, res) => {
 // PATCH /api/rooms/:id/availability
 export const setAvailability = async (req, res) => {
   try {
+    const { Room } = req.tenantModels;
     const { isAvailable } = req.body;
     if (typeof isAvailable !== 'boolean') {
       return sendError(res, 400, 'isAvailable must be boolean');
@@ -169,18 +163,19 @@ export const setAvailability = async (req, res) => {
       { new: true }
     );
 
-    // ✅ Room Availability Toggled
+    if (!room) return sendError(res, 404, 'Room not found');
+
     await logAction({
       action: 'ROOM_AVAILABILITY_TOGGLED',
       entityType: 'Room',
       entityId: room._id,
       performedBy: req.user?.email || 'Admin',
       details: {
-        previousStatus: room.isAvailable,
-        newStatus: !room.isAvailable,
+        previousStatus: !room.isAvailable,
+        newStatus: room.isAvailable,
       },
-    });
-    if (!room) return sendError(res, 404, 'Room not found');
+    }, req.tenantDb);
+
     return res.json({ success: true, message: 'Availability updated', room });
   } catch (err) {
     console.error('setAvailability error:', err);
@@ -188,11 +183,10 @@ export const setAvailability = async (req, res) => {
   }
 };
 
-// inside controller/roomController.js
-
 // DELETE /api/rooms/:id (soft delete)
 export const softDeleteRoom = async (req, res) => {
   try {
+    const { Room } = req.tenantModels;
     const room = await Room.findByIdAndUpdate(
       req.params.id,
       { $set: { isActive: false } },
@@ -201,19 +195,16 @@ export const softDeleteRoom = async (req, res) => {
 
     if (!room) return sendError(res, 404, 'Room not found');
 
-    
-    // ✅ Room Deleted (audit log)
     await logAction({
       action: 'ROOM_DELETED',
       entityType: 'Room',
-      entityId: room._id, // pass the id, not the whole object
+      entityId: room._id,
       performedBy: req.user?.email || 'Admin',
       details: {
         message: 'Room archived (soft deleted)',
         roomId: room._id.toString(),
       },
-    });
-    
+    }, req.tenantDb);
 
     return res.json({ success: true, message: 'Room archived', room });
   } catch (err) {
@@ -225,19 +216,18 @@ export const softDeleteRoom = async (req, res) => {
 // Fetch rooms by guestHouseId
 export const getRoomsByGuestHouse = async (req, res) => {
   try {
+    const { Room, GuestHouse } = req.tenantModels;
     const guestHouseIdParam = req.body.guestHouseId;
 
     if (!guestHouseIdParam) {
       return res.status(400).json({ error: "guestHouseId is required" });
     }
 
-    // Resolve to actual guest house _id (ObjectId)
-    const gh = await resolveGuestHouse(guestHouseIdParam);
+    const gh = await resolveGuestHouse(GuestHouse, guestHouseIdParam);
     if (!gh) {
       return res.status(404).json({ error: "Guest house not found" });
     }
 
-    // FIX: Return only active rooms
     const rooms = await Room.find({ guestHouseId: gh.guestHouseId, isActive: true });
 
     res.json({ success: true, rooms });

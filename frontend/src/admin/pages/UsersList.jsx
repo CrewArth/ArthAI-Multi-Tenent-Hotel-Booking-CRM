@@ -1,70 +1,45 @@
-import { useEffect, useState } from "react";
-import EditUserModal           from "../components/EditUserModel";
-import CreateUserModal         from "../components/CreateUserModal";
-import AssignGuestHouseModal   from "../components/AssignGuestHouseModal";
-import AllowWidgetsDropdown    from "../components/AllowWidgetsDropdown";
-import { useSelector }         from "react-redux";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
+import EditUserModal from "../components/EditUserModel";
+import CreateUserModal from "../components/CreateUserModal";
+import AssignGuestHouseModal from "../components/AssignGuestHouseModal";
 
 const UsersList = () => {
-  const currentUser = useSelector((state) => state.auth?.user);
-  const isSuperAdmin = currentUser?.role === "SUPER_ADMIN";
-
   const [users, setUsers]               = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [err, setErr]                   = useState(null);
-  const [isEditOpen, setIsEditOpen]         = useState(false);
-  const [isCreateOpen, setIsCreateOpen]     = useState(false);
-  const [isAssignOpen, setIsAssignOpen]     = useState(false);
-  const [selectedUser, setSelectedUser]     = useState(null);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [err, setErr]                   = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  // Modals
+  const [isEditOpen, setIsEditOpen]     = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+
+  // Pagination & filter
   const [currentPage, setCurrentPage]   = useState(1);
   const [totalPages, setTotalPages]     = useState(1);
-  const limit = 10;
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchUsers = async (page = 1) => {
     try {
       setLoading(true);
-      setErr(null);
-      const res = await api.post(`/api/admin/users/list`, { page, limit });
-      setUsers(Array.isArray(res.data?.users) ? res.data.users : []);
+      setErr("");
+      const res = await api.post("/api/admin/users/list", { page, limit: 10 });
+      setUsers(res.data.users || []);
       setTotalPages(res.data.totalPages || 1);
-      setCurrentPage(res.data.currentPage || 1);
     } catch (e) {
+      console.error(e);
       setErr("Failed to load users");
-      toast.error("Failed to load users");
-    } finally { setLoading(false); }
-  };
-
-  const handleUpdate = async (updated) => {
-    try {
-      await api.put(`/api/users/${selectedUser._id}`, updated);
-      toast.success("User updated");
-      setIsEditOpen(false);
-      setSelectedUser(null);
-      fetchUsers(currentPage);
-    } catch { toast.error("Failed to update user"); }
-  };
-
-  const handleToggle = async (user) => {
-    try {
-      const res = await api.patch(`/api/users/${user._id}/toggle`);
-      toast.success(res.data.message);
-      fetchUsers(currentPage);
-    } catch { toast.error("Failed to update user status"); }
-  };
-
-  // Update local user state after widgets saved — no full refetch needed
-  const handleWidgetsSaved = (userId, updatedWidgets) => {
-    setUsers((prev) =>
-      prev.map((u) => u._id === userId ? { ...u, allowedWidgets: updatedWidgets } : u)
-    );
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchUsers(currentPage); }, [currentPage]);
 
   const filtered = users.filter((u) => {
+    if (u.role === "SUPER_ADMIN") return false;
     if (statusFilter === "active")   return u.isActive === true;
     if (statusFilter === "inactive") return u.isActive === false;
     return true;
@@ -73,25 +48,45 @@ const UsersList = () => {
   if (loading) return <div className="page-root"><p style={{ color: "#64748b" }}>Loading users…</p></div>;
   if (err)     return <div className="page-root"><p style={{ color: "#dc2626" }}>{err}</p></div>;
 
+  const handleUpdate = async (formData) => {
+    try {
+      await api.put(`/api/users/${selectedUser._id}`, formData);
+      toast.success("Admin details updated successfully!");
+      setIsEditOpen(false);
+      fetchUsers(currentPage);
+    } catch (error) {
+      console.error("Update admin error:", error);
+      const errorMessage =
+        error.response?.data?.error ||
+        "Failed to update admin. Please try again.";
+      toast.error(errorMessage);
+      throw error;
+    }
+  };
+
   return (
     <div className="page-root">
       {/* Header */}
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">All Admins</h1>
+          <h1 className="page-title">Admin Management</h1>
         </div>
-        <button className="btn-primary-cta green" onClick={() => setIsCreateOpen(true)}>
-          + Create Admin
+        <button className="btn-primary-cta" onClick={() => setIsCreateOpen(true)}>
+          + Create New Admin
         </button>
       </div>
 
-      {/* Filter bar */}
+      {/* Toolbar */}
       <div className="toolbar-row">
-        <span className="toolbar-label">Status:</span>
-        <select className="toolbar-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="all">All</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+        <span className="toolbar-label">Filter:</span>
+        <select
+          className="toolbar-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All Admins</option>
+          <option value="active">Active Only</option>
+          <option value="inactive">Inactive Only</option>
         </select>
       </div>
 
@@ -104,56 +99,45 @@ const UsersList = () => {
               <th>Full Name</th>
               <th>Email</th>
               <th>Phone</th>
-              <th>Assigned Guest House</th>
+              <th>Assigned Hotel</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan="6" className="table-empty">No admins found</td></tr>
+              <tr><td colSpan="7" className="table-empty">No admins found</td></tr>
             ) : (
-              filtered.map((user, i) => (
-                <tr key={user._id}>
-                  <td className="center">{i + 1}</td>
-                  <td>{user.firstName} {user.lastName}</td>
-                  <td>{user.email}</td>
-                  <td>{user.phone || "—"}</td>
+              filtered.map((u, i) => (
+                <tr key={u._id}>
+                  <td className="center">{(currentPage - 1) * 10 + i + 1}</td>
+                  <td>{u.firstName} {u.lastName}</td>
+                  <td>{u.email}</td>
+                  <td>{u.phone || "—"}</td>
                   <td>
-                    {user.assignedGuestHouseId
-                      ? <span className="badge ok">{user.assignedGuestHouseId.guestHouseName}</span>
-                      : <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>—</span>}
+                    {typeof u.assignedGuestHouseId === 'object' && u.assignedGuestHouseId
+                      ? u.assignedGuestHouseId.guestHouseName
+                      : u.assignedGuestHouseId || "None"}
                   </td>
                   <td>
-                    <span className={`badge ${user.isActive ? "ok" : "off"}`}>
-                      {user.isActive ? "Active" : "Inactive"}
+                    <span className={`badge ${u.isActive ? "active" : "inactive"}`}>
+                      {u.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td>
                     <div className="actions-cell">
                       <button
                         className="btn-action edit"
-                        onClick={() => { setSelectedUser(user); setIsEditOpen(true); }}
+                        onClick={() => { setSelectedUser(u); setIsEditOpen(true); }}
                       >
                         Edit
                       </button>
+
                       <button
-                        className="btn-action toggle"
-                        onClick={() => { setSelectedUser(user); setIsAssignOpen(true); }}
+                        className="btn-action view"
+                        onClick={() => { setSelectedUser(u); setIsAssignOpen(true); }}
                       >
-                        Assign GH
-                      </button>
-                      {isSuperAdmin && (
-                        <AllowWidgetsDropdown
-                          user={user}
-                          onSaved={(updated) => handleWidgetsSaved(user._id, updated)}
-                        />
-                      )}
-                      <button
-                        className={`btn-action ${user.isActive ? "delete" : "approve"}`}
-                        onClick={() => handleToggle(user)}
-                      >
-                        {user.isActive ? "Deactivate" : "Activate"}
+                        Assign
                       </button>
                     </div>
                   </td>

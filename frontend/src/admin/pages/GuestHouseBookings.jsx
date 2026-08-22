@@ -17,6 +17,8 @@ const GuestHouseBookings = () => {
   const assignedGuestHouse = currentUser?.assignedGuestHouseId;
 
   const [bookings, setBookings] = useState([]);
+  const [guestHousesList, setGuestHousesList] = useState([]);
+  const [selectedGuestHouseId, setSelectedGuestHouseId] = useState("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -27,6 +29,7 @@ const GuestHouseBookings = () => {
     status: "all",
     startDate: "",
     endDate: "",
+    guestHouseId: "all",
   });
 
   // Pagination state
@@ -35,22 +38,43 @@ const GuestHouseBookings = () => {
   const [totalCount, setTotalCount] = useState(0);
   const limit = 10;
 
-  const getGuestHouseId = () => {
+  const getAssignedGuestHouseId = () => {
     if (!assignedGuestHouse) return null;
     return typeof assignedGuestHouse === "object"
       ? assignedGuestHouse.guestHouseId
       : assignedGuestHouse;
   };
 
+  useEffect(() => {
+    const fetchGuestHouses = async () => {
+      if (!assignedGuestHouse) {
+        try {
+          const res = await api.post("/api/guesthouses/list");
+          const list = Array.isArray(res.data?.guestHouses)
+            ? res.data.guestHouses
+            : Array.isArray(res.data)
+            ? res.data
+            : [];
+          setGuestHousesList(list);
+        } catch (err) {
+          console.warn("Could not fetch guest houses list:", err);
+        }
+      }
+    };
+    fetchGuestHouses();
+  }, [assignedGuestHouse]);
+
   const fetchBookings = async (page = 1, silent = false) => {
     try {
       !silent ? setLoading(true) : setRefreshing(true);
       setError("");
 
+      const activeGhId = getAssignedGuestHouseId() || (appliedFilters.guestHouseId !== "all" ? appliedFilters.guestHouseId : null);
+
       const params = {
         page,
         limit,
-        ...(getGuestHouseId() && { guestHouseId: getGuestHouseId() }),
+        ...(activeGhId && { guestHouseId: activeGhId }),
         ...(appliedFilters.status !== "all" && { status: appliedFilters.status }),
         ...(appliedFilters.startDate && { startDate: appliedFilters.startDate }),
         ...(appliedFilters.endDate && { endDate: appliedFilters.endDate }),
@@ -62,7 +86,7 @@ const GuestHouseBookings = () => {
       setCurrentPage(res.data.currentPage || 1);
       setTotalCount(res.data.totalCount || 0);
     } catch (err) {
-      console.error("Error fetching guest house bookings:", err);
+      console.error("Error fetching hotel bookings:", err);
       setError("Failed to load bookings");
       setBookings([]);
       toast.error("Failed to load bookings");
@@ -81,6 +105,7 @@ const GuestHouseBookings = () => {
       status: statusFilter,
       startDate,
       endDate,
+      guestHouseId: selectedGuestHouseId,
     });
   };
 
@@ -88,20 +113,17 @@ const GuestHouseBookings = () => {
     setStatusFilter("all");
     setStartDate("");
     setEndDate("");
+    setSelectedGuestHouseId("all");
     setCurrentPage(1);
     setAppliedFilters({
       status: "all",
       startDate: "",
       endDate: "",
+      guestHouseId: "all",
     });
   };
 
   const handleRefresh = () => fetchBookings(currentPage, true);
-
-  const guestHouseName =
-    typeof assignedGuestHouse === "object"
-      ? assignedGuestHouse.guestHouseName
-      : "My Guest House";
 
   if (loading) return <div className="page-root"><p style={{ color: "#64748b" }}>Loading bookings…</p></div>;
   if (error && !refreshing) return <div className="page-root"><p style={{ color: "#dc2626" }}>{error}</p></div>;
@@ -111,7 +133,7 @@ const GuestHouseBookings = () => {
       {/* Header */}
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">Guest House Bookings</h1>
+          <h1 className="page-title">Hotel Bookings</h1>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button className="btn-action view" onClick={handleRefresh} disabled={refreshing}>
@@ -121,7 +143,25 @@ const GuestHouseBookings = () => {
       </div>
 
       {/* Filter bar */}
-      <div className="toolbar-row">
+      <div className="toolbar-row" style={{ flexWrap: 'wrap', gap: '10px' }}>
+        {!assignedGuestHouse && guestHousesList.length > 0 && (
+          <>
+            <span className="toolbar-label">Hotel:</span>
+            <select
+              className="toolbar-select"
+              value={selectedGuestHouseId}
+              onChange={(e) => setSelectedGuestHouseId(e.target.value)}
+            >
+              <option value="all">All Hotels</option>
+              {guestHousesList.map((gh) => (
+                <option key={gh._id} value={gh.guestHouseId || gh._id}>
+                  {gh.guestHouseName}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
         <span className="toolbar-label">Status:</span>
         <select
           className="toolbar-select"
@@ -134,7 +174,7 @@ const GuestHouseBookings = () => {
           <option value="cancelled">Cancelled</option>
         </select>
 
-        <span className="toolbar-label" style={{ marginLeft: 16 }}>From:</span>
+        <span className="toolbar-label" style={{ marginLeft: 8 }}>From:</span>
         <input
           type="date"
           className="toolbar-select"
@@ -163,6 +203,7 @@ const GuestHouseBookings = () => {
           <thead>
             <tr>
               <th className="center">#</th>
+              <th>Hotel</th>
               <th>Guest</th>
               <th>Phone</th>
               <th>Check In</th>
@@ -175,13 +216,20 @@ const GuestHouseBookings = () => {
           </thead>
           <tbody>
             {bookings.length === 0 ? (
-              <tr><td colSpan="9" className="table-empty">No bookings found</td></tr>
+              <tr><td colSpan="10" className="table-empty">No bookings found</td></tr>
             ) : (
               bookings.map((b, i) => {
                 const index = (currentPage - 1) * limit + i + 1;
+                const isEditDisabled = Boolean(b.isCheckedOut || b.status === "cancelled");
+
                 return (
                   <tr key={b._id}>
                     <td className="center">{index}</td>
+                    <td>
+                      <strong style={{ color: "#0f172a" }}>
+                        {b.guestHouseId?.guestHouseName || "—"}
+                      </strong>
+                    </td>
                     <td>
                       {b.userId?.firstName || "—"}
                       {b.userId?.lastName ? ` ${b.userId.lastName}` : ""}
@@ -200,9 +248,20 @@ const GuestHouseBookings = () => {
                       <div className="actions-cell">
                         <button
                           className="btn-action edit"
-                          onClick={() => navigate("/admin/book-room", { state: { bookingId: b._id } })}
-                          title="Edit booking"
-                          style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: '4px' }}
+                          disabled={isEditDisabled}
+                          onClick={() => {
+                            if (isEditDisabled) return;
+                            navigate("/admin/book-room", { state: { bookingId: b._id } });
+                          }}
+                          title={b.isCheckedOut ? "Cannot edit a checked-out booking" : b.status === "cancelled" ? "Cannot edit a cancelled booking" : "Edit booking"}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            boxShadow: 'none',
+                            padding: '4px',
+                            opacity: isEditDisabled ? 0.35 : 1,
+                            cursor: isEditDisabled ? 'not-allowed' : 'pointer',
+                          }}
                         >
                           <img src={editIcon} alt="Edit" style={{ width: 16, height: 16 }} />
                         </button>

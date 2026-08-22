@@ -51,6 +51,7 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
     } catch (error) {
       console.error("Error creating user:", error);
       const errorMessage =
+        error.response?.data?.message ||
         error.response?.data?.error ||
         "Failed to create user. Please try again.";
       toast.error(errorMessage);

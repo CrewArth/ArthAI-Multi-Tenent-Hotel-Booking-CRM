@@ -173,7 +173,7 @@ export default function Calendar({ assignedGhId = null }) {
                   {selectedBooking.email}
                 </p>
                 <p>
-                  <strong>Guest House</strong>
+                  <strong>Hotel</strong>
                   {selectedBooking.guestHouse}
                 </p>
                 <p>

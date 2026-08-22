@@ -22,7 +22,7 @@ const HeroSection = () => {
       <div className="hero-content">
         <div className="hero-text select-none">
           <h1 className="hero-title">Your Home Away from Home</h1>
-          <p className="hero-subtitle">Rishabh Guest House feels your Home</p>
+          <p className="hero-subtitle">Rishabh Hotel feels like Home</p>
           <button className="hero-button" onClick={navigateSignin}>Book Now</button>
         </div>
         <div className="hero-icon">

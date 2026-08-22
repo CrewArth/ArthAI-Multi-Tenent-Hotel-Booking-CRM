@@ -1,25 +1,9 @@
-import Booking from '../../models/Booking.js';
-import GuestHouse from '../../models/GuestHouse.js';
-import mongoose from 'mongoose';
 import { isObjectId } from '../../utils/isObjectId.js';
 
-/**
- * Executes MongoDB aggregation for "Monthly Revenue by Guest House" report.
- *
- * Two modes:
- *   1. Monthly mode  — supply { guestHouseId, month, year }
- *      Clamps booking stay to the calendar month window.
- *   2. Date range mode — supply { guestHouseId, fromDate, toDate }
- *      Uses the exact date window; month/year are ignored.
- *
- * Revenue per booking = Room.price × (discounted) × nights within the window.
- * Only approved bookings are counted.
- *
- * @param {Object} filters - { guestHouseId, month, year, fromDate, toDate }
- * @returns {Promise<Object>}
- */
-export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, year, fromDate, toDate }) => {
+export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, year, fromDate, toDate }, tenantModels) => {
   if (!guestHouseId) throw new Error('Guest House is required for this report');
+
+  const { Booking, GuestHouse, Room, Bed, User } = tenantModels;
 
   const hasDateRange = fromDate && toDate;
   const hasMonthYear = month && year;
@@ -28,7 +12,6 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
     throw new Error('Either Month + Year or From Date + To Date is required');
   }
 
-  // ── Resolve period window ─────────────────────────────────────────────────
   let periodStart, periodEnd, monthNum, yearNum, mode;
 
   if (hasDateRange) {
@@ -37,7 +20,6 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
     if (isNaN(periodStart) || isNaN(periodEnd)) throw new Error('Invalid date range');
     if (periodEnd <= periodStart) throw new Error('To Date must be after From Date');
     mode = 'range';
-    // derive month/year from fromDate for display purposes only
     monthNum = periodStart.getUTCMonth() + 1;
     yearNum  = periodStart.getUTCFullYear();
   } else {
@@ -50,7 +32,6 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
     mode = 'monthly';
   }
 
-  // ── Look up guest house ───────────────────────────────────────────────────
   const isObjId = isObjectId(guestHouseId);
   const guestHouse = await GuestHouse.findOne({
     $or: [
@@ -61,7 +42,6 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
 
   if (!guestHouse) throw new Error('Selected guest house not found');
 
-  // Match approved bookings overlapping the window — use ObjectId
   const matchStage = {
     guestHouseId: guestHouse._id,
     status: 'approved',
@@ -75,7 +55,7 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
 
     {
       $lookup: {
-        from: 'rooms',
+        from: Room.collection.name,
         localField: 'roomId',
         foreignField: '_id',
         as: 'roomDoc',
@@ -85,7 +65,7 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
 
     {
       $lookup: {
-        from: 'beds',
+        from: Bed.collection.name,
         localField: 'bedId',
         foreignField: '_id',
         as: 'bedDoc',
@@ -95,7 +75,7 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
 
     {
       $lookup: {
-        from: 'users',
+        from: User.collection.name,
         localField: 'userId',
         foreignField: '_id',
         as: 'userDoc',
@@ -141,7 +121,6 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
         checkIn:  1,
         checkOut: 1,
         status:   1,
-        // Clamp stay to the report window
         effectiveCheckIn:  { $max: ['$checkIn',  new Date(periodStart)] },
         effectiveCheckOut: { $min: ['$checkOut', new Date(periodEnd)]   },
       },

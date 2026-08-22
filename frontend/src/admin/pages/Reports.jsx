@@ -136,12 +136,12 @@ const Reports = () => {
     }
 
     if (selectedReportId === 'bookingByGuestHouse' && !guestHouseId) {
-      toast.error('Please select a Guest House');
+      toast.error('Please select a Hotel');
       return;
     }
 
     if (selectedReportId === 'monthlyRevenueByGuestHouse' && !guestHouseId) {
-      toast.error('Please select a Guest House');
+      toast.error('Please select a Hotel');
       return;
     }
 
@@ -393,7 +393,7 @@ const Reports = () => {
                   {currentReportConfig.supportedFilters.includes('guestHouseId') && (
                     <div className="reports-filter-field">
                       <label className="reports-filter-label">
-                        Guest House <span style={{ color: '#dc2626' }}>*</span>
+                        Hotel <span style={{ color: '#dc2626' }}>*</span>
                       </label>
                       <select
                         className="reports-filter-select"

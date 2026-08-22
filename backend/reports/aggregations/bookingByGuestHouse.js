@@ -1,20 +1,12 @@
-import Booking from '../../models/Booking.js';
-import GuestHouse from '../../models/GuestHouse.js';
-import mongoose from 'mongoose';
 import { isObjectId } from '../../utils/isObjectId.js';
 
-/**
- * Executes MongoDB aggregation for "Booking by Guest House" report.
- *
- * @param {Object} filters - { guestHouseId, fromDate, toDate }
- * @returns {Promise<Object>} { guestHouse, bookings }
- */
-export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDate }) => {
+export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDate }, tenantModels) => {
   if (!guestHouseId) {
     throw new Error("Guest House is required for this report");
   }
 
-  // Look up guest house details
+  const { Booking, GuestHouse, User, Room, Bed } = tenantModels;
+
   const isObjId = isObjectId(guestHouseId);
   const guestHouse = await GuestHouse.findOne({
     $or: [
@@ -27,7 +19,6 @@ export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDat
     throw new Error("Selected guest house not found");
   }
 
-  // Build match criteria — use ObjectId
   const matchStage = {
     guestHouseId: guestHouse._id,
   };
@@ -48,13 +39,12 @@ export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDat
     }
   }
 
-  // MongoDB Aggregation Pipeline
   const pipeline = [
     { $match: matchStage },
     { $sort: { checkIn: 1, createdAt: -1 } },
     {
       $lookup: {
-        from: "users",
+        from: User.collection.name,
         localField: "userId",
         foreignField: "_id",
         as: "userDoc",
@@ -68,7 +58,7 @@ export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDat
     },
     {
       $lookup: {
-        from: "rooms",
+        from: Room.collection.name,
         localField: "roomId",
         foreignField: "_id",
         as: "roomDoc",
@@ -82,7 +72,7 @@ export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDat
     },
     {
       $lookup: {
-        from: "beds",
+        from: Bed.collection.name,
         localField: "bedId",
         foreignField: "_id",
         as: "bedDoc",

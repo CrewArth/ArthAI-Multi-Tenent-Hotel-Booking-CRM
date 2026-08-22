@@ -1,7 +1,6 @@
-import AuditLog from '../models/AuditLog.js';
-
 export const getAuditLogs = async (req, res) => {
   try {
+    const { AuditLog } = req.tenantModels;
     const page = parseInt(req.body.page) || 1;
     const limit = parseInt(req.body.limit) || 10;
     const skip = (page - 1) * limit;
@@ -36,6 +35,7 @@ export const getAuditLogs = async (req, res) => {
 
 export const exportDailyAuditLogs = async (req, res) => {
   try {
+    const { AuditLog } = req.tenantModels;
     const { date } = req.body;
 
     if (!date) {

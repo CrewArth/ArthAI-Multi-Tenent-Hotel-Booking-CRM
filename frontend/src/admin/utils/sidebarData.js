@@ -9,7 +9,7 @@ export const superAdminSidebarData = [
   },
   {
     id: 'MC_GUEST_HOUSE',
-    name: 'Guest House',
+    name: 'Hotels',
     icon: Building2,
     navigate: '/super-admin/guesthouses',
   },
@@ -78,7 +78,7 @@ export const adminSidebarData = [
   },
   {
     id: 'MC_GUEST_HOUSE_BOOKINGS',
-    name: 'Guest House List',
+    name: "Booking's List",
     icon: List,
     navigate: '/admin/guest-house-bookings',
   },

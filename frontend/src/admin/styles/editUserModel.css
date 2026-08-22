@@ -3,77 +3,180 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.45);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 24px 12px;
-  z-index: 1000;
+  align-items: center;
+  padding: 20px;
+  z-index: 1100;
 }
 
-/* Centered Modal Box */
-.modal {
-  background: white;
+/* Centered Modal Card */
+.modal-card {
+  background: #ffffff;
   width: 100%;
-  max-width: 450px;
-  padding: 2rem 1.5rem;
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  border-radius: 10px;
-  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.15);
+  max-width: 520px;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  animation: fadeIn 0.3s ease-out;
+  gap: 16px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 
-.modal h2 {
+/* Header Section */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h2 {
   font-size: 1.2rem;
-  text-align: center;
-  color: #111827;
-  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
 }
 
+.subtitle {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin: 2px 0 0 0;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.btn-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Form & Grid */
 .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
 }
 
-.modal-form label {
-  font-size: 0.9rem;
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 500px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  color: #374151;
-  font-weight: 500;
+  gap: 6px;
 }
 
-.modal-form input {
-  padding: 0.55rem 0.75rem;
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid #d1d5db;
-  font-size: 0.85rem;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background: #ffffff;
   transition: border-color 0.2s ease;
 }
 
-.modal-form input:focus {
+.form-input:focus {
   outline: none;
   border-color: #2563eb;
 }
 
+.disabled-input {
+  background-color: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
+.textarea-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-input-file {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.signature-preview-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.signature-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.signature-img {
+  max-width: 100%;
+  max-height: 70px;
+  object-fit: contain;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.checkbox-row input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Modal Actions */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.6rem;
-  margin-top: 1rem;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .btn {
-  padding: 0.6rem 1rem;
-  border-radius: 5px;
+  padding: 8px 16px;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
   font-size: 0.85rem;
@@ -81,12 +184,12 @@
 }
 
 .btn.cancel {
-  background: #f3f4f6;
-  color: #374151;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .btn.cancel:hover {
-  background: #e5e7eb;
+  background: #e2e8f0;
 }
 
 .btn.confirm {
@@ -95,32 +198,5 @@
 }
 
 .btn.confirm:hover {
-  background: #1e40af;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.disabled-input {
-  background-color: #f3f4f6;
-  color: #6b7280;
-  cursor: not-allowed;
-}
-.subtitle {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  background: #1d4ed8;
 }

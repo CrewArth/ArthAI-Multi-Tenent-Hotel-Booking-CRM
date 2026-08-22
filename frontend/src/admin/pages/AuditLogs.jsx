@@ -55,9 +55,9 @@ const AuditLogs = () => {
   const renderDetails = (log) => {
     const d = log.details || {};
     if (log.entityType === 'GuestHouse') return (<>{d.guestHouseName && <p><strong>Name:</strong> {d.guestHouseName}</p>}{d.location && <p><strong>Location:</strong> {d.location}</p>}</>);
-    if (log.entityType === 'Room')       return (<>{d.guestHouseName && <p><strong>Guest House:</strong> {d.guestHouseName}</p>}{d.roomNumber && <p><strong>Room:</strong> {d.roomNumber}</p>}{d.roomType && <p><strong>Type:</strong> {d.roomType}</p>}</>);
-    if (log.entityType === 'Bed')        return (<>{d.guestHouseName && <p><strong>Guest House:</strong> {d.guestHouseName}</p>}{d.roomNumber && <p><strong>Room:</strong> {d.roomNumber}</p>}{d.bedNumber && <p><strong>Bed:</strong> {d.bedNumber}</p>}{d.bedType && <p><strong>Type:</strong> {d.bedType}</p>}</>);
-    if (log.entityType === 'Booking')    return (<>{d.user && <><p><strong>User:</strong> {d.user.name}</p><p><strong>Email:</strong> {d.user.email}</p></>}{d.guestHouse && <p><strong>Guest House:</strong> {d.guestHouse}</p>}{d.checkIn && <p><strong>Check-in:</strong> {new Date(d.checkIn).toLocaleDateString()}</p>}{d.checkOut && <p><strong>Check-out:</strong> {new Date(d.checkOut).toLocaleDateString()}</p>}{d.status && <p><strong>Status:</strong> {d.status}</p>}</>);
+    if (log.entityType === 'Room')       return (<>{d.guestHouseName && <p><strong>Hotel:</strong> {d.guestHouseName}</p>}{d.roomNumber && <p><strong>Room:</strong> {d.roomNumber}</p>}{d.roomType && <p><strong>Type:</strong> {d.roomType}</p>}</>);
+    if (log.entityType === 'Bed')        return (<>{d.guestHouseName && <p><strong>Hotel:</strong> {d.guestHouseName}</p>}{d.roomNumber && <p><strong>Room:</strong> {d.roomNumber}</p>}{d.bedNumber && <p><strong>Bed:</strong> {d.bedNumber}</p>}{d.bedType && <p><strong>Type:</strong> {d.bedType}</p>}</>);
+    if (log.entityType === 'Booking')    return (<>{d.user && <><p><strong>User:</strong> {d.user.name}</p><p><strong>Email:</strong> {d.user.email}</p></>}{d.guestHouse && <p><strong>Hotel:</strong> {d.guestHouse}</p>}{d.checkIn && <p><strong>Check-in:</strong> {new Date(d.checkIn).toLocaleDateString()}</p>}{d.checkOut && <p><strong>Check-out:</strong> {new Date(d.checkOut).toLocaleDateString()}</p>}{d.status && <p><strong>Status:</strong> {d.status}</p>}</>);
     if (log.entityType === 'User' && d.userDetails) return (<><p><strong>Name:</strong> {d.userDetails.name}</p><p><strong>Email:</strong> {d.userDetails.email}</p><p><strong>Active:</strong> {d.userDetails.isActive ? 'Yes' : 'No'}</p></>);
     return <pre style={{ fontSize: '0.82rem', whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(d, null, 2)}</pre>;
   };
@@ -68,7 +68,6 @@ const AuditLogs = () => {
       <div className="page-header-row">
         <div>
           <h1 className="page-title">Audit Logs</h1>
-          <p className="page-subtitle">Track all admin actions and system events</p>
         </div>
         <div className="export-row">
           <input type="date" className="export-date-input" value={exportDate} onChange={(e) => setExportDate(e.target.value)} />
@@ -88,7 +87,7 @@ const AuditLogs = () => {
         <span className="toolbar-label">Entity:</span>
         <select className="toolbar-select" value={filterType} onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}>
           <option value="all">All</option>
-          <option value="GuestHouse">Guest House</option>
+          <option value="GuestHouse">Hotel</option>
           <option value="Room">Room</option>
           <option value="Bed">Bed</option>
           <option value="User">User</option>
