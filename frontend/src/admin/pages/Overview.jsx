@@ -7,6 +7,7 @@ import Calendar from "../components/Calender.jsx";
 import TodayBookings from "../components/TodayBookings";
 import api from "../../utils/api";
 import { isWidgetAllowed } from "../../common/widgetsConfig";
+import { getCurrentMonthDateRange } from "../utils/dateUtils";
 
 const Overview = ({ showTodayBookings = false }) => {
   const currentUser = useSelector((state) => state.auth?.user);
@@ -33,11 +34,9 @@ const Overview = ({ showTodayBookings = false }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [draft, setDraft] = useState({ startDate: '', endDate: '' });
 
-  const getDefaultEnd   = () => new Date().toISOString().slice(0, 10);
-  const getDefaultStart = () => { const d = new Date(); d.setDate(d.getDate() - 29); return d.toISOString().slice(0, 10); };
-
-  const [dateRange, setDateRange] = useState({ startDate: getDefaultStart(), endDate: getDefaultEnd() });
-  const maxDate = getDefaultEnd();
+  const { startDate: defaultStart, endDate: defaultEnd } = getCurrentMonthDateRange();
+  const [dateRange, setDateRange] = useState({ startDate: defaultStart, endDate: defaultEnd });
+  const maxDate = defaultEnd;
 
   const fmt = (range) => {
     if (!range?.startDate || !range?.endDate) return "";

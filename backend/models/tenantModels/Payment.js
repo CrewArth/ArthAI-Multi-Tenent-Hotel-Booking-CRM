@@ -8,6 +8,7 @@ const paymentSchema = new mongoose.Schema({
   taxBreakdown: [{ name: String, percentage: Number, amount: Number }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+  outstanding_payment: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export default paymentSchema;

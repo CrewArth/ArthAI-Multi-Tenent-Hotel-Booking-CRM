@@ -1,5 +1,7 @@
 // CreateUserModal.jsx
 import React, { useState } from "react";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import "../styles/editUserModel.css";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
@@ -85,94 +87,107 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal">
-        <h2>Create New Admin</h2>
-        <p className="subtitle">
-          Set the password here. The account will be created with this password.
-        </p>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <h2>Create New Admin</h2>
+            <p className="subtitle">
+              Set account credentials and contact details.
+            </p>
+          </div>
+          <button className="btn-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
 
         <form className="modal-form" onSubmit={handleSubmit}>
-          <label>
-            First Name *
-            <input
-              type="text"
-              name="firstName"
-              value={form.firstName}
-              onChange={handleChange}
-              required
-              disabled={isSubmitting}
-            />
-          </label>
+          <div className="form-grid-2">
+            <label className="form-label">
+              First Name *
+              <input
+                type="text"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
+                required
+                className="form-input"
+                disabled={isSubmitting}
+              />
+            </label>
 
-          <label>
-            Last Name *
-            <input
-              type="text"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-              required
-              disabled={isSubmitting}
-            />
-          </label>
+            <label className="form-label">
+              Last Name *
+              <input
+                type="text"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+                className="form-input"
+                disabled={isSubmitting}
+              />
+            </label>
+          </div>
 
-          <label>
-            Email *
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              disabled={isSubmitting}
-            />
-          </label>
+          <div className="form-grid-2">
+            <label className="form-label">
+              Email *
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+                className="form-input"
+                disabled={isSubmitting}
+              />
+            </label>
 
-          <label>
-            Phone *
-            <input
-              type="text"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              required
-              disabled={isSubmitting}
-              pattern="[0-9]*"
-              title="Please enter numbers only"
-            />
-          </label>
+            <label className="form-label">
+              Phone Number
+              <PhoneInput
+                defaultCountry="IN"
+                placeholder="Enter phone number"
+                value={form.phone}
+                onChange={(val) => setForm((f) => ({ ...f, phone: val || '' }))}
+                disabled={isSubmitting}
+              />
+            </label>
+          </div>
 
-          <label>
+          <label className="form-label">
             ESignature
             <input
               type="file"
               name="eSignature"
               accept="image/*"
               onChange={handleESignatureChange}
+              className="form-input-file"
               disabled={isSubmitting}
             />
           </label>
           {eSignaturePreview ? (
-            <img
-              src={eSignaturePreview}
-              alt="ESignature preview"
-              style={{ maxWidth: "100%", maxHeight: "90px", objectFit: "contain", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "6px" }}
-            />
+            <div className="signature-preview-box">
+              <img
+                src={eSignaturePreview}
+                alt="ESignature preview"
+                className="signature-img"
+              />
+            </div>
           ) : null}
 
-          <label>
+          <label className="form-label">
             Address
             <textarea
               name="address"
               value={form.address}
               onChange={handleChange}
-              rows="3"
+              rows="2"
+              className="form-input textarea-input"
               disabled={isSubmitting}
             />
           </label>
 
-          <label>
+          <label className="form-label">
             Password *
             <input
               type="password"
@@ -180,6 +195,7 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
               value={form.password}
               onChange={handleChange}
               required
+              className="form-input"
               disabled={isSubmitting}
               minLength="6"
             />

@@ -189,10 +189,10 @@ export const generateInvoicePdf = async (invoice, meta = {}) => {
   const pageRange = doc.bufferedPageRange();
   for (let i = pageRange.start; i < pageRange.start + pageRange.count; i += 1) {
     doc.switchToPage(i);
-    const signatureWidth = 110;
-    const signatureHeight = 38;
-    const signatureX = doc.page.width - doc.page.margins.right - signatureWidth;
-    const signatureY = doc.page.height - doc.page.margins.bottom - 95;
+    const signatureWidth = 100;
+    const signatureHeight = 32;
+    const signatureX = headerX;
+    const signatureY = doc.page.height - doc.page.margins.bottom - 85;
 
     const signatureDrawn = await drawImageFromSource(doc, eSignatureUrl, signatureX, signatureY, {
       fit: [signatureWidth, signatureHeight],
@@ -202,7 +202,7 @@ export const generateInvoicePdf = async (invoice, meta = {}) => {
       doc.font('Helvetica').fontSize(7).fillColor('#64748b')
         .text('Authorized Signature', signatureX, signatureY + signatureHeight + 2, {
           width: signatureWidth,
-          align: 'right',
+          align: 'left',
         });
     }
   }

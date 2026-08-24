@@ -137,11 +137,9 @@ const InvoiceList = () => {
         ? `<tr><td>Taxes</td><td style="text-align:right">${currency(invoiceData.taxesTotal)}</td></tr>`
         : '';
 
-    const roomLabel = booking.roomId?.roomNumber
-      ? `Room ${booking.roomId.roomNumber}`
-      : Array.isArray(booking.roomIds) && booking.roomIds.length
-        ? booking.roomIds.map((r) => `Room ${r.roomNumber}`).join(', ')
-        : '—';
+    const roomLabel = Array.isArray(booking.roomIds) && booking.roomIds.length
+      ? booking.roomIds.map((r) => `Room ${r.roomNumber}`).join(', ')
+      : '—';
 
     const bedLabel = booking.bedId?.bedNumber
       ? ` / Bed ${booking.bedId.bedNumber}${booking.bedId.bedType ? ` (${booking.bedId.bedType})` : ''}`
@@ -259,9 +257,9 @@ const InvoiceList = () => {
     `${b.userId?.firstName || ''} ${b.userId?.lastName || ''}`.trim() || '—';
 
   const roomLabel = (b) => {
-    if (Array.isArray(b.roomIds) && b.roomIds.length > 1)
-      return b.roomIds.map((r) => `Room ${r.roomNumber}`).join(', ');
-    return b.roomId?.roomNumber ? `Room ${b.roomId.roomNumber}` : '—';
+    if (Array.isArray(b.roomIds) && b.roomIds.length)
+      return b.roomIds.map((r) => (r?.roomNumber ? `Room ${r.roomNumber}` : '')).filter(Boolean).join(', ') || '—';
+    return '—';
   };
 
   return (

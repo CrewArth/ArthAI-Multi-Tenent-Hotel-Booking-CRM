@@ -179,6 +179,7 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
           taxBreakdown,
           invoiceId: invoice.id,
           invoice: invoice,
+          outstanding_payment: false,
         });
         // update local booking state to reflect checked-out
         setBooking((b) => ({ ...(b || {}), isCheckedOut: true }));
@@ -264,7 +265,7 @@ const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvo
               { label: 'Email', value: booking.userId?.email || '—' },
               { label: 'Phone', value: booking.userId?.phone || '—' },
               { label: 'Hotel', value: booking.guestHouseId?.guestHouseName || booking.guestHouseId || '—' },
-              { label: 'Room / Bed', value: `${booking.roomId?.roomNumber ? `Room ${booking.roomId.roomNumber}` : '—'}${booking.bedId?.bedNumber ? ` / Bed ${booking.bedId.bedNumber}` : ''}` },
+              { label: 'Room / Bed', value: `${Array.isArray(booking.roomIds) && booking.roomIds.length ? booking.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—' : '—'}${booking.bedId?.bedNumber ? ` / Bed ${booking.bedId.bedNumber}` : ''}` },
               { label: 'Check In', value: formatDate(booking.checkIn) },
               { label: 'Check Out', value: formatDate(booking.checkOut) },
               { label: 'Guests', value: (booking.familyMembers?.length || 0) + 1 },

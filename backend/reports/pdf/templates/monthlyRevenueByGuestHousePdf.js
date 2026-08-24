@@ -180,7 +180,11 @@ export const generateMonthlyRevenueByGuestHousePdf = async (data, filters, meta)
       const gPhone = r.guestPhone?.trim() || '—';
       doc.text(gPhone, cols[2].x + 3, cy, { width: cols[2].w - 6, align: cols[2].align, ellipsis: true, lineBreak: false });
 
-      let roomBed = r.roomNumber ? `R-${r.roomNumber}` : '—';
+      let roomBed = '—';
+      if (r.roomNumber != null && String(r.roomNumber).trim() !== '') {
+        const roomsArr = String(r.roomNumber).split(',').map((nr) => nr.trim()).filter(Boolean);
+        roomBed = roomsArr.map((nr) => `R-${nr}`).join(', ');
+      }
       if (r.bedNumber) roomBed += ` / B-${r.bedNumber}`;
       doc.text(roomBed, cols[3].x + 3, cy, { width: cols[3].w - 6, align: cols[3].align, ellipsis: true, lineBreak: false });
 
@@ -243,9 +247,9 @@ export const generateMonthlyRevenueByGuestHousePdf = async (data, filters, meta)
   for (let i = pageRange.start; i < pageRange.start + pageRange.count; i += 1) {
     doc.switchToPage(i);
 
-    const signatureWidth = 110;
-    const signatureHeight = 34;
-    const signatureX = doc.page.width - doc.page.margins.right - signatureWidth;
+    const signatureWidth = 100;
+    const signatureHeight = 32;
+    const signatureX = LEFT;
     const signatureY = doc.page.height - doc.page.margins.bottom - 58;
 
     const signatureDrawn = await drawImageFromSource(doc, eSignatureUrl, signatureX, signatureY, {
@@ -256,7 +260,7 @@ export const generateMonthlyRevenueByGuestHousePdf = async (data, filters, meta)
       doc.font('Helvetica').fontSize(7).fillColor('#64748b')
         .text('Authorized Signature', signatureX, signatureY + signatureHeight + 2, {
           width: signatureWidth,
-          align: 'right',
+          align: 'left',
         });
     }
   }

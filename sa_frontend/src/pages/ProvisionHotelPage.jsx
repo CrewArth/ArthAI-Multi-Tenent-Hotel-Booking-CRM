@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building, User, Mail, Phone, Layers, Server, ArrowLeft } from 'lucide-react';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { saTenantApi } from '../api/saApi';
 import { CredentialsModal } from '../components/CredentialsModal';
 
@@ -160,17 +162,14 @@ export const ProvisionHotelPage = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
             <div>
               <label style={{ fontSize: '13px', color: '#334155', fontWeight: '600', marginBottom: '6px', display: 'block' }}>Owner Phone</label>
-              <div style={{ position: 'relative' }}>
-                <Phone size={18} color="#64748b" style={{ position: 'absolute', left: '12px', top: '12px' }} />
-                <input
-                  type="text"
-                  name="ownerPhone"
-                  placeholder="+91 9876543210"
-                  value={formData.ownerPhone}
-                  onChange={handleChange}
-                  style={{ width: '100%', padding: '10px 12px 10px 40px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontSize: '14px' }}
-                />
-              </div>
+              <PhoneInput
+                international
+                defaultCountry="IN"
+                countryCallingCodeEditable={false}
+                placeholder="Enter owner phone"
+                value={formData.ownerPhone}
+                onChange={(val) => setFormData((prev) => ({ ...prev, ownerPhone: val || '' }))}
+              />
             </div>
 
             <div>

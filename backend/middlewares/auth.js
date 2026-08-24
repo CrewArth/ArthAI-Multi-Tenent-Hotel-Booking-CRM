@@ -2,6 +2,13 @@ import { verifyToken } from '../utils/jwt.js';
 import { normalizeRole } from '../utils/roles.js';
 import { getTenantDb } from '../config/dbManager.js';
 import { getClientIp } from '../utils/ipHelper.js';
+import { getCache, setCache, deleteCache } from '../config/redis.js';
+
+export const invalidateUserSession = async (dbName, userId) => {
+  if (!dbName || !userId) return;
+  const cacheKey = `tenant:${dbName}:user:${userId}`;
+  await deleteCache(cacheKey);
+};
 
 export const resolveTenantContext = async (req, res, next) => {
   // Pass-through auth routes so authController can dynamically resolve database per user
@@ -61,18 +68,39 @@ export const authenticate = async (req, res, next) => {
     const dbName = payload.dbName || process.env.DEFAULT_TENANT_DB || 'guesthouses';
 
     const tenantDb = await getTenantDb(dbName);
-    const User = tenantDb.models.User || tenantDb.model('User');
+    const cacheKey = `tenant:${dbName}:user:${payload.id}`;
+    let user = await getCache(cacheKey);
 
-    const user = await User.findById(payload.id).select(
-      '_id email role isActive firstName lastName assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl login_secret_key'
-    );
+    if (!user) {
+      const User = tenantDb.models.User || tenantDb.model('User');
+      user = await User.findById(payload.id).select(
+        '_id email role isActive firstName lastName assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl login_secret_key'
+      ).lean();
+
+      if (user) {
+        await setCache(cacheKey, user, 900); // 15 mins TTL
+      }
+    }
 
     if (!user || !user.isActive) {
       return res.status(401).json({ message: 'Your account is not active' });
     }
 
     if (payload.secret_key && user.login_secret_key && user.login_secret_key !== payload.secret_key) {
-      return res.status(401).json({ message: 'Your session has expired or been terminated' });
+      // Re-query database directly to bypass potentially stale cache
+      const User = tenantDb.models.User || tenantDb.model('User');
+      const freshUser = await User.findById(payload.id).select(
+        '_id email role isActive firstName lastName assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl login_secret_key'
+      ).lean();
+
+      if (freshUser && freshUser.login_secret_key === payload.secret_key) {
+        user = freshUser;
+        await setCache(cacheKey, freshUser, 900);
+      } else if (freshUser && !freshUser.login_secret_key) {
+        user = freshUser;
+      } else {
+        return res.status(401).json({ message: 'Your session has expired or been terminated' });
+      }
     }
 
     if (process.env.ENFORCE_IP_CHECK === 'true' && payload.ip_address) {

@@ -55,7 +55,7 @@ export const logAction = async (
     if (entityType === "Booking" && Booking) {
       const bk = await Booking.findById(entityId)
         .populate("guestHouseId")
-        .populate("roomId")
+        .populate("roomIds")
         .populate("bedId")
         .populate("userId");
 
@@ -67,7 +67,7 @@ export const logAction = async (
             phone: bk.userId.phone,
           } : null,
           guestHouse: bk.guestHouseId?.guestHouseName,
-          room: bk.roomId?.roomNumber,
+          room: Array.isArray(bk.roomIds) ? bk.roomIds.map((r) => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') : '',
           bed: bk.bedId ? `${bk.bedId.bedNumber} (${bk.bedId.bedType})` : null,
           checkIn: bk.checkIn,
           checkOut: bk.checkOut,

@@ -9,17 +9,29 @@ export const getSubscriptionUsage = async (req, res) => {
     const { GuestHouse, Room, User } = req.tenantModels;
     const { plan, limits } = req.subscription || { plan: 'basic', limits: getSubscriptionLimits('basic') };
 
-    const [hotelCount, adminCount, rooms] = await Promise.all([
-      GuestHouse.countDocuments(),
+    const [guestHouses, adminCount, rooms] = await Promise.all([
+      GuestHouse.find().lean(),
       User.countDocuments({ role: 'ADMIN' }),
       Room.aggregate([
         { $group: { _id: "$guestHouseId", roomCount: { $sum: 1 } } }
       ])
     ]);
 
+    const hotelCount = guestHouses.length;
     const roomsPerHotelMap = {};
+
     rooms.forEach((r) => {
-      if (r._id) roomsPerHotelMap[r._id] = r.roomCount;
+      if (r._id) {
+        roomsPerHotelMap[String(r._id)] = r.roomCount;
+      }
+    });
+
+    guestHouses.forEach((gh) => {
+      const customId = String(gh.guestHouseId || '');
+      const objId = String(gh._id || '');
+      const count = roomsPerHotelMap[customId] || roomsPerHotelMap[objId] || 0;
+      if (customId) roomsPerHotelMap[customId] = count;
+      if (objId) roomsPerHotelMap[objId] = count;
     });
 
     return res.json({

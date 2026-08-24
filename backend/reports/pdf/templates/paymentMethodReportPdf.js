@@ -166,7 +166,10 @@ export const generatePaymentMethodReportPdf = async (data, filters, meta) => {
     doc.text(fmtDate(row.createdAt),      COLS[0].x + 2, y, { width: COLS[0].w - 4 });
     doc.text(row.guestName || '—',        COLS[1].x + 2, y, { width: COLS[1].w - 4, ellipsis: true });
     doc.text(String(row.guestPhone || '—'),COLS[2].x + 2, y, { width: COLS[2].w - 4 });
-    doc.text(row.roomNumber != null ? `Room ${row.roomNumber}` : '—', COLS[3].x + 2, y, { width: COLS[3].w - 4 });
+    const roomStr = row.roomNumber != null && String(row.roomNumber).trim() !== ''
+      ? String(row.roomNumber).toLowerCase().startsWith('room') ? String(row.roomNumber) : `Room ${row.roomNumber}`
+      : '—';
+    doc.text(roomStr, COLS[3].x + 2, y, { width: COLS[3].w - 4, ellipsis: true });
     doc.text(row.guestHouseName || '—',   COLS[4].x + 2, y, { width: COLS[4].w - 4, ellipsis: true });
     doc.text(row.paymentMethod || '—',    COLS[5].x + 2, y, { width: COLS[5].w - 4, align: 'center' });
     doc.text(fmtCurrency(row.amountPaid), COLS[6].x + 2, y, { width: COLS[6].w - 4, align: 'right' });
@@ -180,14 +183,14 @@ export const generatePaymentMethodReportPdf = async (data, filters, meta) => {
   for (let i = pageRange.start; i < pageRange.start + pageRange.count; i++) {
     doc.switchToPage(i);
 
-    const sigW = 110;
-    const sigH = 38;
-    const sigX = R - sigW;
+    const sigW = 100;
+    const sigH = 32;
+    const sigX = L;
     const sigY = 745;
     const sigDrawn = await drawImageFromSource(doc, eSignatureUrl, sigX, sigY, { fit: [sigW, sigH] });
     if (sigDrawn) {
       doc.fontSize(7).font('Helvetica').fillColor('#64748b')
-        .text('Authorized Signature', sigX, sigY + sigH + 2, { width: sigW, align: 'right' });
+        .text('Authorized Signature', sigX, sigY + sigH + 2, { width: sigW, align: 'left' });
     }
 
     doc.moveTo(L, 790).lineTo(R, 790).strokeColor('#e2e8f0').lineWidth(0.4).stroke();

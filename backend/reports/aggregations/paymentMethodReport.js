@@ -41,7 +41,7 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
               ...(scopedGuestHouseObjectId ? { guestHouseId: scopedGuestHouseObjectId } : {}),
             },
           },
-          { $project: { userId: 1, guestHouseId: 1, roomId: 1, checkIn: 1, checkOut: 1, status: 1 } },
+          { $project: { userId: 1, guestHouseId: 1, roomIds: 1, checkIn: 1, checkOut: 1, status: 1 } },
         ],
         as: 'booking',
       },
@@ -66,15 +66,19 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
     {
       $lookup: {
         from: Room.collection.name,
-        let: { roomId: '$booking.roomId' },
+        let: { roomIds: '$booking.roomIds' },
         pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$roomId'] } } },
-          { $project: { roomNumber: 1 } },
+          {
+            $match: {
+              $expr: {
+                $in: ['$_id', { $ifNull: ['$$roomIds', []] }]
+              }
+            }
+          }
         ],
-        as: 'roomDoc',
+        as: 'roomsDoc',
       },
     },
-    { $addFields: { roomDoc: { $arrayElemAt: ['$roomDoc', 0] } } },
 
     {
       $lookup: {
@@ -111,7 +115,19 @@ export const getPaymentMethodReportData = async ({ paymentMethods, fromDate, toD
           },
         },
         guestPhone:    { $ifNull: ['$userDoc.phone', '—'] },
-        roomNumber:    { $ifNull: ['$roomDoc.roomNumber', '—'] },
+        roomNumber: {
+          $reduce: {
+            input: '$roomsDoc.roomNumber',
+            initialValue: '',
+            in: {
+              $cond: {
+                if: { $eq: ['$$value', ''] },
+                then: { $toString: '$$this' },
+                else: { $concat: ['$$value', ', ', { $toString: '$$this' }] }
+              }
+            }
+          }
+        },
         guestHouseName:{ $ifNull: ['$ghDoc.guestHouseName', '—'] },
         checkIn:  '$booking.checkIn',
         checkOut: '$booking.checkOut',

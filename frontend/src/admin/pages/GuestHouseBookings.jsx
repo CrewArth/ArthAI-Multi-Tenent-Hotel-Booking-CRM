@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
 import editIcon from "../../assets/edit.svg";
+import { getCurrentMonthDateRange } from "../utils/dateUtils";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -15,6 +16,7 @@ const GuestHouseBookings = () => {
   const navigate = useNavigate();
   const currentUser = useSelector((state) => state.auth?.user);
   const assignedGuestHouse = currentUser?.assignedGuestHouseId;
+  const { startDate: defaultStart, endDate: defaultEnd } = getCurrentMonthDateRange();
 
   const [bookings, setBookings] = useState([]);
   const [guestHousesList, setGuestHousesList] = useState([]);
@@ -23,12 +25,12 @@ const GuestHouseBookings = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(defaultEnd);
   const [appliedFilters, setAppliedFilters] = useState({
     status: "all",
-    startDate: "",
-    endDate: "",
+    startDate: defaultStart,
+    endDate: defaultEnd,
     guestHouseId: "all",
   });
 
@@ -110,15 +112,16 @@ const GuestHouseBookings = () => {
   };
 
   const resetFilter = () => {
+    const { startDate: defaultStart, endDate: defaultEnd } = getCurrentMonthDateRange();
     setStatusFilter("all");
-    setStartDate("");
-    setEndDate("");
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
     setSelectedGuestHouseId("all");
     setCurrentPage(1);
     setAppliedFilters({
       status: "all",
-      startDate: "",
-      endDate: "",
+      startDate: defaultStart,
+      endDate: defaultEnd,
       guestHouseId: "all",
     });
   };
@@ -238,7 +241,7 @@ const GuestHouseBookings = () => {
                     <td>{formatDate(b.checkIn)}</td>
                     <td>{formatDate(b.checkOut)}</td>
                     <td>
-                      {b.roomId?.roomNumber ? `Room ${b.roomId.roomNumber}` : "—"}
+                      {Array.isArray(b.roomIds) && b.roomIds.length ? b.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—' : '—'}
                       {b.bedId?.bedNumber ? ` / Bed ${b.bedId.bedNumber}` : ""}
                       {b.bedId?.bedType ? ` (${b.bedId.bedType})` : ""}
                     </td>

@@ -18,6 +18,15 @@ export default function Calendar({ assignedGhId = null }) {
 
   useEffect(() => {
     fetchApprovedBookings();
+
+    const handleStatusChange = () => {
+      fetchApprovedBookings();
+    };
+
+    window.addEventListener('bookingStatusChanged', handleStatusChange);
+    return () => {
+      window.removeEventListener('bookingStatusChanged', handleStatusChange);
+    };
   }, [assignedGhId]);
 
   const fetchApprovedBookings = async () => {
@@ -35,27 +44,47 @@ export default function Calendar({ assignedGhId = null }) {
         const userEmail = booking.userId?.email || 'N/A';
         const isCancelled = booking.status === 'cancelled';
         
+        const now = new Date();
+        const checkOutDateObj = new Date(booking.checkOut);
+        const isCheckedOut = booking.isCheckedOut || booking.status === 'checked_out' || booking.status === 'completed' || (!isCancelled && checkOutDateObj <= now);
+
         // FullCalendar's end date is exclusive, so we add 1 day to checkOut
         const checkOutDate = new Date(booking.checkOut);
         checkOutDate.setDate(checkOutDate.getDate() + 1);
-        
+
+        let bgColor = '#2563eb'; // Blue for active/approved
+        let borderColor = '#1d4ed8';
+        let statusTag = booking.status || 'approved';
+
+        if (isCancelled) {
+          bgColor = '#ef4444'; // Red for cancelled
+          borderColor = '#dc2626';
+          statusTag = 'cancelled';
+        } else if (isCheckedOut) {
+          bgColor = '#16a34a'; // Green for checked out
+          borderColor = '#15803d';
+          statusTag = 'checked_out';
+        }
+
         return {
           id: booking._id,
-          title: `${userName}${isCancelled ? ' (Cancelled)' : ''}`,
+          title: `${userName}`,
           start: booking.checkIn,
           end: checkOutDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
-          backgroundColor: isCancelled ? '#ef4444' : '#2563eb',
-          borderColor: isCancelled ? '#dc2626' : '#1d4ed8',
+          backgroundColor: bgColor,
+          borderColor: borderColor,
           textColor: '#ffffff',
           extendedProps: {
             guestHouse: booking.guestHouseId?.guestHouseName || 'N/A',
-            room: booking.roomId?.roomNumber || 'N/A',
+            room: Array.isArray(booking.roomIds) && booking.roomIds.length ? booking.roomIds.map(r => r?.roomNumber ? `${r.roomNumber}` : '').filter(Boolean).join(', ') || 'N/A' : 'N/A',
             bed: booking.bedId?.bedNumber || 'N/A',
             bedType: booking.bedId?.bedType || 'N/A',
             email: userEmail,
             checkIn: booking.checkIn,
             checkOut: booking.checkOut,
-            status: booking.status,
+            status: statusTag,
+            isCheckedOut: isCheckedOut,
+            isCancelled: isCancelled,
           },
         };
       });
@@ -83,11 +112,28 @@ export default function Calendar({ assignedGhId = null }) {
       checkIn: extendedProps.checkIn,
       checkOut: extendedProps.checkOut,
       status: extendedProps.status,
+      isCheckedOut: extendedProps.isCheckedOut,
+      isCancelled: extendedProps.isCancelled,
     });
     setConfirmCancel(false);
   };
 
+  const isCancelDisabled = Boolean(
+    selectedBooking?.isCancelled ||
+    selectedBooking?.isCheckedOut ||
+    selectedBooking?.status === 'cancelled' ||
+    selectedBooking?.status === 'checked_out'
+  );
+
+  const isEditDisabled = Boolean(
+    selectedBooking?.isCancelled ||
+    selectedBooking?.isCheckedOut ||
+    selectedBooking?.status === 'cancelled' ||
+    selectedBooking?.status === 'checked_out'
+  );
+
   const handleCancelBooking = async () => {
+    if (isCancelDisabled) return;
     if (!confirmCancel) {
       setConfirmCancel(true);
       return;
@@ -98,6 +144,7 @@ export default function Calendar({ assignedGhId = null }) {
       setSelectedBooking(null);
       setConfirmCancel(false);
       fetchApprovedBookings(); // refresh calendar
+      window.dispatchEvent(new CustomEvent('bookingStatusChanged'));
     } catch (err) {
       console.error('Error cancelling booking:', err);
     } finally {
@@ -204,29 +251,30 @@ export default function Calendar({ assignedGhId = null }) {
             </div>
 
             <div className="page-modal-footer">
-              {confirmCancel && (
+              {confirmCancel && !isCancelDisabled && (
                 <span style={{ fontSize: '0.85rem', color: '#dc2626', marginRight: 'auto' }}>
                   Are you sure? This cannot be undone.
                 </span>
               )}
-              {selectedBooking.status !== 'cancelled' && (
-                <button
-                  className="btn-action delete"
-                  onClick={handleCancelBooking}
-                  disabled={cancelling}
-                >
-                  {cancelling ? 'Cancelling…' : confirmCancel ? 'Confirm Cancel' : 'Cancel Booking'}
-                </button>
-              )}
+              <button
+                className="btn-action delete"
+                onClick={handleCancelBooking}
+                disabled={isCancelDisabled || cancelling}
+                title={isCancelDisabled ? 'Cannot cancel a cancelled or checked-out booking' : 'Cancel booking'}
+                style={isCancelDisabled ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
+              >
+                {cancelling ? 'Cancelling…' : confirmCancel ? 'Confirm Cancel' : 'Cancel Booking'}
+              </button>
               <button
                 className="btn-action toggle"
                 onClick={() => {
+                  if (isEditDisabled) return;
                   setSelectedBooking(null);
                   navigate('/admin/book-room', { state: { bookingId: selectedBooking.id } });
                 }}
-                disabled={selectedBooking.status === 'cancelled'}
-                title={selectedBooking.status === 'cancelled' ? 'Cannot edit a cancelled booking' : 'Edit booking'}
-                style={selectedBooking.status === 'cancelled' ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                disabled={isEditDisabled}
+                title={isEditDisabled ? 'Cannot edit a cancelled or checked-out booking' : 'Edit booking'}
+                style={isEditDisabled ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
               >
                 Edit
               </button>
@@ -246,9 +294,13 @@ export default function Calendar({ assignedGhId = null }) {
 }
 
 function renderEventContent(eventInfo) {
-  const isCancelled = eventInfo.event.extendedProps.status === 'cancelled';
+  const { isCancelled, isCheckedOut } = eventInfo.event.extendedProps;
+  let statusClass = '';
+  if (isCancelled) statusClass = 'cancelled';
+  else if (isCheckedOut) statusClass = 'checked-out';
+
   return (
-    <div className={`calendar-event ${isCancelled ? 'cancelled' : ''}`}>
+    <div className={`calendar-event ${statusClass}`}>
       <b>{eventInfo.event.title}</b>
     </div>
   );

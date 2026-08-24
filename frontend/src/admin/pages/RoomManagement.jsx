@@ -13,6 +13,7 @@ const RoomManagement = () => {
   const [guestHouses, setGuestHouses]   = useState([]);
   const [selectedGHId, setSelectedGHId] = useState(null);
   const [loading, setLoading]           = useState(false);
+  const [subUsage, setSubUsage]         = useState(null);
 
   const [searchParams] = useSearchParams();
   const ghFromQuery = searchParams.get('guestHouseId');
@@ -21,6 +22,13 @@ const RoomManagement = () => {
     try {
       const res = await api.post('/api/guesthouses/list');
       setGuestHouses(Array.isArray(res.data) ? res.data : []);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchSubUsage = async () => {
+    try {
+      const res = await api.post('/api/subscription/usage');
+      setSubUsage(res.data);
     } catch (err) { console.error(err); }
   };
 
@@ -44,6 +52,7 @@ const RoomManagement = () => {
 
   useEffect(() => {
     fetchGuestHouses();
+    fetchSubUsage();
     if (ghFromQuery) { setSelectedGHId(ghFromQuery); fetchGuestHouse(ghFromQuery); fetchRooms(ghFromQuery); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ghFromQuery]);
@@ -53,11 +62,23 @@ const RoomManagement = () => {
     else { setGuestHouse(null); setRooms([]); }
   }, [selectedGHId]);
 
+  const planName = subUsage?.plan || 'BASIC';
+  const maxRoomsPerHotel = subUsage?.limits?.maxRoomsPerHotel ?? 10;
+  const currentRoomCount = rooms.length;
+  const isRoomLimitReached = Boolean(selectedGHId) && currentRoomCount >= maxRoomsPerHotel;
+
+  const roomHoverMessage = !selectedGHId
+    ? 'Please select a hotel first'
+    : isRoomLimitReached
+      ? `Subscription limit reached: Your ${planName} plan allows a maximum of ${maxRoomsPerHotel} room(s) per hotel. Please upgrade your plan.`
+      : '';
+
   const handleAdd = async (newRoom) => {
     try {
       await api.post('/api/rooms', { ...newRoom, roomType: newRoom.roomType || 'single', guestHouseId: selectedGHId });
       toast.success('Room created successfully');
       fetchRooms(selectedGHId);
+      fetchSubUsage();
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to add room'); }
   };
 
@@ -82,6 +103,7 @@ const RoomManagement = () => {
       await api.delete(`/api/rooms/${roomId}`);
       toast.success('Room deleted');
       fetchRooms(selectedGHId);
+      fetchSubUsage();
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to delete room'); }
   };
 
@@ -96,6 +118,11 @@ const RoomManagement = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {selectedGHId && subUsage && (
+            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: '500' }}>
+              Plan: <strong style={{ color: '#1e293b' }}>{planName}</strong> ({currentRoomCount}/{maxRoomsPerHotel} Rooms)
+            </span>
+          )}
           <select
             className="toolbar-select"
             value={selectedGHId || ''}
@@ -110,13 +137,15 @@ const RoomManagement = () => {
           </select>
           <button
             className="btn-primary-cta"
-            disabled={!selectedGHId}
+            disabled={!selectedGHId || isRoomLimitReached}
+            title={roomHoverMessage}
+            style={(!selectedGHId || isRoomLimitReached) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             onClick={() => {
               if (!selectedGHId) { alert('Please select a Hotel first.'); return; }
               setIsModalOpen(true);
             }}
           >
-            + Add Room
+            + Add Room {isRoomLimitReached && `(${currentRoomCount}/${maxRoomsPerHotel})`}
           </button>
         </div>
       </div>

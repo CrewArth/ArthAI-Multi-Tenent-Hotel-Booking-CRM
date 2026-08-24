@@ -16,14 +16,10 @@ const bookingSchema = new mongoose.Schema(
       ref: "GuestHouse",
       required: true,
     },
-    roomId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Room",
-      required: true,
-    },
     roomIds: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Room',
+      required: true,
     }],
     bedId: {
       type: mongoose.Schema.Types.ObjectId,

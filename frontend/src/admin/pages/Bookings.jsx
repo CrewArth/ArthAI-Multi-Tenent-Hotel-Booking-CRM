@@ -4,6 +4,7 @@ import { FaFileExcel } from "react-icons/fa";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
 import editIcon from "../../assets/edit.svg";
+import { getCurrentMonthDateRange } from "../utils/dateUtils";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -15,6 +16,7 @@ const LIMIT = 10;
 
 const Bookings = () => {
   const navigate = useNavigate();
+  const { startDate: defaultStart, endDate: defaultEnd } = getCurrentMonthDateRange();
   const [bookings, setBookings]               = useState([]);
   const [loading, setLoading]                 = useState(true);
   const [refreshing, setRefreshing]           = useState(false);
@@ -25,12 +27,12 @@ const Bookings = () => {
   const [isExporting, setIsExporting]         = useState(false);
 
   // Filter state (pending until Apply)
-  const [statusInput, setStatusInput]   = useState("all");
-  const [startDateInput, setStartDateInput] = useState("");
-  const [endDateInput, setEndDateInput]     = useState("");
+  const [statusInput, setStatusInput]       = useState("all");
+  const [startDateInput, setStartDateInput] = useState(defaultStart);
+  const [endDateInput, setEndDateInput]     = useState(defaultEnd);
 
   // Applied filters + pagination
-  const [appliedFilters, setAppliedFilters] = useState({ status: "all", startDate: "", endDate: "" });
+  const [appliedFilters, setAppliedFilters] = useState({ status: "all", startDate: defaultStart, endDate: defaultEnd });
   const [currentPage, setCurrentPage]       = useState(1);
   const [totalPages, setTotalPages]         = useState(1);
   const [totalCount, setTotalCount]         = useState(0);
@@ -82,11 +84,12 @@ const Bookings = () => {
   };
 
   const resetFilter = () => {
+    const { startDate: defaultStart, endDate: defaultEnd } = getCurrentMonthDateRange();
     setStatusInput("all");
-    setStartDateInput("");
-    setEndDateInput("");
+    setStartDateInput(defaultStart);
+    setEndDateInput(defaultEnd);
     setCurrentPage(1);
-    setAppliedFilters({ status: "all", startDate: "", endDate: "" });
+    setAppliedFilters({ status: "all", startDate: defaultStart, endDate: defaultEnd });
   };
 
   const handleExport = async () => {
@@ -223,7 +226,7 @@ const Bookings = () => {
                     </td>
                     <td>{formatDate(b.checkIn)}</td>
                     <td>{formatDate(b.checkOut)}</td>
-                    <td>{b.roomId?.roomNumber ? `Room ${b.roomId.roomNumber}` : "—"}</td>
+                    <td>{Array.isArray(b.roomIds) && b.roomIds.length ? b.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—' : '—'}</td>
                     <td>{b.bedId?.bedNumber ? `Bed ${b.bedId.bedNumber}` : "—"}</td>
                     <td><span className={`badge ${b.status}`}>{b.status}</span></td>
                     <td>
@@ -308,7 +311,7 @@ const Bookings = () => {
                 <p><strong>Email</strong>{selected.userId?.email || selected.email || "—"}</p>
                 <p><strong>Phone</strong>{selected.userId?.phone || selected.phone || "—"}</p>
                 <p><strong>Hotel</strong>{selected.guestHouseId?.guestHouseName || "—"}</p>
-                <p><strong>Room</strong>{selected.roomId?.roomNumber ? `Room ${selected.roomId.roomNumber}` : "—"}</p>
+                <p><strong>Room</strong>{Array.isArray(selected.roomIds) && selected.roomIds.length ? selected.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—' : '—'}</p>
                 <p><strong>Bed</strong>{selected.bedId?.bedNumber ? `Bed ${selected.bedId.bedNumber} (${selected.bedId.bedType})` : "—"}</p>
                 <p><strong>Check-In</strong>{formatDate(selected.checkIn)}</p>
                 <p><strong>Check-Out</strong>{formatDate(selected.checkOut)}</p>

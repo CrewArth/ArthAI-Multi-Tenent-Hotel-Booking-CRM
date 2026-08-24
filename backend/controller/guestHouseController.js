@@ -1,6 +1,7 @@
 import { logAction } from '../utils/auditLogger.js';
 import { deleteFromS3 } from "../utils/s3Client.js";
 import { generateId } from '../utils/generateId.js';
+import { getCache, setCache, deletePatternCache } from '../config/redis.js';
 
 const MAX_GUEST_HOUSES = 4;
 
@@ -47,6 +48,9 @@ export const createGuestHouse = async (req, res) => {
       },
     }, req.tenantDb);
 
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:guesthouse*`);
+
     res.status(201).json({
       message: "Guest House Created Successfully",
       guestHouse,
@@ -70,7 +74,17 @@ export const createGuestHouse = async (req, res) => {
 export const getGuestHouses = async (req, res) => {
   try {
     const { GuestHouse } = req.tenantModels;
-    const guestHouses = await GuestHouse.find().sort({ guestHouseId: 1 });
+    const dbName = req.tenantDb?.name || 'default';
+    const cacheKey = `tenant:${dbName}:guesthouses:all`;
+
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json(cached);
+    }
+
+    const guestHouses = await GuestHouse.find().sort({ guestHouseId: 1 }).lean();
+    await setCache(cacheKey, guestHouses, 600); // 10 mins TTL
+
     res.status(200).json(guestHouses);
   } catch (error) {
     console.error("Error fetching guest houses:", error);
@@ -103,6 +117,9 @@ export const toggleMaintenanceMode = async (req, res) => {
         newStatus: guestHouse.maintenance,
       },
     }, req.tenantDb);
+
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:guesthouse*`);
 
     res.json({
       message: `Maintenance mode ${guestHouse.maintenance ? 'activated' : 'deactivated'}`,
@@ -147,6 +164,9 @@ export const deleteGuestHouse = async (req, res) => {
     } catch (logError) {
       console.warn("Audit log error (continued):", logError.message);
     }
+
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:guesthouse*`);
 
     return res.json({
       success: true,
@@ -201,6 +221,9 @@ export const updateGuestHouse = async (req, res) => {
       details: updateData,
     }, req.tenantDb);
 
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:guesthouse*`);
+
     res.status(200).json({
       message: "Guest House updated successfully",
       guestHouse: updatedGuestHouse,
@@ -225,12 +248,21 @@ export const getGuestHouseById = async (req, res) => {
   try {
     const { GuestHouse } = req.tenantModels;
     const guestHouseId = req.params.guestHouseId;
+    const dbName = req.tenantDb?.name || 'default';
+    const cacheKey = `tenant:${dbName}:guesthouse:${guestHouseId}`;
 
-    const guestHouse = await GuestHouse.findOne({ guestHouseId });
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, guestHouse: cached });
+    }
+
+    const guestHouse = await GuestHouse.findOne({ guestHouseId }).lean();
 
     if (!guestHouse) {
       return res.status(404).json({ message: "Guest House not found" });
     }
+
+    await setCache(cacheKey, guestHouse, 600);
 
     res.status(200).json({ success: true, guestHouse });
   } catch (error) {

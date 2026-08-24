@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
 import '../styles/receiptPaymentModal.css';
@@ -17,6 +18,7 @@ import { PAYMENT_METHODS, DEFAULT_PAYMENT_METHOD } from '../../common/paymentMet
 
 export default function ReceiptPaymentModal({ receipt, onClose, onSuccess }) {
   const { bookingId, outstandingBalance, booking: receiptBooking } = receipt || {};
+  const currentUser = useSelector((state) => state.auth?.user);
 
   const [booking, setBooking] = useState(receiptBooking || null);
   const [invoice, setInvoice] = useState(null);
@@ -70,7 +72,7 @@ export default function ReceiptPaymentModal({ receipt, onClose, onSuccess }) {
 
   const roomsLabel = useMemo(() => {
     if (!booking) return '—';
-    const rooms = booking.roomIds?.length ? booking.roomIds : booking.roomId ? [booking.roomId] : [];
+    const rooms = Array.isArray(booking.roomIds) ? booking.roomIds : [];
     return rooms.map((r) => (r?.roomNumber ? `Room ${r.roomNumber}` : '')).filter(Boolean).join(', ') || '—';
   }, [booking]);
 
@@ -94,6 +96,7 @@ export default function ReceiptPaymentModal({ receipt, onClose, onSuccess }) {
         taxBreakdown: invoice?.taxBreakdown || [],
         invoiceId: invoice?.id || null,
         invoice: updatedInvoice, note,
+        outstanding_payment: true,
       });
       // For printing: show only what was paid NOW, not the cumulative total
       const receiptInvoice = {
@@ -294,7 +297,7 @@ export default function ReceiptPaymentModal({ receipt, onClose, onSuccess }) {
             <button
               className="rpm-footer-btn rpm-footer-btn--secondary"
               onClick={() => {
-                if (!printOutstandingReceipt(booking, lastInvoice))
+                if (!printOutstandingReceipt(booking, lastInvoice, { eSignatureUrl: currentUser?.eSignatureUrl }))
                   toast.error('Pop-up blocked. Please allow pop-ups for this site.');
               }}
             >

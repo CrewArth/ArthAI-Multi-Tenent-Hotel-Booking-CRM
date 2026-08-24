@@ -36,7 +36,7 @@ export const bookingRequest = (user, booking, guestHouse) => {
         </tr>
         <tr>
           <td style="padding: 10px 0; font-weight: 600; color: #0B1957; vertical-align: top;">Room / Bed:</td>
-          <td style="padding: 10px 0; color: #2a2a2a; font-weight: 500;">${booking.roomId?.roomNumber ? `Room ${booking.roomId.roomNumber}` : 'Room details available'}${booking.bedId?.bedNumber ? ` / Bed ${booking.bedId.bedNumber}` : ''}</td>
+          <td style="padding: 10px 0; color: #2a2a2a; font-weight: 500;">${Array.isArray(booking.roomIds) && booking.roomIds.length ? booking.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') : 'Room details available'}${booking.bedId?.bedNumber ? ` / Bed ${booking.bedId.bedNumber}` : ''}</td>
         </tr>
         <tr>
           <td style="padding: 10px 0; font-weight: 600; color: #0B1957; vertical-align: top;">Check-in:</td>

@@ -3,7 +3,7 @@ import { isObjectId } from '../utils/isObjectId.js';
 export const createPayment = async (req, res) => {
   try {
     const { Payment, Booking, Invoice } = req.tenantModels;
-    const { bookingId, amountPaid, paymentMethod, taxesTotal, taxBreakdown, invoiceId } = req.body;
+    const { bookingId, amountPaid, paymentMethod, taxesTotal, taxBreakdown, invoiceId, outstanding_payment, isOutstanding } = req.body;
     if (!bookingId || amountPaid == null) return res.status(400).json({ message: 'bookingId and amountPaid required' });
 
     const booking = await Booking.findById(bookingId);
@@ -11,6 +11,9 @@ export const createPayment = async (req, res) => {
 
     const payAmt = Number(amountPaid) || 0;
     const taxesAmt = Number(taxesTotal) || 0;
+    const isOutstandingFlag = typeof outstanding_payment === 'boolean'
+      ? outstanding_payment
+      : Boolean(isOutstanding || false);
 
     const payment = await Payment.create({
       bookingId,
@@ -19,6 +22,7 @@ export const createPayment = async (req, res) => {
       taxesTotal: taxesAmt,
       taxBreakdown: taxBreakdown || [],
       createdBy: req.user?._id,
+      outstanding_payment: isOutstandingFlag,
     });
 
     let invoiceDoc = null;
@@ -173,7 +177,7 @@ export const listOutstandingReceipts = async (req, res) => {
       if (fromDate || toDate) {
         bookingMatch.checkIn = {};
         if (fromDate) bookingMatch.checkIn.$gte = new Date(`${fromDate}T00:00:00.000Z`);
-        if (toDate)   bookingMatch.checkIn.$lte = new Date(`${toDate}T23:59:59.999Z`);
+        if (toDate) bookingMatch.checkIn.$lte = new Date(`${toDate}T23:59:59.999Z`);
       }
       if (search && search.trim()) {
         const re = { $regex: search.trim(), $options: 'i' };
@@ -242,7 +246,6 @@ export const listOutstandingReceipts = async (req, res) => {
       const pmtBookingIds = outstandingPayments.map((r) => r.bookingId);
       const bookingsWithJoins = await Booking.find({ _id: { $in: pmtBookingIds } })
         .populate('userId', 'firstName lastName email phone')
-        .populate('roomId', 'roomNumber')
         .populate('roomIds', 'roomNumber')
         .lean();
       const bookingMap = {};
@@ -263,7 +266,7 @@ export const listOutstandingReceipts = async (req, res) => {
     if (fromDate || toDate) {
       matchStage.checkIn = {};
       if (fromDate) matchStage.checkIn.$gte = new Date(`${fromDate}T00:00:00.000Z`);
-      if (toDate)   matchStage.checkIn.$lte = new Date(`${toDate}T23:59:59.999Z`);
+      if (toDate) matchStage.checkIn.$lte = new Date(`${toDate}T23:59:59.999Z`);
     }
     if (search && search.trim()) {
       const re = { $regex: search.trim(), $options: 'i' };
@@ -322,20 +325,20 @@ export const listOutstandingReceipts = async (req, res) => {
       {
         $group: {
           _id: '$_id',
-          bookingId:          { $first: '$_id' },
+          bookingId: { $first: '$_id' },
           outstandingBalance: { $first: '$outstandingBalance' },
-          createdAt:          { $first: '$createdAt' },
-          checkIn:            { $first: '$checkIn' },
-          checkOut:           { $first: '$checkOut' },
-          guestHouseId:       { $first: '$guestHouseId' },
-          status:             { $first: '$status' },
-          userId:             { $first: '$userId' },
-          roomId:             { $first: '$roomId' },
-          roomIds:            { $first: '$roomIds' },
-          bedId:              { $first: '$bedId' },
-          isCheckedOut:       { $first: '$isCheckedOut' },
-          familyMembers:      { $first: '$familyMembers' },
-          specialRequests:    { $first: '$specialRequests' },
+          createdAt: { $first: '$createdAt' },
+          checkIn: { $first: '$checkIn' },
+          checkOut: { $first: '$checkOut' },
+          guestHouseId: { $first: '$guestHouseId' },
+          status: { $first: '$status' },
+          userId: { $first: '$userId' },
+          roomId: { $first: '$roomId' },
+          roomIds: { $first: '$roomIds' },
+          bedId: { $first: '$bedId' },
+          isCheckedOut: { $first: '$isCheckedOut' },
+          familyMembers: { $first: '$familyMembers' },
+          specialRequests: { $first: '$specialRequests' },
         },
       },
       {
@@ -474,18 +477,6 @@ export const listCheckedOutBookings = async (req, res) => {
         },
       },
       { $addFields: { userId: { $arrayElemAt: ['$userId', 0] } } },
-      {
-        $lookup: {
-          from: Room.collection.name,
-          let: { roomId: '$roomId' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$roomId'] } } },
-            { $project: { roomNumber: 1 } },
-          ],
-          as: 'roomId',
-        },
-      },
-      { $addFields: { roomId: { $arrayElemAt: ['$roomId', 0] } } },
       {
         $lookup: {
           from: Room.collection.name,

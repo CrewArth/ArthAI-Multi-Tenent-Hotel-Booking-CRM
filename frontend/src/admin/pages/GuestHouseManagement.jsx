@@ -8,8 +8,7 @@ const GuestHouseManagement = () => {
   const navigate = useNavigate();
   const [guestHouses, setGuestHouses] = useState([]);
   const [ghToDelete, setGhToDelete] = useState(null);
-  const MAX_GUEST_HOUSES = 4;
-  const canAddMore = guestHouses.length < MAX_GUEST_HOUSES;
+  const [subUsage, setSubUsage] = useState(null);
 
   const fetchGuestHouses = async () => {
     try {
@@ -21,12 +20,33 @@ const GuestHouseManagement = () => {
     }
   };
 
-  useEffect(() => { fetchGuestHouses(); }, []);
+  const fetchSubUsage = async () => {
+    try {
+      const res = await api.post("/api/subscription/usage");
+      setSubUsage(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchGuestHouses();
+    fetchSubUsage();
+  }, []);
+
+  const planName = subUsage?.plan || 'BASIC';
+  const maxHotels = subUsage?.limits?.maxHotels ?? 1;
+  const currentHotels = guestHouses.length;
+  const isLimitReached = currentHotels >= maxHotels;
+  const hoverMessage = isLimitReached
+    ? `Subscription limit reached: Your ${planName} plan allows a maximum of ${maxHotels} hotel(s). Please upgrade your plan.`
+    : '';
 
   const toggleMaintenance = async (id) => {
     try {
       await api.patch(`/api/guesthouses/${id}/maintenance`);
       fetchGuestHouses();
+      fetchSubUsage();
     } catch (err) {
       console.error(err);
       const msg = err?.response?.data?.message || err?.response?.data?.error || "Failed to toggle maintenance mode";
@@ -46,6 +66,7 @@ const GuestHouseManagement = () => {
       toast.error(msg);
     } finally {
       fetchGuestHouses();
+      fetchSubUsage();
     }
   };
 
@@ -56,14 +77,22 @@ const GuestHouseManagement = () => {
         <div>
           <h1 className="page-title">Hotel Management</h1>
         </div>
-        <button 
-          className="btn-primary-cta" 
-          onClick={() => navigate('/super-admin/add-hotel')}
-          disabled={!canAddMore}
-          title={!canAddMore ? `Maximum limit of ${MAX_GUEST_HOUSES} hotels reached` : ''}
-        >
-          Add Hotel {!canAddMore && `(${guestHouses.length}/${MAX_GUEST_HOUSES})`}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {subUsage && (
+            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: '500' }}>
+              Plan: <strong style={{ color: '#1e293b' }}>{planName}</strong> ({currentHotels}/{maxHotels} Hotels)
+            </span>
+          )}
+          <button 
+            className="btn-primary-cta" 
+            onClick={() => navigate('/super-admin/add-hotel')}
+            disabled={isLimitReached}
+            title={hoverMessage}
+            style={isLimitReached ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+          >
+            Add Hotel {isLimitReached && `(${currentHotels}/${maxHotels})`}
+          </button>
+        </div>
       </div>  
 
       {/* Table */}

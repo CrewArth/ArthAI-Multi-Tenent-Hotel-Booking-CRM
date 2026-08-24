@@ -8,6 +8,7 @@ import { logAction } from "../utils/auditLogger.js";
 import { getTenantDb, connectMasterDb } from "../config/dbManager.js";
 import { getClientIp } from "../utils/ipHelper.js";
 import tenantSchema from "../models/centralModels/Tenant.js";
+import { invalidateUserSession } from "../middlewares/auth.js";
 
 const getCentralTenantModel = async () => {
   const master = await connectMasterDb();
@@ -187,6 +188,8 @@ export const loginUser = async (req, res) => {
     user.login_secret_key = secretKey;
     user.last_login = new Date();
     await user.save({ validateBeforeSave: false });
+
+    await invalidateUserSession(dbName, user._id);
 
     const clientIp = getClientIp(req);
     const token = generateToken(user, {

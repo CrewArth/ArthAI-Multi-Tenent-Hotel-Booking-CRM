@@ -200,3 +200,27 @@
 .btn.confirm:hover {
   background: #1d4ed8;
 }
+
+/* PhoneInput Custom Styling */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.PhoneInputInput {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.PhoneInputInput:focus {
+  border-color: #2563eb;
+}

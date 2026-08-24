@@ -20,14 +20,17 @@ const saveToStorage = (settings) => {
 };
 
 const defaults = {
-  siteName: 'Arth Hotel',
+  siteName: 'Arth.AI',
   logoUrl: null, // null → use the bundled logo.png fallback
 };
 
 const storedSettings = loadFromStorage();
+const initialSiteName = (!storedSettings?.siteName || storedSettings?.siteName === 'Arth Hotel')
+  ? defaults.siteName
+  : storedSettings.siteName;
 
 const initialState = {
-  siteName: storedSettings?.siteName ?? defaults.siteName,
+  siteName: initialSiteName,
   logoUrl: storedSettings?.logoUrl ?? defaults.logoUrl,
 };
 

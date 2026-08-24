@@ -1,5 +1,7 @@
 // EditUserModal.jsx
 import React, { useState, useEffect } from "react";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 import "../styles/editUserModel.css";
 import { toast } from "react-toastify";
 import { readAndCompressImageAsDataUrl } from "../utils/imageUtils";
@@ -47,6 +49,7 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
       const payload = new FormData();
       payload.append("firstName", form.firstName);
       payload.append("lastName", form.lastName);
+      payload.append("email", form.email);
       payload.append("phone", form.phone);
       payload.append("address", form.address);
       payload.append("isActive", String(form.isActive));
@@ -135,24 +138,24 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
           {/* Email & Phone Grid */}
           <div className="form-grid-2">
             <label className="form-label">
-              Email Address
+              Email Address *
               <input
                 type="email"
                 name="email"
                 value={form.email}
-                disabled
-                className="form-input disabled-input"
+                onChange={handleChange}
+                required
+                className="form-input"
               />
             </label>
 
             <label className="form-label">
               Phone Number
-              <input
-                type="text"
-                name="phone"
+              <PhoneInput
+                defaultCountry="IN"
+                placeholder="Enter phone number"
                 value={form.phone}
-                onChange={handleChange}
-                className="form-input"
+                onChange={(val) => setForm((f) => ({ ...f, phone: val || '' }))}
               />
             </label>
           </div>

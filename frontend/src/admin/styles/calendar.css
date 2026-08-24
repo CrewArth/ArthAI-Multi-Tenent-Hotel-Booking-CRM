@@ -107,6 +107,15 @@
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
 }
 
+.calendar-event.checked-out {
+  background-color: #16a34a;
+}
+
+.calendar-event.checked-out:hover {
+  background-color: #15803d;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
 .calendar-event b {
   font-weight: 600;
 }

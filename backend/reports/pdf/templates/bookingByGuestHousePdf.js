@@ -166,7 +166,11 @@ export const generateBookingByGuestHousePdf = async (data, filters, meta) => {
       doc.text(gPhone, cols[2].x + 3, y + 6, { width: cols[2].w - 6, align: cols[2].align, ellipsis: true });
 
       // Room / Bed
-      let roomBedStr = b.roomNumber ? `R-${b.roomNumber}` : '—';
+      let roomBedStr = '—';
+      if (b.roomNumber != null && String(b.roomNumber).trim() !== '') {
+        const roomsArr = String(b.roomNumber).split(',').map((r) => r.trim()).filter(Boolean);
+        roomBedStr = roomsArr.map((r) => `R-${r}`).join(', ');
+      }
       if (b.bedNumber) roomBedStr += ` / B-${b.bedNumber}`;
       doc.text(roomBedStr, cols[3].x + 3, y + 6, { width: cols[3].w - 6, align: cols[3].align, ellipsis: true });
 
@@ -197,16 +201,10 @@ export const generateBookingByGuestHousePdf = async (data, filters, meta) => {
 
     doc.moveTo(LEFT, footerY - 8).lineTo(RIGHT, footerY - 8).strokeColor('#cbd5e1').lineWidth(0.5).stroke();
 
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b')
-      .text(`Created By: ${performerName}`, LEFT, footerY, { lineBreak: false });
-
-    doc.font('Helvetica').fontSize(8).fillColor('#64748b')
-      .text(`Generated On: ${generatedOn}   |   Page ${i + 1} of ${range.count}`, LEFT + 150, footerY, { align: 'right', width: TABLE_WIDTH - 150, lineBreak: false });
-
-    const signatureWidth = 108;
-    const signatureHeight = 34;
-    const signatureX = RIGHT - signatureWidth;
-    const signatureY = footerY - 52;
+    const signatureWidth = 100;
+    const signatureHeight = 32;
+    const signatureX = LEFT;
+    const signatureY = footerY - 44;
 
     const signatureDrawn = await drawImageFromSource(doc, eSignatureUrl, signatureX, signatureY, {
       fit: [signatureWidth, signatureHeight],
@@ -215,9 +213,15 @@ export const generateBookingByGuestHousePdf = async (data, filters, meta) => {
       doc.font('Helvetica').fontSize(7).fillColor('#64748b')
         .text('Authorized Signature', signatureX, signatureY + signatureHeight + 2, {
           width: signatureWidth,
-          align: 'right',
+          align: 'left',
         });
     }
+
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b')
+      .text(`Created By: ${performerName}`, LEFT, footerY, { lineBreak: false });
+
+    doc.font('Helvetica').fontSize(8).fillColor('#64748b')
+      .text(`Generated On: ${generatedOn}   |   Page ${i + 1} of ${range.count}`, LEFT + 150, footerY, { align: 'right', width: TABLE_WIDTH - 150, lineBreak: false });
   }
 
   doc.end();

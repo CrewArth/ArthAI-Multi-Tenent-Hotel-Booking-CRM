@@ -1,4 +1,6 @@
+import bcrypt from "bcryptjs";
 import { logAction } from "../utils/auditLogger.js";
+import { invalidateUserSession } from "../middlewares/auth.js";
 
 const getTrackedDetails = (payload = {}) => {
   const allowedFields = [
@@ -36,8 +38,8 @@ export const updateUser = async (req, res) => {
       return res.status(403).json({ message: "You are not allowed to update this user." });
     }
 
-    if (!isSuperAdmin && req.eSignatureUrl) {
-      return res.status(403).json({ message: "Only SUPER_ADMIN can upload ESignature." });
+    if (!isSuperAdmin && !isSameUser && req.eSignatureUrl) {
+      return res.status(403).json({ message: "Only SUPER_ADMIN or the account owner can upload ESignature." });
     }
 
     const forbiddenForNonSuperAdmin = [
@@ -46,7 +48,6 @@ export const updateUser = async (req, res) => {
       "allowedWidgets",
       "allowedReports",
       "assignedGuestHouseId",
-      "eSignatureUrl",
     ];
 
     const updatedData = { ...req.body };
@@ -54,6 +55,25 @@ export const updateUser = async (req, res) => {
       forbiddenForNonSuperAdmin.forEach((field) => {
         delete updatedData[field];
       });
+    }
+
+    if (updatedData.email && String(updatedData.email).trim() !== '') {
+      const emailFormatted = String(updatedData.email).trim().toLowerCase();
+      const existingUser = await User.findOne({ email: emailFormatted, _id: { $ne: id } });
+      if (existingUser) {
+        return res.status(400).json({ message: "An account with this email address already exists." });
+      }
+      updatedData.email = emailFormatted;
+    }
+
+    if (updatedData.password && String(updatedData.password).trim() !== '') {
+      if (String(updatedData.password).length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long." });
+      }
+      const salt = await bcrypt.genSalt(10);
+      updatedData.password = await bcrypt.hash(updatedData.password, salt);
+    } else {
+      delete updatedData.password;
     }
 
     if (updatedData.isActive === "true") {
@@ -74,6 +94,8 @@ export const updateUser = async (req, res) => {
     if (!updatedUser) {
       return res.status(404).json({ message: "User not Found!" });
     }
+
+    await invalidateUserSession(req.tenantDb?.name, updatedUser._id);
 
     await logAction({
       action: "USER_UPDATED",
@@ -121,6 +143,8 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    await invalidateUserSession(req.tenantDb?.name, deleted._id);
+
     await logAction({
       action: "USER_DELETED",
       entityType: "User",
@@ -154,6 +178,8 @@ export const deactivateUser = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    await invalidateUserSession(req.tenantDb?.name, user._id);
+
     await logAction({
       action: "USER_DEACTIVATED",
       entityType: "User",
@@ -181,6 +207,8 @@ export const toggleUserStatus = async (req, res) => {
 
     user.isActive = !user.isActive;
     await user.save();
+
+    await invalidateUserSession(req.tenantDb?.name, user._id);
 
     await logAction({
       action: user.isActive ? "USER_ACTIVATED" : "USER_DEACTIVATED",

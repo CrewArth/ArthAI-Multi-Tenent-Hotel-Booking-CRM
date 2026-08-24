@@ -59,15 +59,17 @@ export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDat
     {
       $lookup: {
         from: Room.collection.name,
-        localField: "roomId",
-        foreignField: "_id",
-        as: "roomDoc",
-      },
-    },
-    {
-      $unwind: {
-        path: "$roomDoc",
-        preserveNullAndEmptyArrays: true,
+        let: { roomIds: '$roomIds' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $in: ['$_id', { $ifNull: ['$$roomIds', []] }]
+              }
+            }
+          }
+        ],
+        as: 'roomsDoc',
       },
     },
     {
@@ -97,8 +99,20 @@ export const getBookingByGuestHouseData = async ({ guestHouseId, fromDate, toDat
         },
         guestEmail: { $ifNull: ["$userDoc.email", "$email"] },
         guestPhone: { $ifNull: ["$userDoc.phone", "$phone"] },
-        roomNumber: "$roomDoc.roomNumber",
-        roomType: "$roomDoc.roomType",
+        roomNumber: {
+          $reduce: {
+            input: '$roomsDoc.roomNumber',
+            initialValue: '',
+            in: {
+              $cond: {
+                if: { $eq: ['$$value', ''] },
+                then: { $toString: '$$this' },
+                else: { $concat: ['$$value', ', ', { $toString: '$$this' }] }
+              }
+            }
+          }
+        },
+        roomType: { $arrayElemAt: ['$roomsDoc.roomType', 0] },
         bedNumber: "$bedDoc.bedNumber",
         bedType: "$bedDoc.bedType",
         checkIn: 1,

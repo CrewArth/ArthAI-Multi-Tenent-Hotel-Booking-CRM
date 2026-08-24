@@ -1,6 +1,7 @@
 import { createRoomSchema, updateRoomSchema, listRoomsQuerySchema } from '../validators/room.schema.js';
 import { logAction } from '../utils/auditLogger.js';
 import { isObjectId } from '../utils/isObjectId.js';
+import { getCache, setCache, deletePatternCache } from '../config/redis.js';
 
 const sendError = (res, status, message, details) =>
   res.status(status).json({ success: false, message, ...(details ? { details } : {}) });
@@ -49,6 +50,9 @@ export const createRoom = async (req, res) => {
         roomType: room.roomType,
       },
     }, req.tenantDb);
+
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:rooms:*`);
 
     return res.status(201).json({ success: true, message: 'Room created', room });
   } catch (err) {
@@ -139,6 +143,9 @@ export const updateRoom = async (req, res) => {
       },
     }, req.tenantDb);
 
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:rooms:*`);
+
     return res.json({ success: true, message: 'Room updated', room });
   } catch (err) {
     if (err?.code === 11000) {
@@ -176,6 +183,9 @@ export const setAvailability = async (req, res) => {
       },
     }, req.tenantDb);
 
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:rooms:*`);
+
     return res.json({ success: true, message: 'Availability updated', room });
   } catch (err) {
     console.error('setAvailability error:', err);
@@ -206,6 +216,9 @@ export const softDeleteRoom = async (req, res) => {
       },
     }, req.tenantDb);
 
+    const dbName = req.tenantDb?.name || 'default';
+    await deletePatternCache(`tenant:${dbName}:rooms:*`);
+
     return res.json({ success: true, message: 'Room archived', room });
   } catch (err) {
     console.error('softDeleteRoom error:', err);
@@ -228,7 +241,16 @@ export const getRoomsByGuestHouse = async (req, res) => {
       return res.status(404).json({ error: "Guest house not found" });
     }
 
-    const rooms = await Room.find({ guestHouseId: gh.guestHouseId, isActive: true });
+    const dbName = req.tenantDb?.name || 'default';
+    const cacheKey = `tenant:${dbName}:rooms:gh:${gh.guestHouseId}`;
+
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json({ success: true, rooms: cached });
+    }
+
+    const rooms = await Room.find({ guestHouseId: gh.guestHouseId, isActive: true }).lean();
+    await setCache(cacheKey, rooms, 600);
 
     res.json({ success: true, rooms });
   } catch (error) {

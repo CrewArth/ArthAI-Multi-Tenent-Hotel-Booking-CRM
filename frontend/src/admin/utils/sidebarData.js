@@ -11,7 +11,7 @@ export const superAdminSidebarData = [
     id: 'MC_GUEST_HOUSE',
     name: 'Hotels',
     icon: Building2,
-    navigate: '/super-admin/guesthouses',
+    navigate: '/super-admin/hotel',
   },
   {
     id: 'MC_ROOM_MANAGEMENT',

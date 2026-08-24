@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import api from '../../utils/api';
 import ReceiptPaymentModal from '../components/ReceiptPaymentModal';
 import { printOutstandingReceipt } from '../utils/printInvoice';
+import { getCurrentMonthDateRange } from '../utils/dateUtils';
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -18,6 +19,7 @@ const formatDate = (value) => {
 };
 
 const Receipts = () => {
+  const { fromDate: defaultFrom, toDate: defaultTo } = getCurrentMonthDateRange();
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,11 +27,11 @@ const Receipts = () => {
 
   // Filter state
   const [searchInput, setSearchInput] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(defaultFrom);
+  const [toDate, setToDate] = useState(defaultTo);
 
   // Applied filters (committed on Search / Reset)
-  const [applied, setApplied] = useState({ search: '', fromDate: '', toDate: '', paid: false });
+  const [applied, setApplied] = useState({ search: '', fromDate: defaultFrom, toDate: defaultTo, paid: false });
   const [paid, setPaid] = useState(false);
 
   const fetchReceipts = async (filters = applied) => {
@@ -55,7 +57,7 @@ const Receipts = () => {
 
   // Load on mount
   useEffect(() => {
-    fetchReceipts({ search: '', fromDate: '', toDate: '' });
+    fetchReceipts({ search: '', fromDate: defaultFrom, toDate: defaultTo });
   }, []);
 
   const handleSearch = (e) => {
@@ -66,11 +68,12 @@ const Receipts = () => {
   };
 
   const handleReset = () => {
+    const { fromDate: dFrom, toDate: dTo } = getCurrentMonthDateRange();
     setSearchInput('');
-    setFromDate('');
-    setToDate('');
+    setFromDate(dFrom);
+    setToDate(dTo);
     setPaid(false);
-    const next = { search: '', fromDate: '', toDate: '', paid: false };
+    const next = { search: '', fromDate: dFrom, toDate: dTo, paid: false };
     setApplied(next);
     fetchReceipts(next);
   };

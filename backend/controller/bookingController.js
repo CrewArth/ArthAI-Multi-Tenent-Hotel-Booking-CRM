@@ -6,6 +6,8 @@ import { bookingRequest } from "../utils/emailTemplates/bookingRequest.js";
 import { bookingStatusUpdate } from "../utils/emailTemplates/bookingStatusUpdate.js";
 import { upsertNormalUser } from "../utils/upsertNormalUser.js";
 import { isObjectId } from "../utils/isObjectId.js";
+import { acquireLock, releaseLock } from "../utils/redisLock.js";
+import { getCache, setCache, deletePatternCache } from "../config/redis.js";
 
 const parseFamilyMembers = (familyMembers) => {
   if (!familyMembers) return [];
@@ -55,21 +57,11 @@ const getBookingRoomIdStrings = (booking) => {
       (typeof room === "object" && room?._id ? room._id : room).toString()
     );
   }
-  if (booking.roomId) {
-    const id = typeof booking.roomId === "object" && booking.roomId._id
-      ? booking.roomId._id
-      : booking.roomId;
-    return [id.toString()];
-  }
   return [];
 };
 
 const formatBookingRoomsLabel = (booking) => {
-  const rooms = booking.roomIds?.length
-    ? booking.roomIds
-    : booking.roomId
-      ? [booking.roomId]
-      : [];
+  const rooms = Array.isArray(booking.roomIds) ? booking.roomIds : [];
   return rooms
     .map((room) => (typeof room === "object" && room?.roomNumber ? `Room ${room.roomNumber}` : ""))
     .filter(Boolean)
@@ -98,7 +90,7 @@ const checkRoomAvailability = async ({ Booking, roomIds, bedId, checkInDate, che
       bedId: null,
       checkIn: { $lt: checkOutDate },
       checkOut: { $gt: checkInDate },
-      $or: [{ roomId }, { roomIds: roomId }],
+      roomIds: roomId,
     };
     if (excludeId) query._id = { $ne: excludeId };
     const overlap = await Booking.findOne(query);
@@ -115,9 +107,11 @@ export const createAdminBooking = async (req, res) => {
     const { Booking, GuestHouse, Room, Bed } = req.tenantModels;
     const {
       guestHouseId, bedId, checkIn, checkOut,
-      fullName, email, phone, address, dateOfBirth, gender, nationality,
+      fullName: rawFullName, firstName, lastName, email, phone, address, dateOfBirth, gender, nationality,
       identityType, identityNumber, emergencyContactName, emergencyContactPhone, specialRequests,
     } = req.body;
+
+    const fullName = (rawFullName || `${firstName || ''} ${lastName || ''}`).trim();
 
     const roomIds = parseRoomIds(req.body);
     const primaryRoomId = roomIds[0] || req.body.roomId;
@@ -137,29 +131,39 @@ export const createAdminBooking = async (req, res) => {
       return res.status(400).json({ message: "Check-out must be after check-in" });
     }
 
-    const familyMembers = parseFamilyMembers(req.body.familyMembers);
-    if (familyMembers.some((member) => !member.name || !member.relation || (member.age !== undefined && Number.isNaN(member.age)))) {
-      return res.status(400).json({ message: "Each family member needs a name, relation, and valid age" });
+    const resourceId = selectedBedId ? `bed:${selectedBedId}` : `room:${primaryRoomId}`;
+    const dbName = req.tenantDb?.name || 'default';
+    const lockKey = `tenant:${dbName}:lock:booking:${resourceId}:${checkIn}_${checkOut}`;
+    const lockToken = await acquireLock(lockKey, 10000);
+
+    if (!lockToken) {
+      return res.status(409).json({ message: "Another booking transaction for this room/bed is currently processing. Please try again." });
     }
 
-    const familyMemberImageUrls = req.familyMemberImageUrls || {};
-    const familyMembersWithImages = familyMembers.map((member, i) => ({
-      ...member,
-      ...(familyMemberImageUrls[i] ? { verificationImage: familyMemberImageUrls[i] } : {}),
-    }));
+    try {
+      const familyMembers = parseFamilyMembers(req.body.familyMembers);
+      if (familyMembers.some((member) => !member.name || !member.relation || (member.age !== undefined && Number.isNaN(member.age)))) {
+        return res.status(400).json({ message: "Each family member needs a name, relation, and valid age" });
+      }
 
-    const isObjId = isObjectId(guestHouseId);
-    const [guestHouse, rooms, bed, overlapResult] = await Promise.all([
-      GuestHouse.findOne({
-        $or: [
-          { guestHouseId },
-          ...(isObjId ? [{ _id: guestHouseId }] : []),
-        ],
-      }),
-      Room.find({ _id: { $in: roomIds } }),
-      selectedBedId ? Bed.findById(selectedBedId) : Promise.resolve(null),
-      checkRoomAvailability({ Booking, roomIds, bedId: selectedBedId, checkInDate, checkOutDate }),
-    ]);
+      const familyMemberImageUrls = req.familyMemberImageUrls || {};
+      const familyMembersWithImages = familyMembers.map((member, i) => ({
+        ...member,
+        ...(familyMemberImageUrls[i] ? { verificationImage: familyMemberImageUrls[i] } : {}),
+      }));
+
+      const isObjId = isObjectId(guestHouseId);
+      const [guestHouse, rooms, bed, overlapResult] = await Promise.all([
+        GuestHouse.findOne({
+          $or: [
+            { guestHouseId },
+            ...(isObjId ? [{ _id: guestHouseId }] : []),
+          ],
+        }),
+        Room.find({ _id: { $in: roomIds } }),
+        selectedBedId ? Bed.findById(selectedBedId) : Promise.resolve(null),
+        checkRoomAvailability({ Booking, roomIds, bedId: selectedBedId, checkInDate, checkOutDate }),
+      ]);
 
     if (!guestHouse) {
       return res.status(404).json({ message: "Selected guest house was not found" });
@@ -199,7 +203,6 @@ export const createAdminBooking = async (req, res) => {
     const booking = await Booking.create({
       userId: guestUser._id,
       guestHouseId: guestHouse._id,
-      roomId: primaryRoomId,
       roomIds,
       bedId: selectedBedId,
       checkIn: checkInDate,
@@ -236,7 +239,12 @@ export const createAdminBooking = async (req, res) => {
       roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", "),
     }).catch((error) => console.error("WhatsApp send error:", error));
 
-    return res.status(201).json({ message: "Room booked successfully", booking });
+      await deletePatternCache(`tenant:${dbName}:*`);
+
+      return res.status(201).json({ message: "Room booked successfully", booking });
+    } finally {
+      await releaseLock(lockKey, lockToken);
+    }
   } catch (error) {
     console.error("Error creating admin booking:", error);
     return res.status(500).json({ message: error.message || "Server error creating booking" });
@@ -260,7 +268,17 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: "Bed selection is only available when booking a single room" });
     }
 
-    const isObjectIdGH = isObjectId(guestHouseId);
+    const resourceId = selectedBedId ? `bed:${selectedBedId}` : `room:${primaryRoomId}`;
+    const dbName = req.tenantDb?.name || 'default';
+    const lockKey = `tenant:${dbName}:lock:booking:${resourceId}:${checkIn}_${checkOut}`;
+    const lockToken = await acquireLock(lockKey, 10000);
+
+    if (!lockToken) {
+      return res.status(409).json({ message: "Another booking transaction for this room/bed is currently processing. Please try again." });
+    }
+
+    try {
+      const isObjectIdGH = isObjectId(guestHouseId);
     const [user, guestHouse, overlap] = await Promise.all([
       User.findById(userId),
       GuestHouse.findOne({
@@ -293,7 +311,6 @@ export const createBooking = async (req, res) => {
     const newBooking = new Booking({
       userId,
       guestHouseId: guestHouse._id,
-      roomId: primaryRoomId,
       roomIds,
       bedId: selectedBedId,
       checkIn,
@@ -326,6 +343,11 @@ export const createBooking = async (req, res) => {
       performedBy: req.user?.email || "User",
       details: { guestHouseId, roomId, bedId, checkIn, checkOut },
     }, req.tenantDb).catch(err => console.error("Audit log error:", err));
+
+    await deletePatternCache(`tenant:${dbName}:*`);
+  } finally {
+    await releaseLock(lockKey, lockToken);
+  }
   } catch (error) {
     console.error("Error creating booking:", error);
     res.status(500).json({ message: "Server error creating booking" });
@@ -382,7 +404,6 @@ export const getAllBookings = async (req, res) => {
       Booking.find(query)
         .populate("userId", "email firstName lastName phone")
         .populate("guestHouseId", "guestHouseId guestHouseName location")
-        .populate("roomId", "roomNumber")
         .populate("roomIds", "roomNumber roomType")
         .populate("bedId", "bedNumber bedType")
         .sort({ createdAt: -1 })
@@ -417,7 +438,6 @@ export const exportDailyBookings = async (req, res) => {
     })
       .populate("userId", "firstName lastName email phone")
       .populate("guestHouseId", "guestHouseId guestHouseName location")
-      .populate("roomId", "roomNumber")
       .populate("roomIds", "roomNumber roomType")
       .populate("bedId", "bedNumber bedType")
       .sort({ createdAt: -1 })
@@ -465,7 +485,6 @@ export const getMyBookings = async (req, res) => {
     const userId = req.user?._id || req.body.userId;
     const bookings = await Booking.find({ userId })
       .populate("guestHouseId", "guestHouseId guestHouseName location")
-      .populate("roomId", "roomNumber")
       .populate("roomIds", "roomNumber roomType")
       .populate("bedId", "bedNumber bedType")
       .sort({ createdAt: -1 })
@@ -508,7 +527,7 @@ export const approveBooking = async (req, res) => {
       html: bookingStatusUpdate(user, updatedBooking, guestHouse, "approved"),
     }).catch(err => console.error("❌ Failed to send approval email:", err));
 
-    Room.find({ _id: { $in: updatedBooking.roomIds?.length ? updatedBooking.roomIds : [updatedBooking.roomId] } })
+    Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
       .then(rooms => sendBookingWhatsApp({
         to: user.phone,
         guestHouseName: guestHouse.guestHouseName,
@@ -562,7 +581,7 @@ export const rejectBooking = async (req, res) => {
       html: bookingStatusUpdate(user, updatedBooking, guestHouse, "rejected"),
     }).catch(err => console.error("❌ Failed to send rejection email:", err));
 
-    Room.find({ _id: { $in: updatedBooking.roomIds?.length ? updatedBooking.roomIds : [updatedBooking.roomId] } })
+    Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
       .then(rooms => sendBookingWhatsApp({
         to: user.phone,
         guestHouseName: guestHouse.guestHouseName,
@@ -622,7 +641,6 @@ export const checkAvailability = async (req, res) => {
     }
 
     const overlappingBookings = await Booking.find(bookingQuery)
-      .populate("roomId", "roomNumber")
       .populate("roomIds", "roomNumber roomType")
       .populate("bedId", "bedNumber bedType");
 
@@ -704,7 +722,7 @@ export const cancelBooking = async (req, res) => {
         html: bookingStatusUpdate(user, updatedBooking, guestHouse, "cancelled"),
       }).catch(err => console.error("❌ Failed to send cancellation email:", err));
 
-      Room.find({ _id: { $in: updatedBooking.roomIds?.length ? updatedBooking.roomIds : [updatedBooking.roomId] } })
+      Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
         .then(rooms => sendCancelWhatsApp({
           to: user.phone,
           roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
@@ -748,7 +766,6 @@ export const getApprovedBookingsForCalendar = async (req, res) => {
     const bookings = await Booking.find(query)
       .populate("userId", "firstName lastName email")
       .populate({ path: "guestHouseId", select: "guestHouseId guestHouseName location", options: { strictPopulate: false } })
-      .populate("roomId", "roomNumber")
       .populate("roomIds", "roomNumber roomType")
       .populate("bedId", "bedNumber bedType")
       .sort({ checkIn: 1 })
@@ -767,7 +784,6 @@ export const getBookingById = async (req, res) => {
     const booking = await Booking.findById(req.params.id)
       .populate("userId", "firstName lastName email phone address dateOfBirth gender nationality identityType identityNumber emergencyContactName emergencyContactPhone")
       .populate("guestHouseId", "guestHouseId guestHouseName location")
-      .populate("roomId", "roomNumber roomType _id")
       .populate("roomIds", "roomNumber roomType _id")
       .populate("bedId", "bedNumber bedType _id")
       .lean();
@@ -788,12 +804,14 @@ export const updateAdminBooking = async (req, res) => {
     const {
       guestHouseId, bedId,
       checkIn, checkOut,
-      fullName, email, phone, address,
+      fullName: rawFullName, firstName, lastName, email, phone, address,
       dateOfBirth, gender, nationality,
       identityType, identityNumber,
       emergencyContactName, emergencyContactPhone,
       specialRequests,
     } = req.body;
+
+    const fullName = (rawFullName || `${firstName || ''} ${lastName || ''}`).trim();
 
     const roomIds = parseRoomIds(req.body);
 
@@ -872,7 +890,6 @@ export const updateAdminBooking = async (req, res) => {
 
     const updateData = {
       guestHouseId: guestHouse._id,
-      roomId: primaryRoomId,
       roomIds,
       bedId: bedId || undefined,
       checkIn: checkInDate,

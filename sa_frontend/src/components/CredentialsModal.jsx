@@ -41,7 +41,7 @@ export const CredentialsModal = ({ credentials, tenantName, onClose }) => {
 
         {/* Super Admin Credentials */}
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '14px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#0284c7', marginBottom: '10px' }}>👑 Tenant Super Admin Account</h4>
+          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#0284c7', marginBottom: '10px' }}>Tenant Super Admin Account</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '6px' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Email:</span>
@@ -66,7 +66,7 @@ export const CredentialsModal = ({ credentials, tenantName, onClose }) => {
 
         {/* House Admin Credentials */}
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '20px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#16a34a', marginBottom: '10px' }}>🔑 Tenant House Admin Account</h4>
+          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#16a34a', marginBottom: '10px' }}>Tenant House Admin Account</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '6px' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Email:</span>

@@ -85,7 +85,7 @@ const AddHotelPage = () => {
         await api.post('/api/guesthouses', payload);
         toast.success('Hotel created successfully!');
       }
-      navigate('/super-admin/guesthouses');
+      navigate('/super-admin/hotel');
     } catch (err) {
       console.error(err);
       const msg =
@@ -112,7 +112,7 @@ const AddHotelPage = () => {
         </div>
         <button
           className="btn-action view"
-          onClick={() => navigate('/super-admin/guesthouses')}
+          onClick={() => navigate('/super-admin/hotel')}
           style={{ padding: '8px 16px', fontSize: '0.875rem' }}
         >
           ← Back to Hotel List
@@ -120,20 +120,9 @@ const AddHotelPage = () => {
       </div>
 
       {/* Main Form Container */}
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <form
-          onSubmit={handleSubmit}
-          className="panel-card"
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '12px',
-            padding: '32px',
-            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.05)',
-          }}
-          encType="multipart/form-data"
-        >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div className="panel-card" style={{ padding: '28px 32px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <form onSubmit={handleSubmit} encType="multipart/form-data">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
             
             {/* Hotel Name */}
             <div style={{ gridColumn: '1 / -1' }}>
@@ -145,7 +134,7 @@ const AddHotelPage = () => {
                 name="guestHouseName"
                 value={formData.guestHouseName}
                 onChange={handleChange}
-                placeholder="e.g. Grand Hyatt Palace"
+                placeholder="e.g. Arth.AI Grand Hotel"
                 required
                 style={{
                   width: '100%',
@@ -213,8 +202,8 @@ const AddHotelPage = () => {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Brief details about facilities, amenities, location highlights..."
-                rows={4}
+                placeholder="Brief details about facilities, amenities..."
+                rows={3}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -237,7 +226,7 @@ const AddHotelPage = () => {
                 style={{
                   border: '2px dashed #cbd5e1',
                   borderRadius: '10px',
-                  padding: '20px',
+                  padding: '16px',
                   textAlign: 'center',
                   background: '#f8fafc',
                   cursor: 'pointer',
@@ -258,29 +247,29 @@ const AddHotelPage = () => {
                     cursor: 'pointer',
                   }}
                 />
-                <div style={{ fontSize: '0.9rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
                   <strong>Click to upload</strong> or drag and drop an image file
                   <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '4px 0 0' }}>PNG, JPG, WebP up to 5 MB</p>
                 </div>
               </div>
 
               {formData.previewImage && (
-                <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '16px', background: '#f1f5f9', padding: '12px', borderRadius: '8px' }}>
+                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '14px', background: '#f1f5f9', padding: '10px 14px', borderRadius: '8px' }}>
                   <img
                     src={formData.previewImage}
                     alt="Preview"
-                    style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '6px' }}
+                    style={{ width: '90px', height: '54px', objectFit: 'cover', borderRadius: '6px' }}
                   />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       {formData.image ? formData.image.name : 'Current Hotel Image'}
                     </span>
                   </div>
                   <button
                     type="button"
                     className="btn-action reject"
-                    onClick={handleRemoveLogo}
-                    style={{ padding: '6px 12px' }}
+                    onClick={handleRemoveImage}
+                    style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                   >
                     Remove
                   </button>
@@ -291,12 +280,12 @@ const AddHotelPage = () => {
           </div>
 
           {/* Form Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '18px' }}>
             <button
               type="button"
               className="btn-action edit"
-              onClick={() => navigate('/super-admin/guesthouses')}
-              style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+              onClick={() => navigate('/super-admin/hotel')}
+              style={{ padding: '9px 20px', fontSize: '0.9rem' }}
             >
               Cancel
             </button>
@@ -304,7 +293,7 @@ const AddHotelPage = () => {
               type="submit"
               className="btn-primary-cta"
               disabled={submitting}
-              style={{ padding: '10px 24px', fontSize: '0.9rem' }}
+              style={{ padding: '9px 24px', fontSize: '0.9rem' }}
             >
               {submitting
                 ? isEditMode ? 'Updating Hotel...' : 'Creating Hotel...'

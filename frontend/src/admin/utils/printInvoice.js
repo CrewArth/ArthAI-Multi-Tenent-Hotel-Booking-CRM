@@ -11,11 +11,18 @@ const guestInfo = (booking) => ({
   name: `${booking.userId?.firstName || ''} ${booking.userId?.lastName || ''}`.trim() || '—',
   phone: booking.userId?.phone || '—',
   email: booking.userId?.email || '—',
-  room: booking.roomId?.roomNumber
-    ? `Room ${booking.roomId.roomNumber}`
-    : Array.isArray(booking.roomIds) && booking.roomIds.length
-      ? booking.roomIds.map((r) => `Room ${r.roomNumber}`).join(', ')
-      : '—',
+  room: (() => {
+    if (Array.isArray(booking.roomIds) && booking.roomIds.length > 0) {
+      const roomNames = booking.roomIds
+        .map((r) => (typeof r === 'object' && r?.roomNumber != null ? `Room ${r.roomNumber}` : null))
+        .filter(Boolean);
+      if (roomNames.length > 0) return roomNames.join(', ');
+    }
+    if (booking.roomId?.roomNumber) {
+      return `Room ${booking.roomId.roomNumber}`;
+    }
+    return '—';
+  })(),
   bed: booking.bedId?.bedNumber
     ? ` / Bed ${booking.bedId.bedNumber}${booking.bedId.bedType ? ` (${booking.bedId.bedType})` : ''}`
     : '',
@@ -74,16 +81,16 @@ const normalizeInvoice = (invoiceData = {}) => {
     id,
     bookingTotal: Number(
       invoiceData.bookingTotal
-        ?? invoiceData.totalAmount
-        ?? invoiceData.invoiceData?.bookingTotal
-        ?? 0
+      ?? invoiceData.totalAmount
+      ?? invoiceData.invoiceData?.bookingTotal
+      ?? 0
     ),
     taxesTotal: Number(
       invoiceData.taxesTotal
-        ?? invoiceData.normTaxAmount
-        ?? invoiceData.taxAmount
-        ?? invoiceData.invoiceData?.taxesTotal
-        ?? 0
+      ?? invoiceData.normTaxAmount
+      ?? invoiceData.taxAmount
+      ?? invoiceData.invoiceData?.taxesTotal
+      ?? 0
     ),
     taxBreakdown: Array.isArray(invoiceData.taxBreakdown) && invoiceData.taxBreakdown.length
       ? invoiceData.taxBreakdown
@@ -92,23 +99,23 @@ const normalizeInvoice = (invoiceData = {}) => {
         : [],
     extrasTotal: Number(
       invoiceData.extrasTotal
-        ?? invoiceData.normExtrasTotal
-        ?? invoiceData.invoiceData?.extrasTotal
-        ?? 0
+      ?? invoiceData.normExtrasTotal
+      ?? invoiceData.invoiceData?.extrasTotal
+      ?? 0
     ),
     amountPaid: Number(
       invoiceData.amountPaid
-        ?? invoiceData.normPaidAmount
-        ?? invoiceData.paidAmount
-        ?? invoiceData.invoiceData?.amountPaid
-        ?? 0
+      ?? invoiceData.normPaidAmount
+      ?? invoiceData.paidAmount
+      ?? invoiceData.invoiceData?.amountPaid
+      ?? 0
     ),
     outstandingBalance: Number(
       invoiceData.outstandingBalance
-        ?? invoiceData.normOutstandingAmount
-        ?? invoiceData.outstandingAmount
-        ?? invoiceData.invoiceData?.outstandingBalance
-        ?? 0
+      ?? invoiceData.normOutstandingAmount
+      ?? invoiceData.outstandingAmount
+      ?? invoiceData.invoiceData?.outstandingBalance
+      ?? 0
     ),
     discount: Number(invoiceData.discount ?? invoiceData.discountAmount ?? invoiceData.invoiceData?.discount ?? 0),
     paymentMethod: invoiceData.paymentMethod
@@ -123,21 +130,29 @@ const normalizeInvoice = (invoiceData = {}) => {
 /**
  * Print a checkout invoice.
  */
-export const printInvoice = (booking, invoiceData) => {
+export const printInvoice = (booking, invoiceData, options = {}) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return false;
 
   const inv = normalizeInvoice(invoiceData);
   const g = guestInfo(booking);
   const bookingCharges = inv.bookingTotal - inv.extrasTotal - inv.taxesTotal;
+  const eSignatureUrl = options?.eSignatureUrl || invoiceData?.eSignatureUrl || booking?.eSignatureUrl || null;
 
   const taxRows = Array.isArray(inv.taxBreakdown) && inv.taxBreakdown.length > 0
     ? inv.taxBreakdown.map((t) =>
-        `<tr><td>${t.name || 'Tax'}${t.percentage != null ? ` (${t.percentage}%)` : ''}</td><td style="text-align:right">${currency(t.amount)}</td></tr>`
-      ).join('')
+      `<tr><td>${t.name || 'Tax'}${t.percentage != null ? ` (${t.percentage}%)` : ''}</td><td style="text-align:right">${currency(t.amount)}</td></tr>`
+    ).join('')
     : inv.taxesTotal
       ? `<tr><td>Taxes</td><td style="text-align:right">${currency(inv.taxesTotal)}</td></tr>`
       : '';
+
+  const signatureHtml = eSignatureUrl
+    ? `<div style="margin-top: 20px; text-align: left;">
+        <img src="${eSignatureUrl}" style="max-width: 120px; max-height: 44px; object-fit: contain; display: block;" alt="Admin Signature" />
+        <span style="font-size: 0.75rem; color: #64748b;">Authorized Signature</span>
+       </div>`
+    : '';
 
   printWindow.document.write(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/>
@@ -187,6 +202,7 @@ export const printInvoice = (booking, invoiceData) => {
       <tr class="grand-total"><td>Balance Due</td><td class="right">${currency(inv.outstandingBalance)}</td></tr>
     </table>
   </div>
+  ${signatureHtml}
   <div class="footer">
     <span>Generated on ${fmt(new Date())}</span>
     <span>Thank you for staying with us!</span>
@@ -202,29 +218,35 @@ export const printInvoice = (booking, invoiceData) => {
  * Print a receipt for an outstanding payment.
  * Shows: Total Bill, Already Paid, Outstanding Amount Paid (this transaction), Balance Remaining.
  */
-export const printOutstandingReceipt = (booking, receiptData) => {
+export const printOutstandingReceipt = (booking, receiptData, options = {}) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return false;
 
   const g = guestInfo(booking);
+  const eSignatureUrl = options?.eSignatureUrl || receiptData?.eSignatureUrl || booking?.eSignatureUrl || null;
 
   // room label — handle both populated object and plain string/ObjectId
   const roomLabel = (() => {
     const rooms = Array.isArray(booking.roomIds) && booking.roomIds.length
       ? booking.roomIds
-      : booking.roomId
-        ? [booking.roomId]
-        : [];
+      : [];
     const label = rooms.map((r) => (r?.roomNumber ? `Room ${r.roomNumber}` : '')).filter(Boolean).join(', ');
     return label || '—';
   })();
 
   const inv = normalizeInvoice(receiptData);
   // For outstanding receipt, receiptData.amountPaid is ONLY this transaction
-  const totalBill      = Number(receiptData.bookingTotal || inv.bookingTotal || 0);
-  const alreadyPaid    = Number(receiptData.previouslyPaid || 0);
-  const paidNow        = Number(receiptData.amountPaid || 0);
-  const balanceRemain  = Number(receiptData.outstandingBalance ?? inv.outstandingBalance ?? 0);
+  const totalBill = Number(receiptData.bookingTotal || inv.bookingTotal || 0);
+  const alreadyPaid = Number(receiptData.previouslyPaid || 0);
+  const paidNow = Number(receiptData.amountPaid || 0);
+  const balanceRemain = Number(receiptData.outstandingBalance ?? inv.outstandingBalance ?? 0);
+
+  const signatureHtml = eSignatureUrl
+    ? `<div style="margin-top: 16px; text-align: left;">
+        <img src="${eSignatureUrl}" style="max-width: 110px; max-height: 40px; object-fit: contain; display: block;" alt="Admin Signature" />
+        <span style="font-size: 0.72rem; color: #64748b;">Authorized Signature</span>
+       </div>`
+    : '';
 
   printWindow.document.write(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/>
@@ -288,6 +310,7 @@ export const printOutstandingReceipt = (booking, receiptData) => {
       <span>${currency(balanceRemain)}</span>
     </div>
   </div>
+  ${signatureHtml}
   <div class="footer">Generated on ${fmt(new Date())}</div>
   <script>window.onload = function () { window.print(); };<\/script>
 </body></html>`);

@@ -61,7 +61,7 @@ export default function Settings() {
   /* ── Reset to defaults ── */
   const handleReset = () => {
     dispatch(resetSiteSettings());
-    setNameInput('Arth Hotel');
+    setNameInput('Arth.AI');
     setPreviewUrl(null);
     setLogoFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';

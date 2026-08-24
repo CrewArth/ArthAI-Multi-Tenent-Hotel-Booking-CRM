@@ -109,7 +109,7 @@ let paymentCount = 0, invoiceCount = 0;
 
 // ── Process FULL_PAID bookings ────────────────────────────────────────────────
 for (const b of fullPaid) {
-  const room    = roomMap[String(b.roomId)];
+  const room    = roomMap[String(b.roomIds?.[0])];
   const user    = userMap[String(b.userId)];
   const n       = nights(b.checkIn, b.checkOut);
   const rate    = nightlyRate(room);
@@ -169,7 +169,7 @@ for (const b of fullPaid) {
 
 // ── Process PARTIAL bookings ──────────────────────────────────────────────────
 for (const b of partial) {
-  const room      = roomMap[String(b.roomId)];
+  const room      = roomMap[String(b.roomIds?.[0])];
   const user      = userMap[String(b.userId)];
   const n         = nights(b.checkIn, b.checkOut);
   const rate      = nightlyRate(room);

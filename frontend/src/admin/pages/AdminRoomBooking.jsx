@@ -127,43 +127,55 @@ const AdminRoomBooking = () => {
       .finally(() => setLoading(false));
   }, [editBookingId]);
 
-  // ── Fetch Guest Houses (if super admin) ───────────────────────
+  // ── Fetch Guest Houses list to resolve hotel names ─────────────
   useEffect(() => {
-    if (!assignedGuestHouse) {
-      api.post('/api/guesthouses/list')
-        .then((res) => setGuestHouses(Array.isArray(res.data) ? res.data : res.data.guestHouses || []))
-        .catch(() => toast.error('Unable to load hotels.'));
-    }
-  }, [assignedGuestHouse]);
+    api.post('/api/guesthouses/list')
+      .then((res) => setGuestHouses(Array.isArray(res.data) ? res.data : res.data.guestHouses || []))
+      .catch(() => console.error('Unable to load hotels list'));
+  }, []);
 
-  // ── Resolve currently selected guest house object ─────────────
+  // ── Resolve currently selected guest house object & primitive ID ──
+  const selectedGuestHouseId = assignedGuestHouse
+    ? (typeof assignedGuestHouse === 'object' ? (assignedGuestHouse.guestHouseId || assignedGuestHouse._id) : assignedGuestHouse)
+    : (form.guestHouseId || null);
+
   const selectedGuestHouse = assignedGuestHouse
     ? (typeof assignedGuestHouse === 'object' ? assignedGuestHouse : { guestHouseId: assignedGuestHouse, guestHouseName: 'Assigned Hotel' })
     : guestHouses.find((g) => g.guestHouseId === form.guestHouseId || g._id === form.guestHouseId);
 
-  // ── Fetch Rooms when guestHouseId changes ─────────────────────
+  const currentHotel = guestHouses.find((g) =>
+    g.guestHouseId === selectedGuestHouseId || g._id === selectedGuestHouseId
+  );
+
+  const displayHotelName = currentHotel
+    ? currentHotel.guestHouseName
+    : (typeof assignedGuestHouse === 'object' && assignedGuestHouse.guestHouseName
+        ? assignedGuestHouse.guestHouseName
+        : 'Loading hotel...');
+
+  // ── Fetch Rooms when selectedGuestHouseId changes ─────────────
   useEffect(() => {
-    if (!selectedGuestHouse) { setRooms([]); return; }
-    const ghParam = selectedGuestHouse.guestHouseId || selectedGuestHouse._id;
-    api.post('/api/rooms/by-guesthouse', { guestHouseId: ghParam })
+    if (!selectedGuestHouseId) { setRooms([]); return; }
+    api.post('/api/rooms/by-guesthouse', { guestHouseId: selectedGuestHouseId })
       .then((res) => setRooms(res.data.rooms || []))
       .catch(() => toast.error('Unable to load rooms.'));
-  }, [selectedGuestHouse]);
+  }, [selectedGuestHouseId]);
 
   // ── Fetch Beds when roomIds changes ───────────────────────────
+  const roomIdsKey = form.roomIds.join(',');
   useEffect(() => {
-    if (!form.roomIds.length) { setBeds([]); return; }
+    if (!roomIdsKey) { setBeds([]); return; }
     api.post('/api/beds/by-rooms', { roomIds: form.roomIds })
       .then((res) => setBeds(res.data.beds || []))
       .catch(() => toast.error('Unable to load beds.'));
-  }, [form.roomIds]);
+  }, [roomIdsKey]);
 
   useEffect(() => {
-    if (!selectedGuestHouse || !form.checkIn || !form.checkOut || form.checkOut <= form.checkIn) {
+    if (!selectedGuestHouseId || !form.checkIn || !form.checkOut || form.checkOut <= form.checkIn) {
       setUnavailableRooms([]); setUnavailableBeds([]); return;
     }
     api.post('/api/bookings/availability', {
-        guestHouseId: selectedGuestHouse.guestHouseId || selectedGuestHouse._id,
+        guestHouseId: selectedGuestHouseId,
         checkIn: form.checkIn,
         checkOut: form.checkOut,
         ...(isEditMode && editBookingId ? { excludeBookingId: editBookingId } : {}),
@@ -174,14 +186,17 @@ const AdminRoomBooking = () => {
         setUnavailableRooms(newUnavailableRooms);
         setUnavailableBeds(newUnavailableBeds);
         // Drop any selected rooms that are now booked
-        setForm((f) => ({
-          ...f,
-          roomIds: f.roomIds.filter((id) => !newUnavailableRooms.includes(id)),
-          bedId: newUnavailableBeds.includes(f.bedId) ? '' : f.bedId,
-        }));
+        setForm((f) => {
+          const filteredRooms = f.roomIds.filter((id) => !newUnavailableRooms.includes(id));
+          const newBedId = newUnavailableBeds.includes(f.bedId) ? '' : f.bedId;
+          if (filteredRooms.length === f.roomIds.length && newBedId === f.bedId) {
+            return f;
+          }
+          return { ...f, roomIds: filteredRooms, bedId: newBedId };
+        });
       })
       .catch(() => toast.error('Unable to check availability.'));
-  }, [form.checkIn, form.checkOut, selectedGuestHouse]);
+  }, [selectedGuestHouseId, form.checkIn, form.checkOut, isEditMode, editBookingId]);
 
   // ── helpers ─────────────────────────────────────────────────
   const updateForm = (e) => {
@@ -235,7 +250,6 @@ const AdminRoomBooking = () => {
     try {
       const payload = new FormData();
       payload.append('guestHouseId', selectedGuestHouse.guestHouseId || selectedGuestHouse._id);
-      payload.append('roomId', form.roomIds[0]);
       payload.append('roomIds', JSON.stringify(form.roomIds));
 
       if (form.bedId) payload.append('bedId', form.bedId);
@@ -243,6 +257,7 @@ const AdminRoomBooking = () => {
       payload.append('checkIn', form.checkIn);
       payload.append('checkOut', form.checkOut);
 
+      payload.append('fullName', form.fullName.trim());
       const names = form.fullName.trim().split(' ');
       payload.append('firstName', names[0]);
       payload.append('lastName', names.slice(1).join(' '));
@@ -267,7 +282,10 @@ const AdminRoomBooking = () => {
       payload.append('familyMembers', JSON.stringify(cleanMembers));
 
       familyMembers.forEach((m, idx) => {
-        if (m.image) payload.append(`familyMemberImage_${idx}`, m.image);
+        if (m.image) {
+          const fileWithPrefix = new File([m.image], `idx_${idx}_${m.image.name}`, { type: m.image.type });
+          payload.append('familyMemberImages', fileWithPrefix);
+        }
       });
 
       if (isEditMode) {
@@ -327,7 +345,7 @@ const AdminRoomBooking = () => {
               <label>
                 Hotel <span>*</span>
                 {assignedGuestHouse ? (
-                  <input value={assignedGuestHouse.guestHouseName} disabled />
+                  <input value={displayHotelName} disabled />
                 ) : (
                   <select name="guestHouseId" value={form.guestHouseId} onChange={updateForm} required>
                     <option value="">Select hotel</option>
@@ -537,7 +555,7 @@ const AdminRoomBooking = () => {
             <div className="arb-review-section">
               <h3>Stay Details</h3>
               <div className="arb-review-grid">
-                <div><span>Hotel</span><strong>{selectedGuestHouse?.guestHouseName || '—'}</strong></div>
+                <div><span>Hotel</span><strong>{displayHotelName}</strong></div>
                 <div><span>Rooms</span><strong>{selectedRoomNames.length ? selectedRoomNames.join(', ') : '—'}</strong></div>
                 <div><span>Bed</span><strong>{selectedBed ? `Bed ${selectedBed.bedNumber} · ${selectedBed.bedType}` : '—'}</strong></div>
                 <div><span>Check In</span><strong>{formatDate(form.checkIn)}</strong></div>

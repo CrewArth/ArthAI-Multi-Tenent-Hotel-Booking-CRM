@@ -15,14 +15,10 @@ const bookingSchema = new mongoose.Schema(
       ref: "GuestHouse",
       required: true,
     },
-    roomId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Room",
-      required: true,
-    },
     roomIds: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Room',
+      required: true,
     }],
     bedId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -52,8 +48,8 @@ const bookingSchema = new mongoose.Schema(
     ],
     bookingSource: {
       type: String,
-      enum: ["self_service", "admin"],
-      default: "self_service",
+      enum: ["self", "admin"],
+      default: "self",
     },
     specialRequests: { type: String },
     isCheckedOut: { type: Boolean, default: false },

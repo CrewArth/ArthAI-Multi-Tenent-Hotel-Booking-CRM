@@ -97,9 +97,9 @@ const MyBookings = () => {
                 <tr key={b._id}>
                   <td>{b.guestHouseId?.guestHouseName || "—"}</td>
                   <td>
-                    {b.roomId?.roomNumber
-                      ? `Room ${b.roomId.roomNumber}`
-                      : "—"}
+                    {Array.isArray(b.roomIds) && b.roomIds.length
+                      ? b.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—'
+                      : '—'}
                   </td>
                   <td>
                     {b.bedId?.bedNumber

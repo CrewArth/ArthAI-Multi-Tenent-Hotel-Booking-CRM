@@ -67,7 +67,7 @@ export const getAdminSummary = async (req, res) => {
     ];
 
     const [totalUsers, totalGuestHouses, bookingResult] = await Promise.all([
-      User.countDocuments(),
+      User.countDocuments({ role: 'ADMIN' }),
       GuestHouse.countDocuments(),
       Booking.aggregate(pipeline).exec()
     ]);

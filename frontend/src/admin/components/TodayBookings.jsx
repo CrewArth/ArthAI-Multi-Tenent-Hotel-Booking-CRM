@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import { getCurrentMonthDateRange } from '../utils/dateUtils';
 import '../styles/todayBookings.css';
 
 const getLocalDate = (date = new Date()) => {
@@ -52,11 +53,11 @@ const isCheckoutEligible = (booking) => {
 
 export default function TodayBookings() {
   const today = getLocalDate();
-  const twoDaysAgo = getTwoDaysAgo();
+  const { fromDate: monthStart, toDate: monthEnd } = getCurrentMonthDateRange();
   const navigate = useNavigate();
-  const [fromDate, setFromDate] = useState(twoDaysAgo);
-  const [toDate, setToDate] = useState(today);
-  const [appliedFilter, setAppliedFilter] = useState({ startDate: twoDaysAgo, endDate: today });
+  const [fromDate, setFromDate] = useState(monthStart);
+  const [toDate, setToDate] = useState(monthEnd);
+  const [appliedFilter, setAppliedFilter] = useState({ startDate: monthStart, endDate: monthEnd });
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -126,6 +127,7 @@ export default function TodayBookings() {
         prev.map((b) => b._id === cancelTarget._id ? { ...b, status: 'cancelled' } : b)
       );
       setCancelTarget(null);
+      window.dispatchEvent(new CustomEvent('bookingStatusChanged'));
     } catch (err) {
       console.error('Error cancelling booking:', err);
     } finally {
@@ -237,7 +239,7 @@ export default function TodayBookings() {
                       <td>{formatDate(booking.checkIn)}</td>
                       <td>{formatDate(booking.checkOut)}</td>
                       <td>
-                        {booking.roomId?.roomNumber ? `Room ${booking.roomId.roomNumber}` : '—'}
+                        {Array.isArray(booking.roomIds) && booking.roomIds.length ? booking.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—' : '—'}
                         {booking.bedId?.bedNumber ? ` / Bed ${booking.bedId.bedNumber}` : ''}
                       </td>
                       <td><span className={`today-bookings-status ${booking.status}`}>{booking.status}</span></td>
@@ -287,8 +289,13 @@ export default function TodayBookings() {
                           {booking.status !== 'cancelled' && (
                             <button
                               className="tb-cancel-btn"
-                              onClick={() => setCancelTarget(booking)}
-                              title="Cancel booking"
+                              onClick={() => {
+                                if (booking.isCheckedOut) return;
+                                setCancelTarget(booking);
+                              }}
+                              disabled={booking.isCheckedOut}
+                              title={booking.isCheckedOut ? 'Cannot cancel a checked-out booking' : 'Cancel booking'}
+                              style={booking.isCheckedOut ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="3 6 5 6 21 6" />

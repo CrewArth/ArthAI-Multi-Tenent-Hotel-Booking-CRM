@@ -6,6 +6,7 @@ import { REPORTS, isReportAllowed } from '../../common/reportsConfig';
 import { MONTHS } from '../../common/months';
 import { PAYMENT_METHODS } from '../../common/paymentMethods';
 import { FileText, Download, CheckCircle, Lock } from 'lucide-react';
+import { getCurrentMonthDateRange } from '../utils/dateUtils';
 import '../styles/reports.css';
 
 const Reports = () => {
@@ -41,9 +42,11 @@ const Reports = () => {
     permittedReports[0]?.id || 'bookingByGuestHouse'
   );
 
+  const { fromDate: defaultFrom, toDate: defaultTo } = getCurrentMonthDateRange();
+
   // Filters state
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(defaultFrom);
+  const [toDate, setToDate] = useState(defaultTo);
   const [guestHouseId, setGuestHouseId] = useState('');
   const [guestHouses, setGuestHouses] = useState([]);
   const [generating, setGenerating] = useState(false);
@@ -314,7 +317,7 @@ const Reports = () => {
 
           {currentReportConfig && permittedReports.length > 0 && (
             <div className="reports-card">
-              <h2 className="reports-card-title">Report Filters & Generation</h2>
+              <h2 className="reports-card-title">Report Filters</h2>
 
               <form onSubmit={handleGeneratePdf} className="reports-filter-form">
                 <div className="reports-filter-grid">

@@ -122,7 +122,8 @@ function App() {
           {/* Super Admin routes */}
           <Route path="/super-admin/users" element={<UsersList />} />
           <Route path="/super-admin/dashboard" element={<Overview />} />
-          <Route path="/super-admin/guesthouses" element={<GuestHouseManagement />} />
+          <Route path="/super-admin/hotel" element={<GuestHouseManagement />} />
+          <Route path="/super-admin/guesthouses" element={<Navigate to="/super-admin/hotel" replace />} />
           <Route path="/super-admin/add-hotel" element={<AddHotelPage />} />
           <Route path="/super-admin/rooms" element={<AddRooms />} />
           <Route path="/super-admin/beds" element={<AddBeds />} />

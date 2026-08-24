@@ -159,7 +159,6 @@ for (const plan of BOOKING_PLANS) {
   const booking = {
     userId,
     guestHouseId: plan.gh._id,
-    roomId:       room._id,
     roomIds:      [room._id],
     bedId:        null,
     checkIn:      plan.checkIn,

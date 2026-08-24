@@ -56,12 +56,19 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
     {
       $lookup: {
         from: Room.collection.name,
-        localField: 'roomId',
-        foreignField: '_id',
-        as: 'roomDoc',
+        let: { roomIds: '$roomIds' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $in: ['$_id', { $ifNull: ['$$roomIds', []] }]
+              }
+            }
+          }
+        ],
+        as: 'roomsDoc',
       },
     },
-    { $unwind: { path: '$roomDoc', preserveNullAndEmptyArrays: true } },
 
     {
       $lookup: {
@@ -99,16 +106,28 @@ export const getMonthlyRevenueByGuestHouseData = async ({ guestHouseId, month, y
           },
         },
         guestPhone: { $ifNull: ['$userDoc.phone', '$phone'] },
-        roomNumber: '$roomDoc.roomNumber',
-        roomType:   '$roomDoc.roomType',
+        roomNumber: {
+          $reduce: {
+            input: '$roomsDoc.roomNumber',
+            initialValue: '',
+            in: {
+              $cond: {
+                if: { $eq: ['$$value', ''] },
+                then: { $toString: '$$this' },
+                else: { $concat: ['$$value', ', ', { $toString: '$$this' }] }
+              }
+            }
+          }
+        },
+        roomType:   { $arrayElemAt: ['$roomsDoc.roomType', 0] },
         bedNumber:  '$bedDoc.bedNumber',
-        originalPrice:      { $ifNull: ['$roomDoc.price', 0] },
-        discountPercentage: { $ifNull: ['$roomDoc.discountPercentage', 0] },
+        originalPrice: { $sum: '$roomsDoc.price' },
+        discountPercentage: { $ifNull: [{ $arrayElemAt: ['$roomsDoc.discountPercentage', 0] }, 0] },
         pricePerNight: {
           $let: {
             vars: {
-              p: { $ifNull: ['$roomDoc.price', 0] },
-              d: { $ifNull: ['$roomDoc.discountPercentage', 0] },
+              p: { $sum: '$roomsDoc.price' },
+              d: { $ifNull: [{ $arrayElemAt: ['$roomsDoc.discountPercentage', 0] }, 0] },
             },
             in: {
               $subtract: [

@@ -47,14 +47,19 @@ export const createBed = async (req, res) => {
   }
 };
 
-// List beds by roomId
+// List beds by roomId or array of roomIds
 export const listBedsByRoom = async (req, res) => {
   try {
     const { Bed } = req.tenantModels;
-    const { roomId } = req.body;
+    const { roomId, roomIds } = req.body;
+
+    if (roomIds && Array.isArray(roomIds) && roomIds.length > 0) {
+      const beds = await Bed.find({ roomId: { $in: roomIds }, isActive: true });
+      return res.json({ success: true, beds });
+    }
 
     if (!roomId) {
-      return res.status(400).json({ error: "roomId is required" });
+      return res.json({ success: true, beds: [] });
     }
 
     const beds = await Bed.find({ roomId, isActive: true });

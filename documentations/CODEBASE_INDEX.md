@@ -259,7 +259,7 @@ The app uses React Router with route groups for:
 #### Super admin routes
 - `/super-admin/users`
 - `/super-admin/dashboard`
-- `/super-admin/guesthouses`
+- `/super-admin/hotel`
 - `/super-admin/rooms`
 - `/super-admin/beds`
 - `/super-admin/audits`

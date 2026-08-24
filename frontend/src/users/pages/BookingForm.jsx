@@ -196,7 +196,6 @@ const BookingForm = () => {
     try {
       const bookingData = {
         guestHouseId: selectedGuestHouse?.guestHouseId || selectedGuestHouse?._id,
-        roomId: formData.roomIds[0],
         roomIds: formData.roomIds,
         bedId: null,
         checkIn: formData.checkInDate,
