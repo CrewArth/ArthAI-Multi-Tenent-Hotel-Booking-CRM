@@ -28,15 +28,7 @@ export const CredentialsModal = ({ credentials, tenantName, onClose }) => {
           </div>
           <div>
             <h2 style={{ fontSize: '19px', fontWeight: '800', color: '#0f172a', margin: 0 }}>Tenant Provisioned!</h2>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Generated credentials for {tenantName}</p>
           </div>
-        </div>
-
-        <div style={{ background: '#fefce8', border: '1px solid #fef08a', padding: '12px 14px', borderRadius: '8px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <ShieldAlert size={18} color="#ca8a04" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <p style={{ fontSize: '12px', color: '#854d0e', margin: 0, lineHeight: 1.5 }}>
-            These credentials have been emailed to the tenant owner. Make sure to copy them now as passwords cannot be displayed again.
-          </p>
         </div>
 
         {/* Super Admin Credentials */}

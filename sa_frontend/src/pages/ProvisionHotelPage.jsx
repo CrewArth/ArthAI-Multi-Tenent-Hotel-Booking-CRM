@@ -100,7 +100,7 @@ export const ProvisionHotelPage = () => {
                   type="text"
                   name="name"
                   required
-                  placeholder="e.g. Hyatt Palace Hotel"
+                  placeholder="Enter Hotel Name"
                   value={formData.name}
                   onChange={handleChange}
                   style={{ width: '100%', padding: '10px 12px 10px 40px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontSize: '14px' }}
@@ -116,7 +116,7 @@ export const ProvisionHotelPage = () => {
                   type="text"
                   name="tenantId"
                   required
-                  placeholder="e.g. hyatt"
+                  placeholder="Enter Slug Id"
                   value={formData.tenantId}
                   onChange={handleChange}
                   style={{ width: '100%', padding: '10px 12px 10px 40px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontSize: '14px' }}
@@ -134,7 +134,7 @@ export const ProvisionHotelPage = () => {
                   type="text"
                   name="ownerName"
                   required
-                  placeholder="e.g. Rajesh Sharma"
+                  placeholder="Enter Full Name"
                   value={formData.ownerName}
                   onChange={handleChange}
                   style={{ width: '100%', padding: '10px 12px 10px 40px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontSize: '14px' }}
@@ -150,7 +150,7 @@ export const ProvisionHotelPage = () => {
                   type="email"
                   name="ownerEmail"
                   required
-                  placeholder="rajesh@hotel.com"
+                  placeholder="Enter Email"
                   value={formData.ownerEmail}
                   onChange={handleChange}
                   style={{ width: '100%', padding: '10px 12px 10px 40px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontSize: '14px' }}

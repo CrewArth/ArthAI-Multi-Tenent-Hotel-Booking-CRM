@@ -47,6 +47,36 @@ const bookingSchema = new mongoose.Schema(
         verificationImage: { type: String },
       },
     ],
+    guests: [
+      {
+        role: {
+          type: String,
+          enum: ["PRIMARY", "FAMILY_MEMBER"],
+          default: "PRIMARY",
+          required: true,
+        },
+        name: { type: String, required: true, trim: true },
+        relation: { type: String, trim: true },
+        age: { type: Number, min: 0 },
+        document: {
+          label: { type: String, trim: true },
+          url: { type: String },
+          uploadedVia: { type: String, enum: ["manual", "qr"], default: "manual" },
+          uploadedAt: { type: Date },
+        },
+      },
+    ],
+    captureSession: {
+      sessionId: { type: String },
+      active: { type: Boolean, default: false },
+      issuedAt: { type: Date },
+      expiresAt: { type: Date },
+      issuedBy: {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        email: { type: String },
+        name: { type: String },
+      },
+    },
     bookingSource: {
       type: String,
       enum: ["self_service", "admin"],

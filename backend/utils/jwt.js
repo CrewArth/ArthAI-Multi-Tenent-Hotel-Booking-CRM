@@ -1,5 +1,8 @@
+import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { normalizeRole } from './roles.js';
+
+dotenv.config();
 
 export const generateToken = (user, tenantContext = {}) => {
     const {
@@ -31,3 +34,27 @@ export const generateToken = (user, tenantContext = {}) => {
 export const verifyToken = (token) => {
     return jwt.verify(token, process.env.JWT_SECRET);
 };
+
+export const generateCaptureSessionToken = ({
+    bookingId,
+    sessionId,
+    tenantId = 'default',
+    dbName = process.env.DEFAULT_TENANT_DB || 'guesthouses',
+    tenantSlug = 'default',
+    issuedBy = {},
+    expiresIn = '30m',
+}) => {
+    return jwt.sign(
+        {
+            scope: 'guest-capture',
+            bookingId: String(bookingId),
+            sessionId: String(sessionId),
+            tenantId,
+            dbName,
+            tenantSlug,
+            issuedBy,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn }
+    );
+};

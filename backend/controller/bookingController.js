@@ -117,8 +117,8 @@ export const createAdminBooking = async (req, res) => {
     const primaryRoomId = roomIds[0] || req.body.roomId;
     const selectedBedId = bedId && String(bedId).trim() !== '' && String(bedId).trim() !== 'null' && String(bedId).trim() !== 'undefined' ? bedId : null;
 
-    if (!guestHouseId || roomIds.length === 0 || !checkIn || !checkOut || !fullName || !email || !phone || !address || !identityType || !req.verificationImageUrl) {
-      return res.status(400).json({ message: "Booking, guest, identity, and verification image details are required" });
+    if (!guestHouseId || roomIds.length === 0 || !checkIn || !checkOut || !fullName || !email || !phone || !address || !identityType) {
+      return res.status(400).json({ message: "Booking, guest, and identity details are required" });
     }
 
     if (roomIds.length > 1 && selectedBedId) {
@@ -200,6 +200,32 @@ export const createAdminBooking = async (req, res) => {
       bookingId: null,
     }, req.tenantDb);
 
+    const initialGuests = [
+      {
+        role: "PRIMARY",
+        name: fullName,
+        relation: "",
+        document: req.verificationImageUrl ? {
+          label: identityType || "Identity Document",
+          url: req.verificationImageUrl,
+          uploadedVia: "manual",
+          uploadedAt: new Date(),
+        } : undefined,
+      },
+      ...familyMembersWithImages.map((m) => ({
+        role: "FAMILY_MEMBER",
+        name: m.name,
+        relation: m.relation || "",
+        age: m.age,
+        document: m.verificationImage ? {
+          label: "Family Verification Document",
+          url: m.verificationImage,
+          uploadedVia: "manual",
+          uploadedAt: new Date(),
+        } : undefined,
+      })),
+    ];
+
     const booking = await Booking.create({
       userId: guestUser._id,
       guestHouseId: guestHouse._id,
@@ -208,8 +234,9 @@ export const createAdminBooking = async (req, res) => {
       checkIn: checkInDate,
       checkOut: checkOutDate,
       status: "approved",
-      verificationImage: req.verificationImageUrl,
+      verificationImage: req.verificationImageUrl || req.body.verificationImage || null,
       familyMembers: familyMembersWithImages,
+      guests: initialGuests,
       specialRequests: specialRequests?.trim(),
       bookingSource: "admin",
       createdBy: req.user?._id,
@@ -888,6 +915,47 @@ export const updateAdminBooking = async (req, res) => {
 
     const primaryRoomId = roomIds[0];
 
+    const updatedGuests = [
+      {
+        role: "PRIMARY",
+        name: fullName,
+        relation: "",
+        document: req.verificationImageUrl
+          ? {
+              label: identityType || "Identity Document",
+              url: req.verificationImageUrl,
+              uploadedVia: "manual",
+              uploadedAt: new Date(),
+            }
+          : existingBooking?.guests?.find((g) => g.role === "PRIMARY")?.document ||
+            (existingBooking?.verificationImage
+              ? {
+                  label: identityType || "Identity Document",
+                  url: existingBooking.verificationImage,
+                  uploadedVia: "manual",
+                  uploadedAt: existingBooking.createdAt,
+                }
+              : undefined),
+      },
+      ...familyMembersWithImages.map((m, idx) => {
+        const existingMemberDoc = existingBooking?.guests?.filter((g) => g.role === "FAMILY_MEMBER")?.[idx]?.document;
+        return {
+          role: "FAMILY_MEMBER",
+          name: m.name,
+          relation: m.relation || "",
+          age: m.age,
+          document: m.verificationImage
+            ? {
+                label: "Family Verification Document",
+                url: m.verificationImage,
+                uploadedVia: "manual",
+                uploadedAt: new Date(),
+              }
+            : existingMemberDoc,
+        };
+      }),
+    ];
+
     const updateData = {
       guestHouseId: guestHouse._id,
       roomIds,
@@ -895,6 +963,7 @@ export const updateAdminBooking = async (req, res) => {
       checkIn: checkInDate,
       checkOut: checkOutDate,
       familyMembers: familyMembersWithImages,
+      guests: updatedGuests,
       specialRequests: specialRequests?.trim(),
     };
 

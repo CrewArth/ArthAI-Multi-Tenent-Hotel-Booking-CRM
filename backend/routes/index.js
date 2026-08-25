@@ -14,6 +14,7 @@ import taxRoutes from './taxRoutes.js';
 import paymentRoutes from './paymentRoutes.js';
 import tenantRoutes from './tenantRoutes.js';
 import subscriptionRoutes from './subscriptionRoutes.js';
+import captureSessionRoutes from './captureSessionRoutes.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.use('/audit-logs', auditLogRoutes);
 router.use('/admin', adminSummary);
 router.use('/users', userRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/capture-session', captureSessionRoutes);
 router.use('/contact', contactRoutes);
 router.use('/reports', reportRoutes);
 router.use('/taxes', taxRoutes);
@@ -33,4 +35,4 @@ router.use('/payments', paymentRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/subscription', subscriptionRoutes);
 
-export default router;
+export default router;

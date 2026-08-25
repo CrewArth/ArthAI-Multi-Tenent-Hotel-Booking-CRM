@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import api from "../../utils/api";
 import editIcon from "../../assets/edit.svg";
 import { getCurrentMonthDateRange } from "../utils/dateUtils";
+import CaptureSessionModal from "../components/CaptureSessionModal";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -23,6 +24,7 @@ const Bookings = () => {
   const [error, setError]                     = useState("");
   const [selected, setSelected]               = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [captureBookingId, setCaptureBookingId] = useState(null);
   const [exportDate, setExportDate]           = useState(() => new Date().toISOString().slice(0, 10));
   const [isExporting, setIsExporting]         = useState(false);
 
@@ -268,6 +270,24 @@ const Bookings = () => {
                         >
                           <img src={editIcon} alt="Edit" style={{ width: 16, height: 16 }} />
                         </button>
+                        <button
+                          className="btn-action"
+                          style={{
+                            background: '#f0f9ff',
+                            color: '#0284c7',
+                            border: '1px solid #bae6fd',
+                            padding: '3px 7px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                          }}
+                          onClick={() => setCaptureBookingId(b._id)}
+                          title="Capture verification documents via phone QR"
+                        >
+                          <span>📱</span> QR
+                        </button>
                         <button className="btn-action view" onClick={() => setSelected(b)}>View</button>
                       </div>
                     </td>
@@ -320,12 +340,30 @@ const Bookings = () => {
                 {selected.specialRequests && <p className="full"><strong>Special Requests</strong>{selected.specialRequests}</p>}
               </div>
             </div>
-            <div className="page-modal-footer">
+            <div className="page-modal-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button
+                className="btn-action"
+                style={{ background: '#0284c7', color: '#fff', padding: '6px 12px', fontSize: '0.85rem' }}
+                onClick={() => {
+                  setCaptureBookingId(selected._id);
+                  setSelected(null);
+                }}
+              >
+                📱 Capture Documents via Phone
+              </button>
               <button className="btn-action view" onClick={() => setSelected(null)}>Close</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Mobile QR Capture Modal ── */}
+      <CaptureSessionModal
+        bookingId={captureBookingId}
+        isOpen={Boolean(captureBookingId)}
+        onClose={() => setCaptureBookingId(null)}
+        onSessionUpdated={() => fetchBookings(currentPage, appliedFilters, true)}
+      />
     </div>
   );
 };

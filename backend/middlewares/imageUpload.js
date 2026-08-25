@@ -48,6 +48,33 @@ export const uploadVerificationImage = multer(multerOptions).fields([
 
 export const uploadESignature = multer(multerOptions).single('eSignature');
 
+export const uploadSingleDocument = multer(multerOptions).single('document');
+
+export const processAndUploadGuestDocument = async (req, res, next) => {
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({ message: 'No document image file provided' });
+  }
+
+  try {
+    const bookingId = req.booking?._id || req.params.id || req.params.bookingId || 'temp';
+    const guestId   = req.params.guestId || 'primary';
+    const key       = `bookings/${bookingId}/guests/${guestId}/document-${Date.now()}.webp`;
+
+    const compressed = await sharp(file.buffer)
+      .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    const s3Config = req.userInfo?.config?.s3 || req.captureSession?.config?.s3 || {};
+    req.uploadedDocumentUrl = await uploadTenantImage(key, compressed, 'image/webp', s3Config);
+    return next();
+  } catch (err) {
+    console.error('[IMAGE] processAndUploadGuestDocument failed:', err);
+    return res.status(500).json({ message: 'Failed to process and upload guest document' });
+  }
+};
+
 export const processAndUploadImage = async (req, res, next) => {
   if (!req.file) return next();
 

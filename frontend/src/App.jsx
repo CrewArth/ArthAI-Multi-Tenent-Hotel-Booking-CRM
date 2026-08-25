@@ -33,6 +33,7 @@ const AboutUs = lazyLoad(() => import('./commonPages/AboutUs'));
 const ContactUs = lazyLoad(() => import('./commonPages/ContactUs'));
 const TermsAndPolicy = lazyLoad(() => import('./commonPages/TermsAndPolicy'));
 const FAQ = lazyLoad(() => import('./commonPages/FAQ'));
+const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage'));
 import ScrollToTop from './components/ScrollToTop';
 import { getAuthenticatedRedirectPath } from './utils/auth';
 
@@ -85,6 +86,8 @@ function App() {
         <Route path="/contact" element={<ContactUs />} />
         <Route path="/terms" element={<TermsAndPolicy />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/capture/:token" element={<MobileCapturePage />} />
+        <Route path="/capture" element={<MobileCapturePage />} />
         <Route path="/checkout" element={<Navigate to="/admin/checkout" replace />} />
 
         {/* ------------------ USER PROTECTED ROUTES ------------------ */}

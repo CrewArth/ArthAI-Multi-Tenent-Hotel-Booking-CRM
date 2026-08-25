@@ -2,6 +2,7 @@
 import express from "express";
 import {
   createBooking,
+  createAdminBooking,
   getAllBookings,
   getMyBookings,
   approveBooking,
@@ -13,11 +14,45 @@ import {
   getBookingById,
   updateAdminBooking
 } from "../controller/bookingController.js";
-import { createAdminBooking } from "../controller/bookingController.js";
-import { processAndUploadVerificationImage, uploadVerificationImage } from "../middlewares/imageUpload.js";
+import {
+  createCaptureSession,
+  endCaptureSession,
+  uploadManualGuestDocument,
+} from "../controller/captureSessionController.js";
+import {
+  processAndUploadVerificationImage,
+  uploadVerificationImage,
+  uploadSingleDocument,
+  processAndUploadGuestDocument,
+} from "../middlewares/imageUpload.js";
 import { authenticate, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
+
+// QR Capture Session endpoints for desktop admin
+router.post(
+  "/:id/capture-session",
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  createCaptureSession
+);
+
+router.post(
+  "/:id/capture-session/end",
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  endCaptureSession
+);
+
+// Manual desktop upload for specific guest slot
+router.post(
+  "/:id/guests/:guestId/document",
+  authenticate,
+  authorize('ADMIN', 'SUPER_ADMIN'),
+  uploadSingleDocument,
+  processAndUploadGuestDocument,
+  uploadManualGuestDocument
+);
 
 // User creates a booking
 router.post("/", createBooking);
@@ -64,5 +99,5 @@ router.put(
   updateAdminBooking
 );
 
-
 export default router;
+

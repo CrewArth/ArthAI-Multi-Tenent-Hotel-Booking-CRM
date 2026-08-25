@@ -6,6 +6,7 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import CaptureSessionModal from '../components/CaptureSessionModal';
 import '../styles/adminRoomBooking.css';
 
 const STEPS = ['Stay Details', 'Guest Info', 'Identity & Emergency', 'Review'];
@@ -24,19 +25,19 @@ const AdminRoomBooking = () => {
 
   // If navigating from "Edit booking", state may contain bookingId
   const editBookingId = location.state?.bookingId || null;
-  const isEditMode    = Boolean(editBookingId);
+  const isEditMode = Boolean(editBookingId);
 
   const currentUser = useSelector((state) => state.auth?.user);
   const assignedGuestHouse = currentUser?.assignedGuestHouseId;
 
   const [step, setStep] = useState(0);
   const [guestHouses, setGuestHouses] = useState([]);
-  const [rooms, setRooms]             = useState([]);
-  const [beds, setBeds]               = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [beds, setBeds] = useState([]);
 
   // Availability state
   const [unavailableRooms, setUnavailableRooms] = useState([]);
-  const [unavailableBeds, setUnavailableBeds]   = useState([]);
+  const [unavailableBeds, setUnavailableBeds] = useState([]);
 
   // Form State
   const [form, setForm] = useState({
@@ -60,9 +61,99 @@ const AdminRoomBooking = () => {
   });
 
   const [verificationImage, setVerificationImage] = useState(null);
-  const [familyMembers, setFamilyMembers]         = useState([]);
-  const [loading, setLoading]                     = useState(false);
-  const [submitting, setSubmitting]               = useState(false);
+  const [capturedPrimaryDoc, setCapturedPrimaryDoc] = useState(null);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [currentBookingId, setCurrentBookingId] = useState(editBookingId);
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setCurrentBookingId(editBookingId);
+  }, [editBookingId]);
+
+  const handleCaptureSessionUpdated = (sessionData) => {
+    if (!sessionData?.guests) return;
+    const primary = sessionData.guests.find((g) => g.role === 'PRIMARY');
+    if (primary?.document?.url) {
+      setCapturedPrimaryDoc(primary.document.url);
+    }
+    const familyFromSession = sessionData.guests.filter((g) => g.role === 'FAMILY_MEMBER');
+    if (familyFromSession.length > 0) {
+      setFamilyMembers(familyFromSession.map((m) => ({
+        name: m.name,
+        relation: m.relation || '',
+        age: m.age || '',
+        image: null,
+        capturedUrl: m.document?.url || null,
+        documentLabel: m.document?.label || '',
+      })));
+    }
+  };
+
+  const handleOpenCaptureSession = async () => {
+    if (currentBookingId) {
+      setShowCaptureModal(true);
+      return;
+    }
+
+    if (!selectedGuestHouse) {
+      toast.error('Please select a hotel in Stay Details (Step 1).');
+      setStep(0);
+      return;
+    }
+    if (!form.roomIds.length) {
+      toast.error('Please select at least one room in Stay Details (Step 1).');
+      setStep(0);
+      return;
+    }
+    if (!form.checkIn || !form.checkOut) {
+      toast.error('Please select valid check-in and check-out dates (Step 1).');
+      setStep(0);
+      return;
+    }
+    if (!form.fullName.trim() || !form.email.trim()) {
+      toast.error('Please fill Guest Name and Email in Guest Info (Step 2).');
+      setStep(1);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = new FormData();
+      payload.append('guestHouseId', selectedGuestHouse.guestHouseId || selectedGuestHouse._id);
+      payload.append('roomIds', JSON.stringify(form.roomIds));
+      if (form.bedId) payload.append('bedId', form.bedId);
+      payload.append('checkIn', form.checkIn);
+      payload.append('checkOut', form.checkOut);
+      payload.append('fullName', form.fullName.trim());
+      const names = form.fullName.trim().split(' ');
+      payload.append('firstName', names[0]);
+      payload.append('lastName', names.slice(1).join(' '));
+      payload.append('email', form.email.trim());
+      payload.append('phone', form.phone || '');
+      payload.append('address', form.address || 'Pending Check-in');
+      payload.append('identityType', form.identityType || 'Aadhaar');
+      payload.append('identityNumber', form.identityNumber || '');
+      if (form.specialRequests) payload.append('specialRequests', form.specialRequests);
+
+      const cleanMembers = familyMembers.map(({ image, ...rest }) => rest);
+      payload.append('familyMembers', JSON.stringify(cleanMembers));
+
+      const res = await api.post('/api/bookings/admin', payload);
+      const newId = res.data?.booking?._id;
+      if (newId) {
+        setCurrentBookingId(newId);
+        toast.success('Booking initialized! Launching Mobile QR code...');
+        setShowCaptureModal(true);
+      }
+    } catch (err) {
+      console.error('Failed to initialize booking for capture session:', err);
+      toast.error(err.response?.data?.message || 'Failed to initialize booking');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ── Auto-assign guestHouseId if admin has assignedGuestHouse ──────
   useEffect(() => {
@@ -89,8 +180,8 @@ const AdminRoomBooking = () => {
         const rIds = Array.isArray(b.roomIds) && b.roomIds.length
           ? b.roomIds.map((r) => (typeof r === 'object' ? r._id : r))
           : b.roomId
-          ? [typeof b.roomId === 'object' ? b.roomId._id : b.roomId]
-          : [];
+            ? [typeof b.roomId === 'object' ? b.roomId._id : b.roomId]
+            : [];
 
         const bId = typeof b.bedId === 'object' ? b.bedId?._id : b.bedId;
 
@@ -150,8 +241,8 @@ const AdminRoomBooking = () => {
   const displayHotelName = currentHotel
     ? currentHotel.guestHouseName
     : (typeof assignedGuestHouse === 'object' && assignedGuestHouse.guestHouseName
-        ? assignedGuestHouse.guestHouseName
-        : 'Loading hotel...');
+      ? assignedGuestHouse.guestHouseName
+      : 'Loading hotel...');
 
   // ── Fetch Rooms when selectedGuestHouseId changes ─────────────
   useEffect(() => {
@@ -175,14 +266,14 @@ const AdminRoomBooking = () => {
       setUnavailableRooms([]); setUnavailableBeds([]); return;
     }
     api.post('/api/bookings/availability', {
-        guestHouseId: selectedGuestHouseId,
-        checkIn: form.checkIn,
-        checkOut: form.checkOut,
-        ...(isEditMode && editBookingId ? { excludeBookingId: editBookingId } : {}),
-      })
+      guestHouseId: selectedGuestHouseId,
+      checkIn: form.checkIn,
+      checkOut: form.checkOut,
+      ...(isEditMode && editBookingId ? { excludeBookingId: editBookingId } : {}),
+    })
       .then((res) => {
         const newUnavailableRooms = res.data.unavailableRooms || [];
-        const newUnavailableBeds  = res.data.unavailableBeds  || [];
+        const newUnavailableBeds = res.data.unavailableBeds || [];
         setUnavailableRooms(newUnavailableRooms);
         setUnavailableBeds(newUnavailableBeds);
         // Drop any selected rooms that are now booked
@@ -265,17 +356,17 @@ const AdminRoomBooking = () => {
       payload.append('phone', form.phone || '');
 
       if (form.dateOfBirth) payload.append('dateOfBirth', form.dateOfBirth);
-      if (form.gender)      payload.append('gender', form.gender);
+      if (form.gender) payload.append('gender', form.gender);
       if (form.nationality) payload.append('nationality', form.nationality);
-      if (form.address)     payload.append('address', form.address);
+      if (form.address) payload.append('address', form.address);
 
-      if (form.identityType)   payload.append('identityType', form.identityType);
+      if (form.identityType) payload.append('identityType', form.identityType);
       if (form.identityNumber) payload.append('identityNumber', form.identityNumber);
-      if (verificationImage)   payload.append('verificationImage', verificationImage);
+      if (verificationImage) payload.append('verificationImage', verificationImage);
 
-      if (form.emergencyContactName)  payload.append('emergencyContactName', form.emergencyContactName);
+      if (form.emergencyContactName) payload.append('emergencyContactName', form.emergencyContactName);
       if (form.emergencyContactPhone) payload.append('emergencyContactPhone', form.emergencyContactPhone);
-      if (form.specialRequests)       payload.append('specialRequests', form.specialRequests);
+      if (form.specialRequests) payload.append('specialRequests', form.specialRequests);
 
       // Sanitize family members (drop File objects before stringify)
       const cleanMembers = familyMembers.map(({ image, ...rest }) => rest);
@@ -288,9 +379,10 @@ const AdminRoomBooking = () => {
         }
       });
 
-      if (isEditMode) {
-        await api.put(`/api/bookings/${editBookingId}/admin`, payload);
-        toast.success('Booking updated successfully!');
+      if (isEditMode || currentBookingId) {
+        const idToUpdate = editBookingId || currentBookingId;
+        await api.put(`/api/bookings/${idToUpdate}/admin`, payload);
+        toast.success(isEditMode ? 'Booking updated successfully!' : 'Room booked successfully!');
       } else {
         await api.post('/api/bookings/admin', payload);
         toast.success('Room booked successfully!');
@@ -473,7 +565,10 @@ const AdminRoomBooking = () => {
         {/* ── STEP 2 : Identity & Emergency ── */}
         {step === 2 && (
           <form className="arb-card" onSubmit={(e) => { e.preventDefault(); goNext(); }}>
-            <h2>Identity & Emergency</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h2 style={{ margin: 0 }}>Identity & Emergency</h2>
+            </div>
+
             <div className="arb-grid">
               <label>
                 ID Type <span>*</span>
@@ -490,15 +585,53 @@ const AdminRoomBooking = () => {
                 ID Number
                 <input name="identityNumber" value={form.identityNumber} onChange={updateForm} />
               </label>
+
+              {/* Primary Guest Document Slot with Side-by-Side Options */}
               <label>
-                Verification Image {!isEditMode && <span>*</span>}
-                <input type="file" accept="image/*"
-                  onChange={(e) => setVerificationImage(e.target.files?.[0] || null)}
-                  required={!isEditMode && !verificationImage} />
-                {verificationImage
-                  ? <small>{verificationImage.name}</small>
-                  : isEditMode && <small style={{ color: '#64748b' }}>Leave empty to keep existing image</small>}
+                Verification Document {!isEditMode && !capturedPrimaryDoc && <span>*</span>}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ flex: 1 }}
+                    onChange={(e) => {
+                      setVerificationImage(e.target.files?.[0] || null);
+                      setCapturedPrimaryDoc(null);
+                    }}
+                    required={!isEditMode && !currentBookingId && !verificationImage && !capturedPrimaryDoc}
+                  />
+                  <button
+                    type="button"
+                    className="arb-btn-secondary"
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      fontSize: '0.8rem',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      background: '#f0f9ff',
+                      borderColor: '#bae6fd',
+                      color: '#0284c7',
+                      cursor: 'pointer',
+                    }}
+                    onClick={handleOpenCaptureSession}
+                    title="Scan QR from phone camera"
+                  >
+                    <span>📱</span> Phone QR
+                  </button>
+                </div>
+                {verificationImage && <small>{verificationImage.name}</small>}
+                {capturedPrimaryDoc && (
+                  <small style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
+                    <span>✓</span> Verified via Phone QR
+                  </small>
+                )}
+                {!verificationImage && !capturedPrimaryDoc && (isEditMode || currentBookingId) && (
+                  <small style={{ color: '#64748b' }}>Leave empty to keep existing image</small>
+                )}
               </label>
+
               <label>
                 Emergency Contact Name
                 <input name="emergencyContactName" value={form.emergencyContactName} onChange={updateForm} />
@@ -528,9 +661,40 @@ const AdminRoomBooking = () => {
                 </div>
                 <label className="arb-family-img-label">
                   Verification Document (optional)
-                  <input type="file" accept="image/*"
-                    onChange={(e) => updateMember(i, 'image', e.target.files?.[0] || null)} />
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ flex: 1 }}
+                      onChange={(e) => updateMember(i, 'image', e.target.files?.[0] || null)}
+                    />
+                    <button
+                      type="button"
+                      className="arb-btn-secondary"
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        fontSize: '0.8rem',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        background: '#f0f9ff',
+                        borderColor: '#bae6fd',
+                        color: '#0284c7',
+                        cursor: 'pointer',
+                      }}
+                      onClick={handleOpenCaptureSession}
+                      title="Scan QR from phone camera"
+                    >
+                      <span>📱</span> Phone QR
+                    </button>
+                  </div>
                   {m.image && <small>{m.image.name}</small>}
+                  {m.capturedUrl && (
+                    <small style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
+                      <span>✓</span> Captured via Phone QR
+                    </small>
+                  )}
                 </label>
               </div>
             ))}
@@ -551,7 +715,7 @@ const AdminRoomBooking = () => {
         {/* ── STEP 3 : Review & Confirm ── */}
         {step === 3 && (
           <div className="arb-card">
-            <h2 style={{fontWeight: "bolder"}}>Review & Confirm</h2>
+            <h2 style={{ fontWeight: "bolder" }}>Review & Confirm</h2>
             <div className="arb-review-section">
               <h3>Stay Details</h3>
               <div className="arb-review-grid">
@@ -581,6 +745,7 @@ const AdminRoomBooking = () => {
               <div className="arb-review-grid">
                 <div><span>ID Type</span><strong>{form.identityType || '—'}</strong></div>
                 <div><span>ID Number</span><strong>{form.identityNumber || '—'}</strong></div>
+                <div><span>Verification Doc</span><strong>{capturedPrimaryDoc ? '✓ Captured via Phone QR' : verificationImage ? verificationImage.name : (isEditMode ? 'Existing Image' : '—')}</strong></div>
                 <div><span>Emergency Contact</span><strong>{form.emergencyContactName || '—'}</strong></div>
                 <div><span>Emergency Phone</span><strong>{form.emergencyContactPhone || '—'}</strong></div>
                 {form.specialRequests && <div className="full"><span>Special Requests</span><strong>{form.specialRequests}</strong></div>}
@@ -594,7 +759,7 @@ const AdminRoomBooking = () => {
                   {familyMembers.map((m, i) => (
                     <div key={i}>
                       <span>Member {i + 1}</span>
-                      <strong>{m.name || '—'} ({m.relation || '—'}, {m.age || '—'} yrs)</strong>
+                      <strong>{m.name || '—'} ({m.relation || '—'}, {m.age || '—'} yrs) {m.capturedUrl ? '✓ QR Verified' : ''}</strong>
                     </div>
                   ))}
                 </div>
@@ -610,6 +775,14 @@ const AdminRoomBooking = () => {
           </div>
         )}
       </div>
+
+      {/* Mobile QR Capture Session Modal */}
+      <CaptureSessionModal
+        bookingId={currentBookingId}
+        isOpen={showCaptureModal && Boolean(currentBookingId)}
+        onClose={() => setShowCaptureModal(false)}
+        onSessionUpdated={handleCaptureSessionUpdated}
+      />
     </div>
   );
 };

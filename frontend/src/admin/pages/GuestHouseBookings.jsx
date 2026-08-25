@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import api from "../../utils/api";
 import editIcon from "../../assets/edit.svg";
 import { getCurrentMonthDateRange } from "../utils/dateUtils";
+import CaptureSessionModal from "../components/CaptureSessionModal";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -24,6 +25,7 @@ const GuestHouseBookings = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [captureBookingId, setCaptureBookingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
@@ -268,6 +270,24 @@ const GuestHouseBookings = () => {
                         >
                           <img src={editIcon} alt="Edit" style={{ width: 16, height: 16 }} />
                         </button>
+                        <button
+                          className="btn-action"
+                          style={{
+                            background: '#f0f9ff',
+                            color: '#0284c7',
+                            border: '1px solid #bae6fd',
+                            padding: '3px 7px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                          }}
+                          onClick={() => setCaptureBookingId(b._id)}
+                          title="Capture verification documents via phone QR"
+                        >
+                          <span>📱</span> QR
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -281,26 +301,28 @@ const GuestHouseBookings = () => {
       {/* Pagination */}
       {totalCount > 0 && (
         <div className="pagination-row">
-          <button
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          >
-            ← Prev
-          </button>
+          <button disabled={currentPage === 1} onClick={() => goToPage(1)}>« First</button>
+          <button disabled={currentPage === 1} onClick={() => goToPage(currentPage - 1)}>← Prev</button>
+
           <span className="pagination-info">
             Page {currentPage} of {totalPages}
-            <span style={{ marginLeft: 16, color: "#64748b" }}>
-              Showing {(currentPage - 1) * limit + 1}–{Math.min(currentPage * limit, totalCount)} of {totalCount}
+            <span style={{ marginLeft: 14, color: "#94a3b8" }}>
+              ({(currentPage - 1) * limit + 1}–{Math.min(currentPage * limit, totalCount)} of {totalCount})
             </span>
           </span>
-          <button
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Next →
-          </button>
+
+          <button disabled={currentPage === totalPages} onClick={() => goToPage(currentPage + 1)}>Next →</button>
+          <button disabled={currentPage === totalPages} onClick={() => goToPage(totalPages)}>Last »</button>
         </div>
       )}
+
+      {/* Mobile QR Capture Modal */}
+      <CaptureSessionModal
+        bookingId={captureBookingId}
+        isOpen={Boolean(captureBookingId)}
+        onClose={() => setCaptureBookingId(null)}
+        onSessionUpdated={() => fetchBookings(currentPage, true)}
+      />
     </div>
   );
 };
