@@ -1,28 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import api from '../utils/api';
 import '../styles/mobileCapture.css';
-
-// Automatically detect the backend API URL (handles deployed domains or local IP)
-const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
-  }
-  // When running locally on Vite dev server (port 5173), proxy to port 5000
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:5000`;
-    }
-    // In production or mobile LAN IP, fallback to same origin or port 5000 if dev
-    if (window.location.port === '5173') {
-      return `${protocol}//${hostname}:5000`;
-    }
-    return window.location.origin;
-  }
-  return '';
-};
 
 const MobileCapturePage = () => {
   const { token: paramToken } = useParams();
@@ -45,7 +25,6 @@ const MobileCapturePage = () => {
   const [addingMember, setAddingMember] = useState(false);
 
   const fileInputRefs = useRef({});
-  const apiBase = getApiBaseUrl();
 
   // ── 1. Fetch Session Roster ──
   const fetchRoster = useCallback(async () => {
@@ -56,7 +35,8 @@ const MobileCapturePage = () => {
     }
 
     try {
-      const res = await axios.get(`${apiBase}/api/capture-session/roster?token=${token}`, {
+      const res = await api.get('/api/capture-session/roster', {
+        params: { token },
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -81,7 +61,7 @@ const MobileCapturePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, apiBase]);
+  }, [token]);
 
   useEffect(() => {
     fetchRoster();
@@ -118,10 +98,11 @@ const MobileCapturePage = () => {
       formData.append('document', file);
       formData.append('label', docLabels[guestId] || 'Verification Document');
 
-      const res = await axios.post(
-        `${apiBase}/api/capture-session/guests/${guestId}/document?token=${token}`,
+      const res = await api.post(
+        `/api/capture-session/guests/${guestId}/document`,
         formData,
         {
+          params: { token },
           headers: {
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`,
@@ -163,10 +144,11 @@ const MobileCapturePage = () => {
 
     setAddingMember(true);
     try {
-      const res = await axios.post(
-        `${apiBase}/api/capture-session/guests?token=${token}`,
+      const res = await api.post(
+        '/api/capture-session/guests',
         newMember,
         {
+          params: { token },
           headers: {
             Authorization: `Bearer ${token}`,
           },
