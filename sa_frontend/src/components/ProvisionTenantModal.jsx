@@ -52,8 +52,24 @@ export const ProvisionTenantModal = ({ onClose, onSuccess }) => {
           <X size={20} />
         </button>
 
-        <div style={{ marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: 0 }}>Provision New Hotel</h2>
+        <div style={{ marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: 0 }}>Quick Provision Hotel</h2>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>Or use full enterprise onboarding stepper page</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              window.location.href = '/provision-hotel';
+            }}
+            style={{
+              padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', border: '1px solid #bfdbfe',
+              color: '#2563eb', fontWeight: '700', fontSize: '12px', cursor: 'pointer', marginRight: '24px'
+            }}
+          >
+            Launch Stepper →
+          </button>
         </div>
 
         {error && (

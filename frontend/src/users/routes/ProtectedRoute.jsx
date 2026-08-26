@@ -9,7 +9,7 @@ function ProtectedRoute({children}){
         return <Navigate to="/signin" replace />;
     }
 
-    if (role === "SUPER_ADMIN") {
+    if (role === "SUPER_ADMIN" || role === "HOTEL_ADMIN") {
         return <Navigate to={getRedirectPathForRole(role)} replace />;
     }
 

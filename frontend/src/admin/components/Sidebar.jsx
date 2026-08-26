@@ -14,10 +14,11 @@ const Sidebar = () => {
   const { mobileOpen, close } = useSidebar();
   const sidebarRef = useRef(null);
 
+  const isHotelAdmin = role === 'HOTEL_ADMIN' || role === 'HOTEL-ADMIN';
   const sidebarDataset = role === 'ADMIN' ? adminSidebarData : superAdminSidebarData;
 
   const navItems = sidebarDataset.filter((item) => item.id !== SETTINGS_ID);
-  const settingsItem = sidebarDataset.find((item) => item.id === SETTINGS_ID);
+  const settingsItem = isHotelAdmin ? null : sidebarDataset.find((item) => item.id === SETTINGS_ID);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {

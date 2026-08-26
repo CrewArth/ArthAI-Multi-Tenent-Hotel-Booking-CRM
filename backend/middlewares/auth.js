@@ -86,6 +86,25 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'Your account is not active' });
     }
 
+    // Check central Tenant expiry status
+    try {
+      const { connectMasterDb } = await import('../config/dbManager.js');
+      const tenantSchema = (await import('../models/centralModels/Tenant.js')).default;
+      const master = await connectMasterDb();
+      const Tenant = master.models.Tenant || master.model('Tenant', tenantSchema);
+      const tDoc = await Tenant.findOne({ dbName }).select('expiryDate isActive').lean();
+      if (tDoc) {
+        if (tDoc.isActive === false) {
+          return res.status(403).json({ message: 'Your organization is deactivated' });
+        }
+        if (tDoc.expiryDate && new Date() > new Date(tDoc.expiryDate)) {
+          return res.status(403).json({ message: 'Your subscription has expired. Please contact administrator to renew.' });
+        }
+      }
+    } catch (tErr) {
+      // ignore lookup error
+    }
+
     if (payload.secret_key && user.login_secret_key && user.login_secret_key !== payload.secret_key) {
       // Re-query database directly to bypass potentially stale cache
       const User = tenantDb.models.User || tenantDb.model('User');

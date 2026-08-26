@@ -6,7 +6,12 @@ import CreateUserModal from "../components/CreateUserModal";
 import AssignGuestHouseModal from "../components/AssignGuestHouseModal";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 
+import { getStoredUser } from "../../utils/auth";
+
 const UsersList = () => {
+  const currentUser = getStoredUser();
+  const isHotelAdmin = currentUser?.role === 'HOTEL_ADMIN' || currentUser?.role === 'HOTEL-ADMIN';
+
   const [users, setUsers]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [err, setErr]                   = useState("");
@@ -135,6 +140,7 @@ const UsersList = () => {
               <th className="center">#</th>
               <th>Full Name</th>
               <th>Email</th>
+              <th>Role</th>
               <th>Phone</th>
               <th>Assigned Hotel</th>
               <th>Status</th>
@@ -143,13 +149,28 @@ const UsersList = () => {
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan="7" className="table-empty">No admins found</td></tr>
+              <tr><td colSpan="8" className="table-empty">No admins found</td></tr>
             ) : (
               filtered.map((u, i) => (
                 <tr key={u._id}>
                   <td className="center">{(currentPage - 1) * 10 + i + 1}</td>
                   <td>{u.firstName} {u.lastName}</td>
                   <td>{u.email}</td>
+                  <td>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: u.role === 'HOTEL_ADMIN' ? '#fef3c7' : '#eff6ff',
+                        color: u.role === 'HOTEL_ADMIN' ? '#b45309' : '#1d4ed8',
+                        border: u.role === 'HOTEL_ADMIN' ? '1px solid #fde68a' : '1px solid #bfdbfe'
+                      }}
+                    >
+                      {u.role || 'ADMIN'}
+                    </span>
+                  </td>
                   <td>{u.phone || "—"}</td>
                   <td>
                     {typeof u.assignedGuestHouseId === 'object' && u.assignedGuestHouseId
@@ -170,12 +191,14 @@ const UsersList = () => {
                         Edit
                       </button>
 
-                      <button
-                        className="btn-action view"
-                        onClick={() => { setSelectedUser(u); setIsAssignOpen(true); }}
-                      >
-                        Assign
-                      </button>
+                      {!isHotelAdmin && (
+                        <button
+                          className="btn-action view"
+                          onClick={() => { setSelectedUser(u); setIsAssignOpen(true); }}
+                        >
+                          Assign
+                        </button>
+                      )}
 
                       <button
                         className="btn-action toggle"

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { saTenantApi } from '../api/saApi';
 import { 
   Building2, Plus, Database, CheckCircle2, XCircle, Search, 
-  RefreshCw, ShieldCheck, Zap, Crown
+  RefreshCw, ShieldCheck, Zap, Crown, Edit2, ChevronLeft, ChevronRight, Calendar, AlertTriangle
 } from 'lucide-react';
 import { ProvisionTenantModal } from '../components/ProvisionTenantModal';
 import { CredentialsModal } from '../components/CredentialsModal';
@@ -23,6 +23,10 @@ export const SaDashboard = () => {
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [newCredentials, setNewCredentials] = useState(null);
   const [newTenantName, setNewTenantName] = useState('');
+
+  // Table Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -79,6 +83,38 @@ export const SaDashboard = () => {
     });
   }, [tenants, searchQuery, statusFilter]);
 
+  // Reset pagination on filter or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredTenants.length / itemsPerPage) || 1;
+
+  const paginatedTenants = useMemo(() => {
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    return filteredTenants.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredTenants, currentPage, itemsPerPage]);
+
+  const getExpiryStatus = (expiryDate) => {
+    if (!expiryDate) {
+      return { status: 'LIFETIME', label: 'No Expiry', color: '#64748b', bg: '#f1f5f9', border: '#cbd5e1' };
+    }
+    const exp = new Date(expiryDate);
+    const now = new Date();
+    const formatted = exp.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    if (now > exp) {
+      return { status: 'EXPIRED', label: `Expired (${formatted})`, color: '#b91c1c', bg: '#fee2e2', border: '#fca5a5' };
+    }
+
+    const diffDays = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 7) {
+      return { status: 'EXPIRING_SOON', label: `Expires in ${diffDays}d (${formatted})`, color: '#d97706', bg: '#fef3c7', border: '#fde68a' };
+    }
+
+    return { status: 'VALID', label: formatted, color: '#15803d', bg: '#dcfce7', border: '#bbf7d0' };
+  };
+
   return (
     <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '32px 24px' }}>
       
@@ -127,7 +163,7 @@ export const SaDashboard = () => {
         </div>
       </div>
 
-      {/* KPI Cards Grid (Matching frontend .card-grid & .dashboard-card styling) */}
+      {/* KPI Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
         
         {/* Total Hotels */}
@@ -268,85 +304,195 @@ export const SaDashboard = () => {
         ) : filteredTenants.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No hotel organizations match your search.</div>
         ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '12px 16px' }}>Organization</th>
-                  <th style={{ padding: '12px 16px' }}>Database</th>
-                  <th style={{ padding: '12px 16px' }}>Owner</th>
-                  <th style={{ padding: '12px 16px' }}>Subscription Plan</th>
-                  <th style={{ padding: '12px 16px' }}>Status</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTenants.map((t) => (
-                  <tr key={t._id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '14px', background: '#ffffff' }}>
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '15px' }}>{t.name}</div>
-                    </td>
-
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px', fontWeight: '700' }}>
-                        <Database size={13} color="#64748b" /> {t.dbName}
-                      </div>
-                    </td>
-
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ color: '#1e293b', fontWeight: '600' }}>{t.owner?.name}</div>
-                    </td>
-
-                    <td style={{ padding: '16px' }}>
-                      <select
-                        value={t.plan}
-                        onChange={(e) => handleUpdatePlan(t.tenantId, e.target.value)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          background: '#ffffff',
-                          color: t.plan === 'enterprise' ? '#7c3aed' : t.plan === 'pro' ? '#0284c7' : '#475569',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          textTransform: 'uppercase',
-                          outline: 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <option value="basic">BASIC</option>
-                        <option value="pro">PRO</option>
-                        <option value="enterprise">ENTERPRISE</option>
-                      </select>
-                    </td>
-
-                    <td style={{ padding: '16px' }}>
-                      <span className={`badge ${t.isActive ? 'badge-active' : 'badge-inactive'}`}>
-                        {t.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-
-                    <td style={{ padding: '16px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => handleToggleStatus(t.tenantId)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          background: t.isActive ? '#fee2e2' : '#dcfce7',
-                          color: t.isActive ? '#b91c1c' : '#15803d',
-                          border: t.isActive ? '1px solid #fca5a5' : '1px solid #bbf7d0',
-                          transition: 'all 0.15s ease-in-out',
-                        }}
-                      >
-                        {t.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </td>
+          <div>
+            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>
+                    <th style={{ padding: '12px 16px' }}>Organization</th>
+                    <th style={{ padding: '12px 16px' }}>Database</th>
+                    <th style={{ padding: '12px 16px' }}>Owner</th>
+                    <th style={{ padding: '12px 16px' }}>Subscription Plan</th>
+                    <th style={{ padding: '12px 16px' }}>Expiry Date</th>
+                    <th style={{ padding: '12px 16px' }}>Status</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {paginatedTenants.map((t) => {
+                    const expInfo = getExpiryStatus(t.expiryDate);
+                    return (
+                      <tr key={t._id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '14px', background: '#ffffff' }}>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '15px' }}>{t.name}</div>
+                        </td>
+
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', padding: '4px 10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '12px', fontWeight: '700' }}>
+                            <Database size={13} color="#64748b" /> {t.dbName}
+                          </div>
+                        </td>
+
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ color: '#1e293b', fontWeight: '600' }}>{t.owner?.name}</div>
+                        </td>
+
+                        <td style={{ padding: '16px' }}>
+                          <select
+                            value={t.plan}
+                            onChange={(e) => handleUpdatePlan(t.tenantId, e.target.value)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              background: '#ffffff',
+                              color: t.plan === 'enterprise' ? '#7c3aed' : t.plan === 'pro' ? '#0284c7' : '#475569',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              textTransform: 'uppercase',
+                              outline: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <option value="basic">BASIC</option>
+                            <option value="pro">PRO</option>
+                            <option value="enterprise">ENTERPRISE</option>
+                          </select>
+                        </td>
+
+                        <td style={{ padding: '16px' }}>
+                          <span
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              background: expInfo.bg,
+                              color: expInfo.color,
+                              border: `1px solid ${expInfo.border}`,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Calendar size={12} /> {expInfo.label}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '16px' }}>
+                          <span className={`badge ${t.isActive ? 'badge-active' : 'badge-inactive'}`}>
+                            {t.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              onClick={() => navigate(`/edit-hotel/${t.tenantId}`)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700',
+                                background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                                cursor: 'pointer', transition: 'all 0.15s ease'
+                              }}
+                              title="Edit Hotel Details"
+                            >
+                              <Edit2 size={13} /> Edit
+                            </button>
+
+                            <button
+                              onClick={() => handleToggleStatus(t.tenantId)}
+                              style={{
+                                padding: '6px 14px',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                background: t.isActive ? '#fee2e2' : '#dcfce7',
+                                color: t.isActive ? '#b91c1c' : '#15803d',
+                                border: t.isActive ? '1px solid #fca5a5' : '1px solid #bbf7d0',
+                                transition: 'all 0.15s ease-in-out',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {t.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', flexWrap: 'wrap', gap: '12px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span>
+                  Showing {filteredTenants.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to{' '}
+                  {Math.min(currentPage * itemsPerPage, filteredTenants.length)} of {filteredTenants.length} hotels
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Rows per page:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', outline: 'none', background: '#ffffff' }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px',
+                    borderRadius: '6px', border: '1px solid #cbd5e1', background: currentPage === 1 ? '#f8fafc' : '#ffffff',
+                    color: currentPage === 1 ? '#cbd5e1' : '#334155', cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '13px', fontWeight: '600'
+                  }}
+                >
+                  <ChevronLeft size={16} /> Prev
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '700',
+                      background: currentPage === page ? '#2563eb' : '#ffffff',
+                      color: currentPage === page ? '#ffffff' : '#475569',
+                      border: currentPage === page ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {page}
+                  </button>
                 ))}
-              </tbody>
-            </table>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px',
+                    borderRadius: '6px', border: '1px solid #cbd5e1', background: currentPage === totalPages ? '#f8fafc' : '#ffffff',
+                    color: currentPage === totalPages ? '#cbd5e1' : '#334155', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    fontSize: '13px', fontWeight: '600'
+                  }}
+                >
+                  Next <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
       </div>

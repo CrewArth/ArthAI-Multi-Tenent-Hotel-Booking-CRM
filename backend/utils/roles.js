@@ -19,6 +19,10 @@ export const normalizeRole = (role) => {
     return 'SUPER_ADMIN';
   }
 
+  if (upperRole === 'HOTEL_ADMIN' || upperRole === 'HOTEL-ADMIN' || upperRole === 'HOTELADMIN') {
+    return 'HOTEL_ADMIN';
+  }
+
   if (upperRole === 'ADMIN') {
     return 'ADMIN';
   }

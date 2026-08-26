@@ -70,10 +70,10 @@ router.post(
 router.post("/my", getMyBookings);
 
 // Admin fetches all bookings
-router.post("/list", getAllBookings);
+router.post("/list", authenticate, getAllBookings);
 
 // Admin exports bookings by day
-router.post("/export/daily", exportDailyBookings);
+router.post("/export/daily", authenticate, exportDailyBookings);
 
 // Admin approves / rejects / cancels booking
 router.patch("/:id/approve", approveBooking);

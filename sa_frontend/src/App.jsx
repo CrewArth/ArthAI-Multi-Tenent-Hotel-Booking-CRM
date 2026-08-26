@@ -36,6 +36,14 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/edit-hotel/:tenantId"
+              element={
+                <ProtectedRoute>
+                  <ProvisionHotelPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

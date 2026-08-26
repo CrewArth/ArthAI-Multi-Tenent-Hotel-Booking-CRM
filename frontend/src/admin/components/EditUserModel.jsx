@@ -13,6 +13,7 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
     email: "",
     phone: "",
     address: "",
+    role: "ADMIN",
     isActive: true,
   });
   const [eSignatureFile, setESignatureFile] = useState(null);
@@ -27,6 +28,7 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
         email: user.email || "",
         phone: user.phone || "",
         address: user.address || "",
+        role: user.role || "ADMIN",
         isActive: user.isActive ?? true,
       });
       setESignaturePreview(user.eSignatureUrl || "");
@@ -52,6 +54,7 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
       payload.append("email", form.email);
       payload.append("phone", form.phone);
       payload.append("address", form.address);
+      payload.append("role", form.role);
       payload.append("isActive", String(form.isActive));
 
       if (eSignatureFile) {
@@ -160,17 +163,33 @@ const EditUserModal = ({ user, onClose, onSubmit }) => {
             </label>
           </div>
 
-          {/* Address */}
-          <label className="form-label">
-            Address
-            <textarea
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              rows="2"
-              className="form-input textarea-input"
-            />
-          </label>
+          {/* Address & Role */}
+          <div className="form-grid-2">
+            <label className="form-label">
+              Account Role *
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="form-input"
+                style={{ background: '#ffffff' }}
+              >
+                <option value="ADMIN">ADMIN (Guest House Manager)</option>
+                <option value="HOTEL_ADMIN">HOTEL_ADMIN (Scoped Hotel Administrator)</option>
+              </select>
+            </label>
+
+            <label className="form-label">
+              Address
+              <textarea
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                rows="1"
+                className="form-input textarea-input"
+              />
+            </label>
+          </div>
 
           {/* ESignature Section */}
           <label className="form-label">

@@ -34,6 +34,14 @@ const ContactUs = lazyLoad(() => import('./commonPages/ContactUs'));
 const TermsAndPolicy = lazyLoad(() => import('./commonPages/TermsAndPolicy'));
 const FAQ = lazyLoad(() => import('./commonPages/FAQ'));
 const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage'));
+
+// Hotel Admin Dedicated Module Imports
+const HotelAdminLayout = lazyLoad(() => import('./hotel_admin/HotelAdminLayout').then(m => ({ default: m.HotelAdminLayout })));
+const HotelAdminDashboard = lazyLoad(() => import('./hotel_admin/HotelAdminDashboard').then(m => ({ default: m.HotelAdminDashboard })));
+const HotelAdminEditProperty = lazyLoad(() => import('./hotel_admin/HotelAdminEditProperty').then(m => ({ default: m.HotelAdminEditProperty })));
+const HotelAdminRoomManagement = lazyLoad(() => import('./hotel_admin/HotelAdminRoomManagement').then(m => ({ default: m.HotelAdminRoomManagement })));
+const HotelAdminBedManagement = lazyLoad(() => import('./hotel_admin/HotelAdminBedManagement').then(m => ({ default: m.HotelAdminBedManagement })));
+
 import ScrollToTop from './components/ScrollToTop';
 import { getAuthenticatedRedirectPath } from './utils/auth';
 
@@ -136,6 +144,20 @@ function App() {
           <Route path="/super-admin/settings" element={<Settings />} />
           <Route path="/super-admin/taxes" element={<TaxesManagement />} />
         </Route>  
+
+        {/* ------------------ HOTEL ADMIN DEDICATED ROUTES ------------------ */}
+        <Route
+          element={
+            <ProtectedAdminRoute>
+              <HotelAdminLayout />
+            </ProtectedAdminRoute>
+          }
+        >
+          <Route path="/hotel-admin/dashboard" element={<HotelAdminDashboard />} />
+          <Route path="/hotel-admin/edit-property" element={<HotelAdminEditProperty />} />
+          <Route path="/hotel-admin/rooms" element={<HotelAdminRoomManagement />} />
+          <Route path="/hotel-admin/beds" element={<HotelAdminBedManagement />} />
+        </Route>
 
         <Route path="*" element={<NotFound />} />
         </Routes>

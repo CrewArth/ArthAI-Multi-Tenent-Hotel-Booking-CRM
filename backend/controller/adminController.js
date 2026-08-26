@@ -5,7 +5,7 @@ import { normalizeUser } from '../utils/roles.js';
 import { isObjectId } from '../utils/isObjectId.js';
 
 const getGuestHouseFilter = async (user, GuestHouse) => {
-  if (user?.role === 'ADMIN' && user.assignedGuestHouseId) {
+  if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
     const ghId = typeof user.assignedGuestHouseId === 'object'
       ? user.assignedGuestHouseId.guestHouseId
       : user.assignedGuestHouseId;
@@ -243,7 +243,7 @@ export const assignGuestHouse = async (req, res) => {
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'Admin not found' });
-    if (user.role !== 'ADMIN') return res.status(400).json({ error: 'Guest house can only be assigned to ADMIN accounts' });
+    if (user.role !== 'ADMIN' && user.role !== 'HOTEL_ADMIN') return res.status(400).json({ error: 'Guest house can only be assigned to ADMIN or HOTEL_ADMIN accounts' });
 
     let guestHouse = null;
     if (guestHouseId) {
@@ -306,8 +306,21 @@ export const listUsers = async (req, res) => {
     const limit = parseInt(req.body.limit) || 10;
     const skip = (page - 1) * limit;
 
+    const isHotelAdmin = req.user?.role === 'HOTEL_ADMIN';
+    let queryFilter = { role: { $in: ["ADMIN", "HOTEL_ADMIN"] } };
+
+    if (isHotelAdmin) {
+      const assignedId = typeof req.user.assignedGuestHouseId === 'object'
+        ? req.user.assignedGuestHouseId.guestHouseId
+        : req.user.assignedGuestHouseId;
+      queryFilter = {
+        role: "ADMIN",
+        assignedGuestHouseId: assignedId,
+      };
+    }
+
     let users = await User.find(
-      { role: "ADMIN" },
+      queryFilter,
       "firstName lastName email phone address role isActive createdAt assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl"
     )
       .sort({ createdAt: -1 })
@@ -325,7 +338,7 @@ export const listUsers = async (req, res) => {
       assignedGuestHouseId: guestHouseMap[user.assignedGuestHouseId] || user.assignedGuestHouseId
     }));
 
-    const totalUsers = await User.countDocuments({ role: "ADMIN" });
+    const totalUsers = await User.countDocuments(queryFilter);
     const totalPages = Math.ceil(totalUsers / limit);
 
     return res.json({
@@ -343,7 +356,7 @@ export const listUsers = async (req, res) => {
 export const createUserByAdmin = async (req, res) => {
   try {
     const { User } = req.tenantModels;
-    const { firstName, lastName, email, phone, address, password } = req.body;
+    const { firstName, lastName, email, phone, address, password, role } = req.body;
     const eSignatureUrl = req.eSignatureUrl || null;
 
     if (!firstName || !lastName || !email || !phone || !password) {
@@ -382,6 +395,17 @@ export const createUserByAdmin = async (req, res) => {
       }
     }
 
+    const isHotelAdmin = req.user?.role === 'HOTEL_ADMIN';
+    let targetRole = role === "HOTEL_ADMIN" ? "HOTEL_ADMIN" : "ADMIN";
+    let assignedGuestHouseId = undefined;
+
+    if (isHotelAdmin) {
+      targetRole = "ADMIN";
+      assignedGuestHouseId = typeof req.user.assignedGuestHouseId === 'object'
+        ? req.user.assignedGuestHouseId.guestHouseId
+        : req.user.assignedGuestHouseId;
+    }
+
     const newUser = new User({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -389,7 +413,8 @@ export const createUserByAdmin = async (req, res) => {
       phone: String(phone).trim(),
       address: address ? address.trim() : "",
       password,
-      role: "ADMIN",
+      role: targetRole,
+      assignedGuestHouseId,
       isActive: true,
       eSignatureUrl,
     });

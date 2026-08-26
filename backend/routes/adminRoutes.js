@@ -21,15 +21,15 @@ router.post('/users/list', authenticate, listUsers);
 router.post(
   '/users',
   authenticate,
-  authorize('SUPER_ADMIN'),
+  authorize('SUPER_ADMIN', 'HOTEL_ADMIN'),
   resolveSubscriptionPlan,
   checkAdminLimit,
   uploadESignature,
   processAndUploadESignature,
   createUserByAdmin
 );
-router.patch('/users/:id/assign-guesthouse', authenticate, authorize('SUPER_ADMIN'), assignGuestHouse);
-router.patch('/users/:id/widgets', authenticate, authorize('SUPER_ADMIN'), updateUserWidgets);
+router.patch('/users/:id/assign-guesthouse', authenticate, authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), assignGuestHouse);
+router.patch('/users/:id/widgets', authenticate, authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), updateUserWidgets);
 router.post('/metrics/bookings-per-day', authenticate, getBookingsPerDay);
 router.post('/metrics/top-guest-houses', authenticate, getTopGuestHouses);
 

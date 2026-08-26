@@ -390,8 +390,24 @@ export const getAllBookings = async (req, res) => {
     const skip  = (page - 1) * limit;
 
     const query = {};
+    const user = req.user;
 
-    if (guestHouseId) {
+    // Scope for HOTEL_ADMIN or ADMIN with assignedGuestHouseId
+    if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
+      const ghId = typeof user.assignedGuestHouseId === 'object'
+        ? user.assignedGuestHouseId.guestHouseId
+        : user.assignedGuestHouseId;
+      if (ghId) {
+        const isObjId = isObjectId(ghId);
+        const gh = await GuestHouse.findOne({
+          $or: [
+            { guestHouseId: ghId },
+            ...(isObjId ? [{ _id: ghId }] : [])
+          ]
+        }).lean();
+        if (gh) query.guestHouseId = gh._id;
+      }
+    } else if (guestHouseId) {
       const isObjId = isObjectId(guestHouseId);
       const gh = await GuestHouse.findOne({
         $or: [
@@ -450,8 +466,9 @@ export const getAllBookings = async (req, res) => {
 
 export const exportDailyBookings = async (req, res) => {
   try {
-    const { Booking } = req.tenantModels;
+    const { Booking, GuestHouse } = req.tenantModels;
     const { date } = req.body;
+    const user = req.user;
 
     if (!date) {
       return res.status(400).json({ success: false, error: "date query parameter is required (YYYY-MM-DD)" });
@@ -460,9 +477,27 @@ export const exportDailyBookings = async (req, res) => {
     const startOfDay = new Date(`${date}T00:00:00.000Z`);
     const endOfDay = new Date(`${date}T23:59:59.999Z`);
 
-    const bookings = await Booking.find({
+    const query = {
       createdAt: { $gte: startOfDay, $lte: endOfDay }
-    })
+    };
+
+    if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
+      const ghId = typeof user.assignedGuestHouseId === 'object'
+        ? user.assignedGuestHouseId.guestHouseId
+        : user.assignedGuestHouseId;
+      if (ghId) {
+        const isObjId = isObjectId(ghId);
+        const gh = await GuestHouse.findOne({
+          $or: [
+            { guestHouseId: ghId },
+            ...(isObjId ? [{ _id: ghId }] : [])
+          ]
+        }).lean();
+        if (gh) query.guestHouseId = gh._id;
+      }
+    }
+
+    const bookings = await Booking.find(query)
       .populate("userId", "firstName lastName email phone")
       .populate("guestHouseId", "guestHouseId guestHouseName location")
       .populate("roomIds", "roomNumber roomType")
@@ -777,7 +812,7 @@ export const getApprovedBookingsForCalendar = async (req, res) => {
     const query = { status: { $in: ["approved", "cancelled"] } };
     const user = req.user;
 
-    if (user?.role === 'ADMIN' && user.assignedGuestHouseId) {
+    if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
       const ghId = typeof user.assignedGuestHouseId === 'object'
         ? user.assignedGuestHouseId.guestHouseId
         : user.assignedGuestHouseId;

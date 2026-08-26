@@ -74,9 +74,10 @@ const Reports = () => {
       .then((res) => {
         const list = Array.isArray(res.data) ? res.data : res.data?.guestHouses || [];
 
-        // ADMIN: restrict to their assigned guest house only
+        // ADMIN / HOTEL_ADMIN: restrict to their assigned guest house only
         const assignedId = currentUser?.assignedGuestHouseId;
-        if (assignedId && String(currentUser?.role).toUpperCase() === 'ADMIN') {
+        const userRole = String(currentUser?.role || '').toUpperCase();
+        if (assignedId && (userRole === 'ADMIN' || userRole === 'HOTEL_ADMIN' || userRole === 'HOTEL-ADMIN')) {
           const assigned = list.filter(
             (gh) => gh.guestHouseId === assignedId || gh._id === assignedId
           );
@@ -404,7 +405,7 @@ const Reports = () => {
                         onChange={(e) => setGuestHouseId(e.target.value)}
                         required
                         disabled={
-                          String(currentUser?.role).toUpperCase() === 'ADMIN' &&
+                          (String(currentUser?.role).toUpperCase() === 'ADMIN' || String(currentUser?.role).toUpperCase() === 'HOTEL_ADMIN') &&
                           !!currentUser?.assignedGuestHouseId
                         }
                       >

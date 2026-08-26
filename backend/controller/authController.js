@@ -171,6 +171,25 @@ export const loginUser = async (req, res) => {
       return res.status(404).json({ message: "User Not Found!" });
     }
 
+    // Check central Tenant subscription expiry date & active status
+    try {
+      const Tenant = await getCentralTenantModel();
+      const tenantDoc = await Tenant.findOne({ dbName }).lean();
+      if (tenantDoc) {
+        if (tenantDoc.isActive === false) {
+          console.log(`[Auth Log ❌] Organization '${tenantDoc.tenantId}' is DEACTIVATED`);
+          return res.status(403).json({ message: "Hotel organization is currently deactivated. Please contact support." });
+        }
+        if (tenantDoc.expiryDate && new Date() > new Date(tenantDoc.expiryDate)) {
+          const formattedDate = new Date(tenantDoc.expiryDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+          console.log(`[Auth Log ❌] Organization '${tenantDoc.tenantId}' subscription EXPIRED on ${formattedDate}`);
+          return res.status(403).json({ message: `Subscription expired on ${formattedDate}. Please contact administrator to renew your account.` });
+        }
+      }
+    } catch (tenantErr) {
+      console.warn('[Auth Log Warning] Central Tenant expiry check failed:', tenantErr.message);
+    }
+
     if (!user.isActive) {
       console.log(`[Auth Log ❌] User '${cleanEmail}' found in '${dbName}' but account isActive is FALSE`);
       console.log(`========================================\n`);

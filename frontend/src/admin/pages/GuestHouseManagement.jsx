@@ -4,8 +4,14 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
 
+import { getStoredUser } from "../../utils/auth";
+
 const GuestHouseManagement = () => {
   const navigate = useNavigate();
+  const user = getStoredUser();
+  const isHotelAdmin = user?.role === 'HOTEL_ADMIN' || user?.role === 'HOTEL-ADMIN';
+  const assignedId = user?.assignedGuestHouseId;
+
   const [guestHouses, setGuestHouses] = useState([]);
   const [ghToDelete, setGhToDelete] = useState(null);
   const [subUsage, setSubUsage] = useState(null);
@@ -13,7 +19,11 @@ const GuestHouseManagement = () => {
   const fetchGuestHouses = async () => {
     try {
       const res = await api.post("/api/guesthouses/list");
-      setGuestHouses(Array.isArray(res.data) ? res.data : res.data.guestHouses || []);
+      let list = Array.isArray(res.data) ? res.data : res.data.guestHouses || [];
+      if (isHotelAdmin && assignedId) {
+        list = list.filter(g => String(g.guestHouseId) === String(assignedId) || String(g._id) === String(assignedId));
+      }
+      setGuestHouses(list);
     } catch (err) {
       console.error(err);
       setGuestHouses([]);
@@ -83,15 +93,17 @@ const GuestHouseManagement = () => {
               Plan: <strong style={{ color: '#1e293b' }}>{planName}</strong> ({currentHotels}/{maxHotels} Hotels)
             </span>
           )}
-          <button 
-            className="btn-primary-cta" 
-            onClick={() => navigate('/super-admin/add-hotel')}
-            disabled={isLimitReached}
-            title={hoverMessage}
-            style={isLimitReached ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-          >
-            Add Hotel {isLimitReached && `(${currentHotels}/${maxHotels})`}
-          </button>
+          {!isHotelAdmin && (
+            <button 
+              className="btn-primary-cta" 
+              onClick={() => navigate('/super-admin/add-hotel')}
+              disabled={isLimitReached}
+              title={hoverMessage}
+              style={isLimitReached ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            >
+              Add Hotel {isLimitReached && `(${currentHotels}/${maxHotels})`}
+            </button>
+          )}
         </div>
       </div>  
 
@@ -132,7 +144,9 @@ const GuestHouseManagement = () => {
                       <button className="btn-action toggle" onClick={() => toggleMaintenance(gh.guestHouseId)}>
                         {gh.maintenance ? "Activate" : "Maintenance"}
                       </button>
-                      <button className="btn-action delete" onClick={() => setGhToDelete(gh.guestHouseId)}>Delete</button>
+                      {!isHotelAdmin && (
+                        <button className="btn-action delete" onClick={() => setGhToDelete(gh.guestHouseId)}>Delete</button>
+                      )}
                     </div>
                   </td>
                 </tr>

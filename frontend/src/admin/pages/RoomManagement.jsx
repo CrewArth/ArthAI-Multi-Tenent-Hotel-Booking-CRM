@@ -5,6 +5,8 @@ import { toast } from 'react-toastify';
 import api from '../../utils/api';
 import { RupeeIcon } from '../../common/icons';
 
+import { getStoredUser } from '../../utils/auth';
+
 const RoomManagement = () => {
   const [rooms, setRooms]               = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -21,7 +23,19 @@ const RoomManagement = () => {
   const fetchGuestHouses = async () => {
     try {
       const res = await api.post('/api/guesthouses/list');
-      setGuestHouses(Array.isArray(res.data) ? res.data : []);
+      let list = Array.isArray(res.data) ? res.data : [];
+      const user = getStoredUser();
+      const isScopedAdmin = user?.role === 'HOTEL_ADMIN' || user?.role === 'HOTEL-ADMIN' || (user?.role === 'ADMIN' && user?.assignedGuestHouseId);
+      const assignedId = user?.assignedGuestHouseId;
+
+      if (isScopedAdmin && assignedId) {
+        list = list.filter(g => String(g.guestHouseId) === String(assignedId) || String(g._id) === String(assignedId));
+        if (list.length > 0) {
+          const targetId = list[0].guestHouseId || list[0]._id;
+          setSelectedGHId(targetId);
+        }
+      }
+      setGuestHouses(list);
     } catch (err) { console.error(err); }
   };
 

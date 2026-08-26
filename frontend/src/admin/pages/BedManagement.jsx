@@ -3,6 +3,8 @@ import BedFormModal from '../components/BedFormModal';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
 
+import { getStoredUser } from '../../utils/auth';
+
 const BedManagement = () => {
   const [guestHouses, setGuestHouses] = useState([]);
   const [rooms, setRooms]             = useState([]);
@@ -17,7 +19,19 @@ const BedManagement = () => {
   const fetchGuestHouses = async () => {
     try {
       const res = await api.post('/api/guesthouses/list');
-      setGuestHouses(Array.isArray(res.data) ? res.data : []);
+      let list = Array.isArray(res.data) ? res.data : [];
+      const user = getStoredUser();
+      const isScopedAdmin = user?.role === 'HOTEL_ADMIN' || user?.role === 'HOTEL-ADMIN' || (user?.role === 'ADMIN' && user?.assignedGuestHouseId);
+      const assignedId = user?.assignedGuestHouseId;
+
+      if (isScopedAdmin && assignedId) {
+        list = list.filter(g => String(g.guestHouseId) === String(assignedId) || String(g._id) === String(assignedId));
+        if (list.length > 0) {
+          const targetId = list[0].guestHouseId || list[0]._id;
+          setSelectedGH(targetId);
+        }
+      }
+      setGuestHouses(list);
     } catch (err) { console.error(err); }
   };
 

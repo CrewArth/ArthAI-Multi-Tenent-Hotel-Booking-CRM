@@ -7,7 +7,12 @@ import { toast } from "react-toastify";
 import api from "../../utils/api";
 import { readAndCompressImageAsDataUrl } from "../utils/imageUtils";
 
+import { getStoredUser } from "../../utils/auth";
+
 const CreateUserModal = ({ onClose, onSuccess }) => {
+  const currentUser = getStoredUser();
+  const isHotelAdmin = currentUser?.role === 'HOTEL_ADMIN' || currentUser?.role === 'HOTEL-ADMIN';
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -15,6 +20,7 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
     phone: "",
     address: "",
     password: "",
+    role: "ADMIN",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [eSignatureFile, setESignatureFile] = useState(null);
@@ -40,6 +46,7 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
       payload.append("phone", form.phone);
       payload.append("address", form.address);
       payload.append("password", form.password);
+      payload.append("role", form.role);
 
       if (eSignatureFile) {
         payload.append("eSignature", eSignatureFile);
@@ -187,19 +194,38 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
             />
           </label>
 
-          <label className="form-label">
-            Password *
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              required
-              className="form-input"
-              disabled={isSubmitting}
-              minLength="6"
-            />
-          </label>
+          <div className="form-grid-2">
+            <label className="form-label">
+              Account Role *
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="form-input"
+                disabled={isSubmitting || isHotelAdmin}
+                style={{ background: '#ffffff' }}
+              >
+                <option value="ADMIN">ADMIN (Guest House Manager)</option>
+                {!isHotelAdmin && (
+                  <option value="HOTEL_ADMIN">HOTEL_ADMIN (Scoped Hotel Administrator)</option>
+                )}
+              </select>
+            </label>
+
+            <label className="form-label">
+              Password *
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                className="form-input"
+                disabled={isSubmitting}
+                minLength="6"
+              />
+            </label>
+          </div>
 
           <div className="modal-actions">
             <button

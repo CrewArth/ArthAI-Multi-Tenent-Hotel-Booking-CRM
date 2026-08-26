@@ -31,7 +31,7 @@ export const getAllReportIds = () => REPORTS.map((r) => r.id);
 export const isReportAllowed = (user, reportId) => {
   if (!user) return true;
   const userRole = String(user.role || '').toUpperCase();
-  if (userRole === 'SUPER_ADMIN') return true;
+  if (userRole === 'SUPER_ADMIN' || userRole === 'HOTEL_ADMIN' || userRole === 'HOTEL-ADMIN') return true;
 
   const allowed = user.allowedReports;
   if (allowed === null || allowed === undefined) return true;

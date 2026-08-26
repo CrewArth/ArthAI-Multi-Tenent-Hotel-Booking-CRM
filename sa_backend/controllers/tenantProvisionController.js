@@ -9,6 +9,8 @@ import bookingSchema from '../../backend/models/tenantModels/Booking.js';
 import { generateTenantCredentials } from '../utils/credentialGenerator.js';
 import { sendWelcomeCredentialsEmail } from '../utils/emailService.js';
 
+import { uploadBase64Document } from '../utils/s3UploadService.js';
+
 const getCentralTenantModel = async () => {
   const master = await connectCentralDb();
   return master.models.Tenant || master.model('Tenant', tenantSchema);
@@ -81,13 +83,23 @@ export const getDashboardSummary = async (req, res) => {
 export const provisionTenant = async (req, res) => {
   try {
     const Tenant = await getCentralTenantModel();
-    const { name, tenantId, ownerName, ownerEmail, ownerPhone, plan, s3BucketName, s3Region, dbName: customDbName } = req.body;
+    const { 
+      name, tenantId, ownerName, ownerEmail, ownerPhone, plan, 
+      s3BucketName, s3Region, dbName: customDbName,
+      personalDetails, hotelDetails, legalCompliance 
+    } = req.body;
 
-    if (!name || !tenantId || !ownerEmail || !ownerName) {
+    const resolvedName = (name || hotelDetails?.hotelName || '').trim();
+    const resolvedTenantId = (tenantId || '').trim();
+    const resolvedOwnerName = (ownerName || personalDetails?.fullName || '').trim();
+    const resolvedOwnerEmail = (ownerEmail || personalDetails?.email1 || '').trim();
+    const resolvedOwnerPhone = (ownerPhone || personalDetails?.phone1 || '').trim();
+
+    if (!resolvedName || !resolvedTenantId || !resolvedOwnerEmail || !resolvedOwnerName) {
       return res.status(400).json({ message: "Tenant name, tenantId (slug), ownerName, and ownerEmail are required" });
     }
 
-    const slug = tenantId.toLowerCase().trim();
+    const slug = resolvedTenantId.toLowerCase().trim();
     const dbName = customDbName ? customDbName.trim() : slug;
 
     const existing = await Tenant.findOne({ $or: [{ tenantId: slug }, { dbName }] });
@@ -95,27 +107,71 @@ export const provisionTenant = async (req, res) => {
       return res.status(409).json({ message: `Tenant with slug '${slug}' or database '${dbName}' already exists` });
     }
 
-    const credentials = generateTenantCredentials(slug, ownerEmail);
+    const s3Config = {
+      bucketName: s3BucketName || process.env.AWS_S3_BUCKET,
+      region: s3Region || process.env.AWS_REGION,
+    };
+
+    // Upload Onboarding Files to S3 / Storage
+    const [signatureUrl, govtIdUrl, logoUrl, gstUrl, panUrl, shopLicenceUrl, fireNocUrl] = await Promise.all([
+      uploadBase64Document({ base64Data: personalDetails?.signature, tenantId: slug, category: 'onboarding', fileLabel: 'signature', s3Config }),
+      uploadBase64Document({ base64Data: personalDetails?.govtIdProof, tenantId: slug, category: 'onboarding', fileLabel: 'govt_id', s3Config }),
+      uploadBase64Document({ base64Data: hotelDetails?.hotelLogo, tenantId: slug, category: 'branding', fileLabel: 'logo', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.gstCertificate, tenantId: slug, category: 'compliance', fileLabel: 'gst_certificate', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.panCardPhoto, tenantId: slug, category: 'compliance', fileLabel: 'pan_card', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.shopLicencePhoto, tenantId: slug, category: 'compliance', fileLabel: 'shop_licence', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.fireSafetyNoc, tenantId: slug, category: 'compliance', fileLabel: 'fire_noc', s3Config }),
+    ]);
+
+    const credentials = generateTenantCredentials(slug, resolvedOwnerEmail);
+
+    const parsedExpiry = req.body.expiryDate || hotelDetails?.expiryDate;
 
     const tenant = await Tenant.create({
       tenantId: slug,
-      name: name.trim(),
+      name: resolvedName,
       dbName,
       plan: plan || 'pro',
+      expiryDate: parsedExpiry ? new Date(parsedExpiry) : null,
       owner: {
-        name: ownerName.trim(),
-        email: ownerEmail.toLowerCase().trim(),
-        phone: ownerPhone ? ownerPhone.trim() : '',
+        name: resolvedOwnerName,
+        email: resolvedOwnerEmail.toLowerCase(),
+        phone: resolvedOwnerPhone,
       },
       config: {
-        siteName: name.trim(),
+        siteName: resolvedName,
         s3BucketName: s3BucketName || null,
         s3Region: s3Region || null,
+        logoUrl: logoUrl || null,
       },
       credentials: {
         superAdminEmail: credentials.superAdmin.email,
         adminEmail: credentials.admin.email,
       },
+      personalDetails: personalDetails ? {
+        fullName: personalDetails.fullName || resolvedOwnerName,
+        signature: signatureUrl || personalDetails.signature || '',
+        phone1: personalDetails.phone1 || resolvedOwnerPhone,
+        phone2: personalDetails.phone2 || '',
+        email1: personalDetails.email1 || resolvedOwnerEmail,
+        email2: personalDetails.email2 || '',
+        legalDocNumber: personalDetails.legalDocNumber || '',
+        residentialAddress: personalDetails.residentialAddress || '',
+        businessAddress: personalDetails.businessAddress || '',
+        govtIdProof: govtIdUrl || personalDetails.govtIdProof || '',
+      } : undefined,
+      hotelDetails: hotelDetails ? {
+        legalPropertyName: hotelDetails.legalPropertyName || resolvedName,
+        hotelName: hotelDetails.hotelName || resolvedName,
+        propertyType: hotelDetails.propertyType || 'Hotel',
+        hotelLogo: logoUrl || hotelDetails.hotelLogo || '',
+      } : undefined,
+      legalCompliance: legalCompliance ? {
+        gstCertificate: gstUrl || legalCompliance.gstCertificate || '',
+        panCardPhoto: panUrl || legalCompliance.panCardPhoto || '',
+        shopLicencePhoto: shopLicenceUrl || legalCompliance.shopLicencePhoto || '',
+        fireSafetyNoc: fireNocUrl || legalCompliance.fireSafetyNoc || '',
+      } : undefined,
     });
 
     const tenantDb = await getTenantDb(dbName);
@@ -133,19 +189,19 @@ export const provisionTenant = async (req, res) => {
 
     const superAdminSecret = crypto.randomBytes(40).toString('hex');
     await User.create({
-      firstName: ownerName.split(' ')[0] || 'Tenant',
-      lastName: ownerName.split(' ').slice(1).join(' ') || 'SuperAdmin',
+      firstName: resolvedOwnerName.split(' ')[0] || 'Tenant',
+      lastName: resolvedOwnerName.split(' ').slice(1).join(' ') || 'SuperAdmin',
       email: credentials.superAdmin.email,
       password: credentials.superAdmin.password,
       role: 'SUPER_ADMIN',
-      phone: ownerPhone ? ownerPhone.trim() : undefined,
+      phone: resolvedOwnerPhone ? resolvedOwnerPhone.trim() : undefined,
       isActive: true,
       login_secret_key: superAdminSecret,
     });
 
     const adminSecret = crypto.randomBytes(40).toString('hex');
     await User.create({
-      firstName: ownerName.split(' ')[0] || 'GuestHouse',
+      firstName: resolvedOwnerName.split(' ')[0] || 'GuestHouse',
       lastName: 'Manager',
       email: credentials.admin.email,
       password: credentials.admin.password,
@@ -155,9 +211,9 @@ export const provisionTenant = async (req, res) => {
     });
 
     sendWelcomeCredentialsEmail({
-      ownerEmail: ownerEmail.toLowerCase().trim(),
-      ownerName: ownerName.trim(),
-      tenantName: name.trim(),
+      ownerEmail: resolvedOwnerEmail.toLowerCase().trim(),
+      ownerName: resolvedOwnerName,
+      tenantName: resolvedName,
       credentials,
     }).catch(err => console.error("Email send error:", err));
 
@@ -258,5 +314,123 @@ export const getPlatformStats = async (req, res) => {
   } catch (error) {
     console.error("Error getting platform stats:", error);
     return res.status(500).json({ message: "Unable to fetch platform stats" });
+  }
+};
+
+export const getTenantByTenantId = async (req, res) => {
+  try {
+    const Tenant = await getCentralTenantModel();
+    const { tenantId } = req.params;
+    const cleanId = tenantId.toLowerCase().trim();
+
+    const tenant = await Tenant.findOne({
+      $or: [{ tenantId: cleanId }, { dbName: cleanId }]
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    return res.json({ tenant });
+  } catch (error) {
+    console.error("Error fetching single tenant:", error);
+    return res.status(500).json({ message: "Failed to fetch tenant details" });
+  }
+};
+
+export const updateTenant = async (req, res) => {
+  try {
+    const Tenant = await getCentralTenantModel();
+    const { tenantId } = req.params;
+    const cleanId = tenantId.toLowerCase().trim();
+
+    const tenant = await Tenant.findOne({
+      $or: [{ tenantId: cleanId }, { dbName: cleanId }]
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant not found" });
+    }
+
+    const { 
+      name, plan, expiryDate, personalDetails, hotelDetails, legalCompliance,
+      s3BucketName, s3Region 
+    } = req.body;
+
+    const s3Config = {
+      bucketName: s3BucketName || tenant.config?.s3BucketName || process.env.AWS_S3_BUCKET,
+      region: s3Region || tenant.config?.s3Region || process.env.AWS_REGION,
+    };
+
+    // Process new Base64 uploads if present
+    const [signatureUrl, govtIdUrl, logoUrl, gstUrl, panUrl, shopLicenceUrl, fireNocUrl] = await Promise.all([
+      uploadBase64Document({ base64Data: personalDetails?.signature, tenantId: cleanId, category: 'onboarding', fileLabel: 'signature', s3Config }),
+      uploadBase64Document({ base64Data: personalDetails?.govtIdProof, tenantId: cleanId, category: 'onboarding', fileLabel: 'govt_id', s3Config }),
+      uploadBase64Document({ base64Data: hotelDetails?.hotelLogo, tenantId: cleanId, category: 'branding', fileLabel: 'logo', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.gstCertificate, tenantId: cleanId, category: 'compliance', fileLabel: 'gst_certificate', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.panCardPhoto, tenantId: cleanId, category: 'compliance', fileLabel: 'pan_card', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.shopLicencePhoto, tenantId: cleanId, category: 'compliance', fileLabel: 'shop_licence', s3Config }),
+      uploadBase64Document({ base64Data: legalCompliance?.fireSafetyNoc, tenantId: cleanId, category: 'compliance', fileLabel: 'fire_noc', s3Config }),
+    ]);
+
+    const resolvedName = (name || hotelDetails?.hotelName || tenant.name).trim();
+    tenant.name = resolvedName;
+    if (plan) tenant.plan = plan.toLowerCase().trim();
+
+    const parsedExpiry = expiryDate !== undefined ? expiryDate : hotelDetails?.expiryDate;
+    if (parsedExpiry !== undefined) {
+      tenant.expiryDate = parsedExpiry ? new Date(parsedExpiry) : null;
+    }
+
+    if (personalDetails?.fullName) {
+      tenant.owner.name = personalDetails.fullName.trim();
+    }
+    if (personalDetails?.email1) {
+      tenant.owner.email = personalDetails.email1.toLowerCase().trim();
+    }
+    if (personalDetails?.phone1) {
+      tenant.owner.phone = personalDetails.phone1.trim();
+    }
+
+    if (logoUrl) tenant.config.logoUrl = logoUrl;
+    tenant.config.siteName = resolvedName;
+
+    // Update nested objects while retaining existing URLs if not replaced
+    tenant.personalDetails = {
+      fullName: personalDetails?.fullName || tenant.personalDetails?.fullName || tenant.owner.name,
+      signature: signatureUrl || personalDetails?.signature || tenant.personalDetails?.signature || '',
+      phone1: personalDetails?.phone1 || tenant.personalDetails?.phone1 || tenant.owner.phone,
+      phone2: personalDetails?.phone2 || tenant.personalDetails?.phone2 || '',
+      email1: personalDetails?.email1 || tenant.personalDetails?.email1 || tenant.owner.email,
+      email2: personalDetails?.email2 || tenant.personalDetails?.email2 || '',
+      legalDocNumber: personalDetails?.legalDocNumber || tenant.personalDetails?.legalDocNumber || '',
+      residentialAddress: personalDetails?.residentialAddress || tenant.personalDetails?.residentialAddress || '',
+      businessAddress: personalDetails?.businessAddress || tenant.personalDetails?.businessAddress || '',
+      govtIdProof: govtIdUrl || personalDetails?.govtIdProof || tenant.personalDetails?.govtIdProof || '',
+    };
+
+    tenant.hotelDetails = {
+      legalPropertyName: hotelDetails?.legalPropertyName || tenant.hotelDetails?.legalPropertyName || resolvedName,
+      hotelName: resolvedName,
+      propertyType: hotelDetails?.propertyType || tenant.hotelDetails?.propertyType || 'Hotel',
+      hotelLogo: logoUrl || hotelDetails?.hotelLogo || tenant.hotelDetails?.hotelLogo || '',
+    };
+
+    tenant.legalCompliance = {
+      gstCertificate: gstUrl || legalCompliance?.gstCertificate || tenant.legalCompliance?.gstCertificate || '',
+      panCardPhoto: panUrl || legalCompliance?.panCardPhoto || tenant.legalCompliance?.panCardPhoto || '',
+      shopLicencePhoto: shopLicenceUrl || legalCompliance?.shopLicencePhoto || tenant.legalCompliance?.shopLicencePhoto || '',
+      fireSafetyNoc: fireNocUrl || legalCompliance?.fireSafetyNoc || tenant.legalCompliance?.fireSafetyNoc || '',
+    };
+
+    await tenant.save();
+
+    return res.json({
+      message: "Tenant details updated successfully",
+      tenant,
+    });
+  } catch (error) {
+    console.error("Error updating tenant details:", error);
+    return res.status(500).json({ message: error.message || "Failed to update tenant details" });
   }
 };

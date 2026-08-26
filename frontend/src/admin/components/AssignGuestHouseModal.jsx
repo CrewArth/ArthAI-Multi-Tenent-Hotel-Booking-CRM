@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
 
+import { getStoredUser } from '../../utils/auth';
+
 /**
- * Modal that lets a SUPER_ADMIN assign (or unassign) a hotel to an admin.
+ * Modal that lets a SUPER_ADMIN or HOTEL_ADMIN assign (or unassign) a hotel to an admin.
  * Props:
  *   user       – the admin user object
  *   onClose    – close callback
  *   onSuccess  – called after a successful assignment so the list can refresh
  */
 export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
+  const currentUser = getStoredUser();
+  const isHotelAdmin = currentUser?.role === 'HOTEL_ADMIN' || currentUser?.role === 'HOTEL-ADMIN';
+  const assignedId = currentUser?.assignedGuestHouseId;
+
   const [guestHouses, setGuestHouses] = useState([]);
   const [selected, setSelected] = useState(
     user.assignedGuestHouseId?.guestHouseId || user.assignedGuestHouseId?._id || user.assignedGuestHouseId || ''
@@ -18,9 +24,15 @@ export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
 
   useEffect(() => {
     api.post('/api/guesthouses/list')
-      .then((res) => setGuestHouses(Array.isArray(res.data) ? res.data : res.data.guestHouses || []))
+      .then((res) => {
+        let list = Array.isArray(res.data) ? res.data : res.data.guestHouses || [];
+        if (isHotelAdmin && assignedId) {
+          list = list.filter(g => String(g.guestHouseId) === String(assignedId) || String(g._id) === String(assignedId));
+        }
+        setGuestHouses(list);
+      })
       .catch(() => toast.error('Unable to load hotels'));
-  }, []);
+  }, [isHotelAdmin, assignedId]);
 
   const handleSave = async () => {
     try {
