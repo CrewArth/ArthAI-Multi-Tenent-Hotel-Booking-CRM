@@ -97,12 +97,18 @@ const Overview = ({ showTodayBookings = false }) => {
 
   return (
     <div className="page-root">
-      <div className="page-header-row">
-        {refreshing && <span className="refreshing-text">Refreshing…</span>}
-      </div>
+      {refreshing && (
+        <div className="page-header-row" style={{ marginBottom: "0.5rem" }}>
+          <span className="refreshing-text">Refreshing…</span>
+        </div>
+      )}
 
       {/* Today's Bookings table */}
-      {showTodayBookings && <TodayBookings />}
+      {showTodayBookings && (
+        <div className="overview-today-bookings">
+          <TodayBookings />
+        </div>
+      )}
 
       {/* Filtered Stat Cards Grid */}
       {visibleStatCards.length > 0 && (

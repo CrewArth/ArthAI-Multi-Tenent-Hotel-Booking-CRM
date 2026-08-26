@@ -235,3 +235,13 @@
   color: #94a3b8;
   margin-bottom: 0.5rem;
 }
+
+/* ── Admin Dashboard: Today's Bookings scoped margin ── */
+.overview-today-bookings {
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.overview-today-bookings .today-bookings {
+  margin-top: 0;
+}
