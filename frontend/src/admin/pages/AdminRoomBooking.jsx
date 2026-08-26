@@ -72,7 +72,7 @@ const AdminRoomBooking = () => {
     setCurrentBookingId(editBookingId);
   }, [editBookingId]);
 
-  const handleCaptureSessionUpdated = (sessionData) => {
+  const handleCaptureSessionUpdated = useCallback((sessionData) => {
     if (!sessionData?.guests) return;
     const primary = sessionData.guests.find((g) => g.role === 'PRIMARY');
     if (primary?.document?.url) {
@@ -80,16 +80,18 @@ const AdminRoomBooking = () => {
     }
     const familyFromSession = sessionData.guests.filter((g) => g.role === 'FAMILY_MEMBER');
     if (familyFromSession.length > 0) {
-      setFamilyMembers(familyFromSession.map((m) => ({
-        name: m.name,
-        relation: m.relation || '',
-        age: m.age || '',
-        image: null,
-        capturedUrl: m.document?.url || null,
-        documentLabel: m.document?.label || '',
-      })));
+      setFamilyMembers((prev) =>
+        familyFromSession.map((m, idx) => ({
+          name: m.name,
+          relation: m.relation || prev[idx]?.relation || '',
+          age: m.age || prev[idx]?.age || '',
+          image: prev[idx]?.image || null,
+          capturedUrl: m.document?.url || null,
+          documentLabel: m.document?.label || '',
+        }))
+      );
     }
-  };
+  }, []);
 
   const handleOpenCaptureSession = async () => {
     if (currentBookingId) {

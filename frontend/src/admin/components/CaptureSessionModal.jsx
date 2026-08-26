@@ -20,6 +20,18 @@ const CaptureSessionModal = ({
   const [ending, setEnding] = useState(false);
 
   const pollTimerRef = useRef(null);
+  const activeBookingIdRef = useRef(null);
+  const onSessionUpdatedRef = useRef(onSessionUpdated);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onSessionUpdatedRef.current = onSessionUpdated;
+  }, [onSessionUpdated]);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   const isLocalhost = typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
@@ -30,39 +42,51 @@ const CaptureSessionModal = ({
 
   const fullCaptureUrl = token ? `${effectiveBaseHost}/capture/${token}` : '';
 
-  // ── 1. Start Capture Session on Modal Open ──
-  const startSession = useCallback(async () => {
-    if (!bookingId) return;
-    setLoading(true);
-    try {
-      const res = await api.post(`/api/bookings/${bookingId}/capture-session`);
-      const { token: sessionToken, expiresAt: exp, guests } = res.data;
-      setToken(sessionToken);
-      setExpiresAt(exp);
-      if (Array.isArray(guests)) {
-        setRoster(guests);
-      }
-    } catch (err) {
-      console.error('[CSM] Failed to start capture session:', err);
-      toast.error(err.response?.data?.message || 'Failed to start mobile capture session');
-      onClose();
-    } finally {
-      setLoading(false);
-    }
-  }, [bookingId, onClose]);
-
+  // ── 1. Start Capture Session on Modal Open (runs strictly ONCE per modal open) ──
   useEffect(() => {
     if (isOpen && bookingId) {
-      startSession();
-    } else {
+      // If we already have an active session for this exact booking, do NOT re-create it
+      if (activeBookingIdRef.current === bookingId && token) {
+        return;
+      }
+
+      activeBookingIdRef.current = bookingId;
+      let isMounted = true;
+
+      const init = async () => {
+        setLoading(true);
+        try {
+          const res = await api.post(`/api/bookings/${bookingId}/capture-session`);
+          if (!isMounted) return;
+          const { token: sessionToken, expiresAt: exp, guests } = res.data;
+          setToken(sessionToken);
+          setExpiresAt(exp);
+          if (Array.isArray(guests)) {
+            setRoster(guests);
+          }
+        } catch (err) {
+          if (!isMounted) return;
+          console.error('[CSM] Failed to start capture session:', err);
+          toast.error(err.response?.data?.message || 'Failed to start mobile capture session');
+          if (onCloseRef.current) onCloseRef.current();
+        } finally {
+          if (isMounted) setLoading(false);
+        }
+      };
+
+      init();
+
+      return () => {
+        isMounted = false;
+      };
+    } else if (!isOpen) {
+      activeBookingIdRef.current = null;
       setToken(null);
       setExpiresAt(null);
+      setRoster([]);
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     }
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    };
-  }, [isOpen, bookingId, startSession]);
+  }, [isOpen, bookingId]);
 
   // ── 2. Expiry Countdown Timer ──
   useEffect(() => {
@@ -87,7 +111,10 @@ const CaptureSessionModal = ({
 
   // ── 3. Live Polling Roster (every 3.5 seconds) ──
   useEffect(() => {
-    if (!token || !isOpen) return;
+    if (!token || !isOpen) {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      return;
+    }
 
     const pollRoster = async () => {
       try {
@@ -99,8 +126,8 @@ const CaptureSessionModal = ({
         });
         if (res.data?.guests) {
           setRoster(res.data.guests);
-          if (onSessionUpdated) {
-            onSessionUpdated(res.data);
+          if (onSessionUpdatedRef.current) {
+            onSessionUpdatedRef.current(res.data);
           }
         }
         if (res.data?.sessionActive === false) {
@@ -117,7 +144,7 @@ const CaptureSessionModal = ({
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-  }, [token, isOpen, onSessionUpdated]);
+  }, [token, isOpen]);
 
   // ── 4. End Session Early ──
   const handleEndSession = async () => {

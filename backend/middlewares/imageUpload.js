@@ -57,9 +57,59 @@ export const processAndUploadGuestDocument = async (req, res, next) => {
   }
 
   try {
-    const bookingId = req.booking?._id || req.params.id || req.params.bookingId || 'temp';
-    const guestId   = req.params.guestId || 'primary';
-    const key       = `bookings/${bookingId}/guests/${guestId}/document-${Date.now()}.webp`;
+    let booking = req.booking;
+    if (!booking && req.params.id) {
+      const Booking = req.tenantModels?.Booking || req.tenantDb?.model('Booking');
+      if (Booking) {
+        booking = await Booking.findById(req.params.id)
+          .populate('userId', 'firstName lastName email phone')
+          .populate('guestHouseId', 'guestHouseName location');
+      }
+    }
+
+    const guestId = req.params.guestId;
+
+    // 1. Date (use checkIn or booking creation date or todayUtc)
+    const bookingDate = booking?.checkIn
+      ? new Date(booking.checkIn).toISOString().split('T')[0]
+      : (booking?.createdAt ? new Date(booking.createdAt).toISOString().split('T')[0] : todayUtc());
+
+    // 2. Hotel Name & Slug
+    const ghRef = booking?.guestHouseId;
+    const rawGhName = typeof ghRef === 'object' && ghRef?.guestHouseName
+      ? ghRef.guestHouseName
+      : await resolveGuestHouseName(req, ghRef);
+    const ghSlug = slugify(rawGhName);
+
+    // 3. Head Guest Name & Slug (identical to computer upload)
+    let headName = booking?.fullName;
+    if (!headName && booking?.userId) {
+      headName = `${booking.userId.firstName || ''} ${booking.userId.lastName || ''}`.trim();
+    }
+    if (!headName && Array.isArray(booking?.guests)) {
+      const primaryG = booking.guests.find((g) => g.role === 'PRIMARY');
+      headName = primaryG?.name;
+    }
+    const headSlug = slugify(headName || 'GUEST');
+
+    // 4. Base Folder Path: admin/{ghSlug}/{date}/{headSlug}
+    const folderBase = `admin/${ghSlug}/${bookingDate}/${headSlug}`;
+
+    // 5. Check if this document is for the primary guest or a family member
+    const targetGuest = Array.isArray(booking?.guests)
+      ? booking.guests.find((g) => String(g._id) === String(guestId))
+      : null;
+
+    const isPrimary = !targetGuest || targetGuest.role === 'PRIMARY' || String(guestId) === 'primary';
+
+    let key;
+    if (isPrimary) {
+      const docType = slugify(req.body.label || booking?.identityType || 'document');
+      key = `${folderBase}/${headSlug}_${docType}.webp`;
+    } else {
+      const memberName = slugify(targetGuest?.name || req.body.name || `member_${guestId}`);
+      key = `${folderBase}/members/${memberName}/img.webp`;
+    }
 
     const compressed = await sharp(file.buffer)
       .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
