@@ -44,7 +44,9 @@ export const authenticateCaptureSession = async (req, res, next) => {
     const tenantDb = await getTenantDb(dbName);
     const Booking = tenantDb.models.Booking || tenantDb.model('Booking');
 
-    const booking = await Booking.findById(payload.bookingId);
+    const booking = await Booking.findById(payload.bookingId)
+      .populate('guestHouseId')
+      .populate('userId');
     if (!booking) {
       return res.status(404).json({ message: 'Booking associated with this session was not found' });
     }

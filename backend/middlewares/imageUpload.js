@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import multer from "multer";
 import sharp from "sharp";
 import { uploadTenantImage } from "../utils/s3TenantClient.js";
@@ -13,18 +14,27 @@ const todayUtc = () => new Date().toISOString().split('T')[0];
 
 const resolveGuestHouseName = async (req, guestHouseIdOrObj) => {
   if (!guestHouseIdOrObj) return 'unknown';
-  if (typeof guestHouseIdOrObj === 'object' && guestHouseIdOrObj.guestHouseName) {
+  if (typeof guestHouseIdOrObj === 'object' && guestHouseIdOrObj?.guestHouseName) {
     return guestHouseIdOrObj.guestHouseName;
   }
+  const idStr = typeof guestHouseIdOrObj === 'object'
+    ? String(guestHouseIdOrObj?._id || guestHouseIdOrObj?.guestHouseId || '')
+    : String(guestHouseIdOrObj);
+  if (!idStr || idStr === 'unknown' || idStr === 'undefined' || idStr === 'null') return 'unknown';
+
   try {
-    const GuestHouse = req.tenantModels?.GuestHouse;
+    const GuestHouse = req.tenantModels?.GuestHouse || req.tenantDb?.model('GuestHouse');
     if (GuestHouse) {
-      const gh = await GuestHouse.findOne({ guestHouseId: String(guestHouseIdOrObj) }).lean();
+      const queries = [{ guestHouseId: idStr }];
+      if (mongoose.isValidObjectId(idStr)) {
+        queries.push({ _id: idStr });
+      }
+      const gh = await GuestHouse.findOne({ $or: queries }).lean();
       if (gh?.guestHouseName) return gh.guestHouseName;
     }
-    return String(guestHouseIdOrObj);
+    return idStr;
   } catch {
-    return String(guestHouseIdOrObj);
+    return idStr;
   }
 };
 
