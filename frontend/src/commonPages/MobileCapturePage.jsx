@@ -59,7 +59,6 @@ const MobileCapturePage = () => {
       const res = await axios.get(`${apiBase}/api/capture-session/roster?token=${token}`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'X-Capture-Token': token,
         },
       });
       setSessionData(res.data);
@@ -126,7 +125,6 @@ const MobileCapturePage = () => {
           headers: {
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${token}`,
-            'X-Capture-Token': token,
           },
         }
       );
@@ -171,7 +169,6 @@ const MobileCapturePage = () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Capture-Token': token,
           },
         }
       );

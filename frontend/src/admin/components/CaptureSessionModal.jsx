@@ -94,7 +94,6 @@ const CaptureSessionModal = ({
         const res = await api.get(`/api/capture-session/roster?token=${token}`, {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Capture-Token': token,
           },
         });
         if (res.data?.guests) {
