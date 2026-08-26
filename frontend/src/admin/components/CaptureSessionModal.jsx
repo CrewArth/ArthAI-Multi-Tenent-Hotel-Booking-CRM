@@ -91,7 +91,12 @@ const CaptureSessionModal = ({
 
     const pollRoster = async () => {
       try {
-        const res = await api.get(`/api/capture-session/roster?token=${token}`);
+        const res = await api.get(`/api/capture-session/roster?token=${token}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Capture-Token': token,
+          },
+        });
         if (res.data?.guests) {
           setRoster(res.data.guests);
           if (onSessionUpdated) {

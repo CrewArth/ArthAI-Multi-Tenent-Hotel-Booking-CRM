@@ -56,7 +56,12 @@ const MobileCapturePage = () => {
     }
 
     try {
-      const res = await axios.get(`${apiBase}/api/capture-session/roster?token=${token}`);
+      const res = await axios.get(`${apiBase}/api/capture-session/roster?token=${token}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'X-Capture-Token': token,
+        },
+      });
       setSessionData(res.data);
       setErrorMsg(null);
       setIsExpired(!res.data.sessionActive);
@@ -118,7 +123,11 @@ const MobileCapturePage = () => {
         `${apiBase}/api/capture-session/guests/${guestId}/document?token=${token}`,
         formData,
         {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+            'X-Capture-Token': token,
+          },
         }
       );
 
@@ -158,7 +167,13 @@ const MobileCapturePage = () => {
     try {
       const res = await axios.post(
         `${apiBase}/api/capture-session/guests?token=${token}`,
-        newMember
+        newMember,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Capture-Token': token,
+          },
+        }
       );
 
       toast.success('Family member added!');

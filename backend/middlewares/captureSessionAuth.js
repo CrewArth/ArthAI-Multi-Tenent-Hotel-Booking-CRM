@@ -3,28 +3,40 @@ import { getTenantDb } from '../config/dbManager.js';
 
 export const authenticateCaptureSession = async (req, res, next) => {
   try {
-    let token = null;
+    // Collect potential tokens from query, headers, body, or auth header
+    const candidateTokens = [];
+    if (req.query?.token) candidateTokens.push(req.query.token);
+    if (req.headers['x-capture-token']) candidateTokens.push(req.headers['x-capture-token']);
+    if (req.body?.token) candidateTokens.push(req.body.token);
+
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
-    } else if (req.query?.token) {
-      token = req.query.token;
-    } else if (req.body?.token) {
-      token = req.body.token;
+      candidateTokens.push(authHeader.slice(7));
     }
 
-    if (!token) {
+    if (candidateTokens.length === 0) {
       return res.status(401).json({ message: 'Capture session token is required' });
     }
 
-    let payload;
-    try {
-      payload = verifyToken(token);
-    } catch (err) {
-      return res.status(401).json({ message: 'Capture session token is invalid or expired' });
+    let payload = null;
+    let tokenError = null;
+
+    for (const candidate of candidateTokens) {
+      try {
+        const decoded = verifyToken(candidate);
+        if (decoded?.scope === 'guest-capture' && decoded.bookingId) {
+          payload = decoded;
+          break;
+        }
+      } catch (err) {
+        tokenError = err;
+      }
     }
 
-    if (payload.scope !== 'guest-capture' || !payload.bookingId) {
+    if (!payload) {
+      if (tokenError && candidateTokens.length === 1) {
+        return res.status(401).json({ message: 'Capture session token is invalid or expired' });
+      }
       return res.status(403).json({ message: 'Invalid token scope for document capture' });
     }
 
