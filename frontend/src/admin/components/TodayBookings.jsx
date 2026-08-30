@@ -62,6 +62,8 @@ export default function TodayBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const rowsPerPage = 10;
 
   // Cancel confirmation modal state
@@ -76,24 +78,32 @@ export default function TodayBookings() {
       try {
         setLoading(true);
         setError('');
-        const params = { ...appliedFilter };
+        const params = {
+          ...appliedFilter,
+          page: currentPage,
+          limit: rowsPerPage,
+        };
         if (assignedGuestHouse) {
           // assignedGuestHouse could be an object or just the guestHouseId string
           params.guestHouseId = assignedGuestHouse.guestHouseId || assignedGuestHouse;
         }
         const response = await api.post('/api/bookings/list', params);
         setBookings(response.data.bookings || []);
+        setTotalPages(response.data.totalPages || 1);
+        setTotalCount(response.data.totalCount || 0);
       } catch (requestError) {
         console.error('Error fetching dashboard bookings:', requestError);
         setError('Unable to load bookings for this date range.');
         setBookings([]);
+        setTotalPages(1);
+        setTotalCount(0);
       } finally {
         setLoading(false);
       }
     };
 
     fetchBookings();
-  }, [appliedFilter, assignedGuestHouse]);
+  }, [appliedFilter, assignedGuestHouse, currentPage]);
 
   const applyFilter = () => {
     if (!fromDate || !toDate || fromDate > toDate) {
@@ -101,22 +111,22 @@ export default function TodayBookings() {
       return;
     }
 
+    setCurrentPage(1);
     setAppliedFilter({ startDate: fromDate, endDate: toDate });
   };
 
   const showToday = () => {
+    const twoDaysAgo = getTwoDaysAgo();
     setFromDate(twoDaysAgo);
     setToDate(today);
+    setCurrentPage(1);
     setAppliedFilter({ startDate: twoDaysAgo, endDate: today });
   };
 
-  const totalPages = Math.max(1, Math.ceil(bookings.length / rowsPerPage));
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const paginatedBookings = bookings.slice(startIndex, startIndex + rowsPerPage);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [appliedFilter]);
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
 
   const handleCancelConfirm = async () => {
     if (!cancelTarget) return;
@@ -229,7 +239,7 @@ export default function TodayBookings() {
                   <td colSpan="8" className="today-bookings-empty">No bookings found for this date range.</td>
                 </tr>
               ) : (
-                paginatedBookings.map((booking) => {
+                bookings.map((booking) => {
                   const isCancelled = booking.status === 'cancelled';
 
                   return (
@@ -314,26 +324,45 @@ export default function TodayBookings() {
             </tbody>
           </table>
 
-          {bookings.length > rowsPerPage && (
+          {totalCount > 0 && (
             <div className="today-bookings-pagination">
               <button
                 type="button"
                 className="today-bookings-page-btn"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                onClick={() => goToPage(1)}
                 disabled={currentPage === 1}
               >
-                Previous
+                « First
+              </button>
+              <button
+                type="button"
+                className="today-bookings-page-btn"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ← Prev
               </button>
               <span className="today-bookings-page-info">
                 Page {currentPage} of {totalPages}
+                <span style={{ marginLeft: '10px', color: '#6b7280', fontSize: '0.85em', fontWeight: 500 }}>
+                  ({(currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, totalCount)} of {totalCount})
+                </span>
               </span>
               <button
                 type="button"
                 className="today-bookings-page-btn"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
               >
-                Next
+                Next →
+              </button>
+              <button
+                type="button"
+                className="today-bookings-page-btn"
+                onClick={() => goToPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                Last »
               </button>
             </div>
           )}
