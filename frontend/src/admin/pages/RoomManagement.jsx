@@ -16,6 +16,7 @@ const RoomManagement = () => {
   const [selectedGHId, setSelectedGHId] = useState(null);
   const [loading, setLoading]           = useState(false);
   const [subUsage, setSubUsage]         = useState(null);
+  const [togglingRoomId, setTogglingRoomId] = useState(null);
 
   const [searchParams] = useSearchParams();
   const ghFromQuery = searchParams.get('guestHouseId');
@@ -105,10 +106,32 @@ const RoomManagement = () => {
   };
 
   const toggleAvailability = async (roomId, current) => {
+    const nextAvailability = !current;
+
+    // 1. Optimistic in-place update for instant UI feedback without table reload
+    setRooms((prevRooms) =>
+      prevRooms.map((r) =>
+        r._id === roomId ? { ...r, isAvailable: nextAvailability } : r
+      )
+    );
+    setTogglingRoomId(roomId);
+
     try {
-      await api.patch(`/api/rooms/${roomId}/availability`, { isAvailable: !current });
-      fetchRooms(selectedGHId);
-    } catch (err) { console.error(err); }
+      // 2. Perform API call in background
+      await api.patch(`/api/rooms/${roomId}/availability`, { isAvailable: nextAvailability });
+      toast.success(`Room marked as ${nextAvailability ? 'Available' : 'Maintenance'}`);
+    } catch (err) {
+      console.error('toggleAvailability error:', err);
+      // 3. Rollback local state on error
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          r._id === roomId ? { ...r, isAvailable: current } : r
+        )
+      );
+      toast.error(err?.response?.data?.message || 'Failed to update room availability');
+    } finally {
+      setTogglingRoomId(null);
+    }
   };
 
   const deleteRoom = async (roomId) => {
@@ -205,7 +228,13 @@ const RoomManagement = () => {
                     <td>
                       <div className="actions-cell">
                         <button className="btn-action edit"   onClick={() => { setSelectedRoom(room); setIsModalOpen(true); }}>Edit</button>
-                        <button className="btn-action toggle" onClick={() => toggleAvailability(room._id, room.isAvailable)}>Toggle</button>
+                        <button
+                          className="btn-action toggle"
+                          disabled={togglingRoomId === room._id}
+                          onClick={() => toggleAvailability(room._id, room.isAvailable)}
+                        >
+                          {togglingRoomId === room._id ? 'Updating…' : 'Toggle'}
+                        </button>
                         <button className="btn-action delete" onClick={() => deleteRoom(room._id)}>Delete</button>
                       </div>
                     </td>

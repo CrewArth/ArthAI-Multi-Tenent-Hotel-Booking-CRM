@@ -13,6 +13,7 @@ const BedManagement = () => {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedBed, setSelectedBed]   = useState(null);
   const [isModalOpen, setIsModalOpen]   = useState(false);
+  const [togglingBedId, setTogglingBedId] = useState(null);
 
   useEffect(() => { fetchGuestHouses(); }, []);
 
@@ -82,10 +83,32 @@ const BedManagement = () => {
   };
 
   const toggleAvailability = async (bedId, current) => {
+    const nextAvailability = !current;
+
+    // 1. Optimistic in-place update
+    setBeds((prevBeds) =>
+      prevBeds.map((b) =>
+        b._id === bedId ? { ...b, isAvailable: nextAvailability } : b
+      )
+    );
+    setTogglingBedId(bedId);
+
     try {
-      await api.patch(`/api/beds/${bedId}/availability`, { isAvailable: !current });
-      fetchBedsForRoom(selectedRoom);
-    } catch (err) { console.error(err); }
+      // 2. Perform API call in background
+      await api.patch(`/api/beds/${bedId}/availability`, { isAvailable: nextAvailability });
+      toast.success(`Bed marked as ${nextAvailability ? 'Available' : 'Booked'}`);
+    } catch (err) {
+      console.error('toggleAvailability error:', err);
+      // 3. Rollback on failure
+      setBeds((prevBeds) =>
+        prevBeds.map((b) =>
+          b._id === bedId ? { ...b, isAvailable: current } : b
+        )
+      );
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Failed to update bed availability');
+    } finally {
+      setTogglingBedId(null);
+    }
   };
 
   const handleDelete = async (bedId) => {
@@ -116,57 +139,54 @@ const BedManagement = () => {
       <div className="page-header-row">
         <div>
           <h1 className="page-title">Bed Management</h1>
-          <p className="page-subtitle">Select a hotel and room to manage beds</p>
+          <p className="page-subtitle">
+            Manage bed allocations and availability
+          </p>
         </div>
-      </div>
-
-      {/* Toolbar: cascading dropdowns + action buttons */}
-      <div className="toolbar-row" style={{ marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
-        <select
-          className="toolbar-select"
-          value={selectedGH || ''}
-          onChange={(e) => setSelectedGH(e.target.value || null)}
-        >
-          <option value="">Select Hotel</option>
-          {guestHouses.map((g) => (
-            <option key={g.guestHouseId || g._id} value={g.guestHouseId || g._id}>
-              {g.guestHouseName}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="toolbar-select"
-          value={selectedRoom || ''}
-          onChange={(e) => setSelectedRoom(e.target.value || null)}
-          disabled={!selectedGH}
-        >
-          <option value="">Select Room</option>
-          {rooms.map((r) => (
-            <option key={r._id} value={r._id}>
-              Room {r.roomNumber}  (Capacity: {r.roomCapacity})
-            </option>
-          ))}
-        </select>
-
-        <button
-          className="btn-primary-cta"
-          disabled={!selectedRoom}
-          onClick={() => {
-            if (!selectedRoom) return toast.error('Select a room first');
-            setIsModalOpen(true);
-          }}
-        >
-          + Add Bed
-        </button>
-
-        <button
-          className="btn-primary-cta green"
-          disabled={!selectedRoom}
-          onClick={handleAutoCreate}
-        >
-          Auto Create Beds
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <select
+            className="toolbar-select"
+            value={selectedGH || ''}
+            onChange={(e) => setSelectedGH(e.target.value || null)}
+          >
+            <option value="">Select Hotel</option>
+            {guestHouses.map((g) => (
+              <option key={g.guestHouseId || g._id} value={g.guestHouseId || g._id}>
+                {g.guestHouseName}
+              </option>
+            ))}
+          </select>
+          <select
+            className="toolbar-select"
+            value={selectedRoom || ''}
+            disabled={!selectedGH}
+            onChange={(e) => setSelectedRoom(e.target.value || null)}
+          >
+            <option value="">Select Room</option>
+            {rooms.map((r) => (
+              <option key={r._id} value={r._id}>
+                Room {r.roomNumber} (Cap: {r.roomCapacity})
+              </option>
+            ))}
+          </select>
+          <button
+            className="btn-primary-cta"
+            disabled={!selectedRoom}
+            onClick={() => {
+              if (!selectedRoom) { alert('Please select a room first'); return; }
+              setIsModalOpen(true);
+            }}
+          >
+            + Add Bed
+          </button>
+          <button
+            className="btn-secondary-cta"
+            disabled={!selectedRoom}
+            onClick={handleAutoCreate}
+          >
+            ⚡ Auto Create Beds
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -174,19 +194,17 @@ const BedManagement = () => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Bed Number</th>
-              <th>Type</th>
-              <th>Availability</th>
+              <th>Bed No.</th>
+              <th>Bed Type</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {beds.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="table-empty">
-                  {selectedRoom ? 'No beds found for this room.' : 'Select a hotel and room to view beds.'}
-                </td>
-              </tr>
+            {!selectedRoom ? (
+              <tr><td colSpan="4" className="table-empty">Please select a hotel and room to manage beds.</td></tr>
+            ) : beds.length === 0 ? (
+              <tr><td colSpan="4" className="table-empty">No beds found for this room.</td></tr>
             ) : (
               beds.map((b) => (
                 <tr key={b._id}>
@@ -200,7 +218,13 @@ const BedManagement = () => {
                   <td>
                     <div className="actions-cell">
                       <button className="btn-action edit"   onClick={() => { setSelectedBed(b); setIsModalOpen(true); }}>Edit</button>
-                      <button className="btn-action toggle" onClick={() => toggleAvailability(b._id, b.isAvailable)}>Toggle</button>
+                      <button
+                        className="btn-action toggle"
+                        disabled={togglingBedId === b._id}
+                        onClick={() => toggleAvailability(b._id, b.isAvailable)}
+                      >
+                        {togglingBedId === b._id ? 'Updating…' : 'Toggle'}
+                      </button>
                       <button className="btn-action delete" onClick={() => handleDelete(b._id)}>Delete</button>
                     </div>
                   </td>
