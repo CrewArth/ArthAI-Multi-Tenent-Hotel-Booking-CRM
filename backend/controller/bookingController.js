@@ -200,7 +200,12 @@ export const createAdminBooking = async (req, res) => {
       return res.status(404).json({ message: "One or more selected rooms were not found" });
     }
 
-    const invalidRoom = rooms.find((room) => room.guestHouseId !== guestHouse.guestHouseId);
+    const invalidRoom = rooms.find((room) => {
+      const roomGhId = String(room.guestHouseId || '');
+      const targetGhId = String(guestHouse.guestHouseId || '');
+      const targetObjId = String(guestHouse._id || '');
+      return roomGhId !== targetGhId && roomGhId !== targetObjId;
+    });
     if (invalidRoom) {
       return res.status(400).json({ message: "All selected rooms must belong to the chosen guest house" });
     }
@@ -209,8 +214,15 @@ export const createAdminBooking = async (req, res) => {
       return res.status(404).json({ message: "Selected bed was not found" });
     }
 
-    if (bed && (String(bed.roomId) !== String(primaryRoomId) || rooms[0].guestHouseId !== guestHouse.guestHouseId)) {
-      return res.status(400).json({ message: "Selected room and bed do not belong to this guest house" });
+    if (bed) {
+      const bedRoomId = String(bed.roomId || '');
+      const primaryRoomIdStr = String(primaryRoomId || '');
+      const roomGhId = String(rooms[0]?.guestHouseId || '');
+      const targetGhId = String(guestHouse.guestHouseId || '');
+      const targetObjId = String(guestHouse._id || '');
+      if (bedRoomId !== primaryRoomIdStr || (roomGhId !== targetGhId && roomGhId !== targetObjId)) {
+        return res.status(400).json({ message: "Selected room and bed do not belong to this guest house" });
+      }
     }
 
     if (overlapResult.conflict) {
@@ -762,7 +774,11 @@ export const checkAvailability = async (req, res) => {
     ];
 
     const rooms = await Room.find({
-      guestHouseId: guestHouse.guestHouseId,
+      $or: [
+        { guestHouseId: guestHouse.guestHouseId },
+        { guestHouseId: guestHouse._id },
+        { guestHouseId: String(guestHouse._id) },
+      ],
       isActive: true,
     });
 
@@ -969,7 +985,12 @@ export const updateAdminBooking = async (req, res) => {
       return res.status(404).json({ message: "One or more selected rooms were not found" });
     }
 
-    const invalidRoom = rooms.find((room) => room.guestHouseId !== guestHouse.guestHouseId);
+    const invalidRoom = rooms.find((room) => {
+      const roomGhId = String(room.guestHouseId || '');
+      const targetGhId = String(guestHouse.guestHouseId || '');
+      const targetObjId = String(guestHouse._id || '');
+      return roomGhId !== targetGhId && roomGhId !== targetObjId;
+    });
     if (invalidRoom) {
       return res.status(400).json({ message: "All selected rooms must belong to the chosen guest house" });
     }

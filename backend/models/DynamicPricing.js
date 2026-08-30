@@ -52,8 +52,8 @@ const dynamicPricingSchema = new mongoose.Schema({
     default: 0,
   },
   createdBy: {
-    type: String,
-    default: 'Super Admin',
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
   },
 }, { timestamps: true });
 

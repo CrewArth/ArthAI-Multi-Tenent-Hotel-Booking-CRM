@@ -342,7 +342,8 @@ const AdminRoomBooking = () => {
     setSubmitting(true);
     try {
       const payload = new FormData();
-      payload.append('guestHouseId', selectedGuestHouse.guestHouseId || selectedGuestHouse._id);
+      const chosenGhId = selectedGuestHouse?.guestHouseId || selectedGuestHouse?._id || form.guestHouseId;
+      payload.append('guestHouseId', chosenGhId);
       payload.append('roomIds', JSON.stringify(form.roomIds));
 
       if (form.bedId) payload.append('bedId', form.bedId);

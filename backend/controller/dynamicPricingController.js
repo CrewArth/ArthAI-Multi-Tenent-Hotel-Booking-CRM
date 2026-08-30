@@ -63,6 +63,7 @@ export const listPricingRules = async (req, res) => {
     const [totalCount, rules] = await Promise.all([
       DynamicPricing.countDocuments(filter),
       DynamicPricing.find(filter)
+        .populate('createdBy', 'firstName lastName email role')
         .sort({ priority: -1, createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
@@ -143,7 +144,7 @@ export const createPricingRule = async (req, res) => {
       endDate: endDate ? new Date(endDate) : null,
       isActive: Boolean(isActive),
       priority: Number(priority) || (ruleType === 'holiday' ? 10 : ruleType === 'weekend' ? 5 : 0),
-      createdBy: req.user?.email || 'Super Admin',
+      createdBy: req.user?._id || null,
     });
 
     await logAction({

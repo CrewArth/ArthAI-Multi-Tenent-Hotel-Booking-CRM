@@ -5,5 +5,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5002',
+        changeOrigin: true,
+      },
+      '/images': {
+        target: 'http://localhost:5002',
+        changeOrigin: true,
+      },
+    },
   },
 });

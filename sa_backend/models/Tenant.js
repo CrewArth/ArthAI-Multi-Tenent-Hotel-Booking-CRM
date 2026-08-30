@@ -42,10 +42,18 @@ const tenantSchema = new mongoose.Schema({
     s3Region: { type: String, default: null },
     siteName: { type: String, default: null },
     logoUrl: { type: String, default: null },
+    s3: {
+      key: { type: String, default: null },
+      secretKey: { type: String, default: null },
+      bucket_name: { type: String, default: null },
+      region: { type: String, default: null },
+    },
   },
   credentials: {
     superAdminEmail: { type: String },
     adminEmail: { type: String },
+    superAdminPassword: { type: String },
+    adminPassword: { type: String },
   },
   personalDetails: {
     fullName: { type: String },

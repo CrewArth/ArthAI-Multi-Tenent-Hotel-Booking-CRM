@@ -50,8 +50,16 @@ export const generateReportPdf = async (reportId, filters, user, reqContext = {}
       const Tenant = master.models.Tenant || master.model('Tenant', tenantSchema);
       const dbName = tenantDb?.name || user?.dbName;
       if (dbName) {
-        const tenantDoc = await Tenant.findOne({ dbName }).select('config.logoUrl hotelDetails.hotelLogo').lean();
-        logoUrl = tenantDoc?.config?.logoUrl || tenantDoc?.hotelDetails?.hotelLogo || null;
+        const tenantDoc = await Tenant.findOne({
+          $or: [{ dbName }, { tenantId: dbName }]
+        }).select('config.logoUrl hotelDetails.hotelLogo').lean();
+        const raw = tenantDoc?.config?.logoUrl || tenantDoc?.hotelDetails?.hotelLogo || null;
+        if (raw && typeof raw === 'string' && raw.startsWith('file:///')) {
+          const match = raw.replace(/\\/g, '/').match(/(?:RishabhGuestHouseImages|images)\/(.+)$/i);
+          logoUrl = match ? `/images/${match[1]}` : raw.replace(/^file:\/\/\/?([a-zA-Z]:)?/, '/images');
+        } else {
+          logoUrl = raw;
+        }
       }
     } catch (err) {
       console.warn('Failed to resolve tenant logo from DB:', err.message);

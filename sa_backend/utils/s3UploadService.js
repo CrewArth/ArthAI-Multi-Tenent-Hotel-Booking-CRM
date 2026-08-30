@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import dotenv from 'dotenv';
+import { decrypt } from './encryption.js';
 
 dotenv.config();
 
@@ -13,9 +14,9 @@ const getDesktopFallbackPath = () => path.join(os.homedir(), 'Desktop', 'Rishabh
  * Instantiate S3 Client using custom config or process.env defaults
  */
 export const getS3Client = (s3Config = {}) => {
-  const region = s3Config.region || process.env.AWS_REGION || 'us-east-1';
-  const accessKeyId = s3Config.key || process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = s3Config.secretKey || process.env.AWS_SECRET_ACCESS_KEY;
+  const region = decrypt(s3Config.region) || process.env.AWS_REGION || 'us-east-1';
+  const accessKeyId = decrypt(s3Config.key) || process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = decrypt(s3Config.secretKey) || process.env.AWS_SECRET_ACCESS_KEY;
 
   if (!accessKeyId || !secretAccessKey) {
     return null;
@@ -40,7 +41,7 @@ const uploadToLocalFallback = async (key, buffer) => {
   await fs.promises.mkdir(dir, { recursive: true });
   await fs.promises.writeFile(localPath, buffer);
 
-  const formattedUrl = `file:///${localPath.replace(/\\/g, '/')}`;
+  const formattedUrl = `/images/${key.replace(/\\/g, '/')}`;
   console.log(`[Local Storage Fallback] Saved ${key} -> ${formattedUrl}`);
   return formattedUrl;
 };
@@ -54,7 +55,7 @@ export const parseBase64Data = (base64Str) => {
   const matches = base64Str.match(/^data:(.+);base64,(.+)$/);
   if (!matches) {
     // Check if it's already a URL or path
-    if (base64Str.startsWith('http://') || base64Str.startsWith('https://') || base64Str.startsWith('file:///')) {
+    if (base64Str.startsWith('http://') || base64Str.startsWith('https://') || base64Str.startsWith('file:///') || base64Str.startsWith('/images/')) {
       return { isUrl: true, url: base64Str };
     }
     return null;
@@ -98,8 +99,8 @@ export const optimizeBuffer = async (buffer, mimeType) => {
  * Upload buffer to S3 or fallback to local storage
  */
 export const uploadBufferToS3 = async (key, buffer, contentType, s3Config = {}) => {
-  const bucketName = s3Config.bucketName || process.env.AWS_S3_BUCKET;
-  const region = s3Config.region || process.env.AWS_REGION || 'us-east-1';
+  const bucketName = decrypt(s3Config.bucketName || s3Config.bucket_name) || process.env.AWS_S3_BUCKET;
+  const region = decrypt(s3Config.region) || process.env.AWS_REGION || 'us-east-1';
   const s3Client = getS3Client(s3Config);
 
   if (s3Client && bucketName) {

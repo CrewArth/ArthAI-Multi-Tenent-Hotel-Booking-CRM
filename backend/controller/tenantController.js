@@ -1,6 +1,7 @@
 import { connectMasterDb } from '../config/dbManager.js';
 import tenantSchema from '../models/centralModels/Tenant.js';
 import { seedTenantDb } from '../utils/tenantSeeder.js';
+import { encryptTenantData, decryptTenantData } from '../utils/encryption.js';
 
 const getCentralTenantModel = async () => {
   const master = await connectMasterDb();
@@ -25,13 +26,16 @@ export const createTenant = async (req, res) => {
       return res.status(409).json({ message: "Tenant ID or Database Name already registered" });
     }
 
-    const tenant = await Tenant.create({
+    const tenantData = {
       tenantId: slug,
       name: name.trim(),
       dbName,
       plan: plan || 'pro',
       config: config || {},
-    });
+    };
+
+    const encryptedTenant = encryptTenantData(tenantData);
+    const tenant = await Tenant.create(encryptedTenant);
 
     let seedResult = {};
     if (adminEmail && adminPassword) {
@@ -47,7 +51,7 @@ export const createTenant = async (req, res) => {
 
     return res.status(201).json({
       message: "Tenant provisioned successfully",
-      tenant,
+      tenant: decryptTenantData(tenant),
       adminCreated: !!seedResult.adminUser,
     });
   } catch (error) {
@@ -60,8 +64,8 @@ export const createTenant = async (req, res) => {
 export const listTenants = async (req, res) => {
   try {
     const Tenant = await getCentralTenantModel();
-    const tenants = await Tenant.find().sort({ createdAt: -1 });
-    return res.json({ tenants });
+    const tenants = await Tenant.find().sort({ createdAt: -1 }).lean();
+    return res.json({ tenants: tenants.map(t => decryptTenantData(t)) });
   } catch (error) {
     console.error("Error listing tenants:", error);
     return res.status(500).json({ message: "Unable to list tenants" });
@@ -73,9 +77,9 @@ export const getTenantBySlug = async (req, res) => {
   try {
     const Tenant = await getCentralTenantModel();
     const { slug } = req.params;
-    const tenant = await Tenant.findOne({ tenantId: slug.toLowerCase().trim(), isActive: true });
+    const tenant = await Tenant.findOne({ tenantId: slug.toLowerCase().trim(), isActive: true }).lean();
     if (!tenant) return res.status(404).json({ message: "Tenant not found" });
-    return res.json({ tenant });
+    return res.json({ tenant: decryptTenantData(tenant) });
   } catch (error) {
     console.error("Error getting tenant:", error);
     return res.status(500).json({ message: "Server error" });

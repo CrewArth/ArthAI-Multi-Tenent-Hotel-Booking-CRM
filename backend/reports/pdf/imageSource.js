@@ -1,4 +1,7 @@
 import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
+import { fileURLToPath } from 'url';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { s3 } from '../../utils/s3Client.js';
@@ -32,6 +35,21 @@ const getRawBuffer = async (source) => {
   if (/^file:\/\//i.test(trimmed)) {
     const filePath = toFilePathFromFileUrl(trimmed);
     return fs.readFile(filePath);
+  }
+
+  if (trimmed.startsWith('/images/')) {
+    const relKey = trimmed.replace(/^\/images\//, '');
+    const desktopPath = path.join(os.homedir(), 'Desktop', 'RishabhGuestHouseImages', relKey);
+    try {
+      return await fs.readFile(desktopPath);
+    } catch {
+      const localBackendPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../images', relKey);
+      try {
+        return await fs.readFile(localBackendPath);
+      } catch {
+        // Fall through to HTTP / default fetch
+      }
+    }
   }
 
   const s3Match = trimmed.match(S3_URL_REGEX);

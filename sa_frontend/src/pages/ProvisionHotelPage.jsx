@@ -221,7 +221,7 @@ export const ProvisionHotelPage = () => {
         legalPropertyName: formData.hotelDetails.legalPropertyName,
         hotelName: formData.hotelDetails.hotelName,
         propertyType: formData.hotelDetails.propertyType,
-        hotelLogo: formData.hotelDetails.hotelLogo?.dataUrl || '',
+        hotelLogo: formData.hotelDetails.hotelLogo?.dataUrl || (typeof formData.hotelDetails.hotelLogo === 'string' ? formData.hotelDetails.hotelLogo : formData.hotelDetails.hotelLogo?.name || ''),
         expiryDate: formData.hotelDetails.expiryDate ? new Date(formData.hotelDetails.expiryDate).toISOString() : null,
       },
       legalCompliance: {

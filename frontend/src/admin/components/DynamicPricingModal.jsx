@@ -211,7 +211,7 @@ export const DynamicPricingModal = ({
             <div className="dp-form-group">
               <label className="dp-form-label">
                 {adjustmentType === 'percentage'
-                  ? 'Adjustment % (e.g. 20 for +20%, -10 for -10%)'
+                  ? 'Adjustment % (e.g 20 for +20%, -10 for -10%)'
                   : adjustmentType === 'fixed_amount'
                   ? 'Fixed Adjustment (₹ e.g. 500 or -200)'
                   : 'Flat Nightly Rate (₹ e.g. 3500)'}

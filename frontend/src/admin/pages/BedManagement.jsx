@@ -184,7 +184,7 @@ const BedManagement = () => {
             disabled={!selectedRoom}
             onClick={handleAutoCreate}
           >
-            ⚡ Auto Create Beds
+          Auto Create Beds
           </button>
         </div>
       </div>

@@ -8,8 +8,8 @@ import roomSchema from '../../backend/models/tenantModels/Room.js';
 import bookingSchema from '../../backend/models/tenantModels/Booking.js';
 import { generateTenantCredentials } from '../utils/credentialGenerator.js';
 import { sendWelcomeCredentialsEmail } from '../utils/emailService.js';
-
 import { uploadBase64Document } from '../utils/s3UploadService.js';
+import { encrypt, decrypt, encryptTenantData, decryptTenantData } from '../utils/encryption.js';
 
 const getCentralTenantModel = async () => {
   const master = await connectCentralDb();
@@ -20,7 +20,8 @@ export const getDashboardSummary = async (req, res) => {
   try {
     const Tenant = await getCentralTenantModel();
 
-    const tenants = await Tenant.find().sort({ createdAt: -1 }).lean();
+    const tenantsRaw = await Tenant.find().sort({ createdAt: -1 }).lean();
+    const tenants = tenantsRaw.map((t) => decryptTenantData(t));
 
     const totalTenants = tenants.length;
     const activeTenants = tenants.filter((t) => t.isActive).length;
@@ -127,7 +128,7 @@ export const provisionTenant = async (req, res) => {
 
     const parsedExpiry = req.body.expiryDate || hotelDetails?.expiryDate;
 
-    const tenant = await Tenant.create({
+    const tenantData = {
       tenantId: slug,
       name: resolvedName,
       dbName,
@@ -143,10 +144,18 @@ export const provisionTenant = async (req, res) => {
         s3BucketName: s3BucketName || null,
         s3Region: s3Region || null,
         logoUrl: logoUrl || null,
+        s3: req.body.config?.s3 ? {
+          key: req.body.config.s3.key || null,
+          secretKey: req.body.config.s3.secretKey || null,
+          bucket_name: req.body.config.s3.bucket_name || s3BucketName || null,
+          region: req.body.config.s3.region || s3Region || null,
+        } : undefined,
       },
       credentials: {
         superAdminEmail: credentials.superAdmin.email,
         adminEmail: credentials.admin.email,
+        superAdminPassword: credentials.superAdmin.password,
+        adminPassword: credentials.admin.password,
       },
       personalDetails: personalDetails ? {
         fullName: personalDetails.fullName || resolvedOwnerName,
@@ -172,7 +181,10 @@ export const provisionTenant = async (req, res) => {
         shopLicencePhoto: shopLicenceUrl || legalCompliance.shopLicencePhoto || '',
         fireSafetyNoc: fireNocUrl || legalCompliance.fireSafetyNoc || '',
       } : undefined,
-    });
+    };
+
+    const encryptedTenant = encryptTenantData(tenantData);
+    const tenant = await Tenant.create(encryptedTenant);
 
     const tenantDb = await getTenantDb(dbName);
     const User = tenantDb.models.User || tenantDb.model('User', userSchema);
@@ -219,7 +231,7 @@ export const provisionTenant = async (req, res) => {
 
     return res.status(201).json({
       message: "Tenant provisioned successfully",
-      tenant,
+      tenant: decryptTenantData(tenant),
       generatedCredentials: {
         superAdmin: {
           email: credentials.superAdmin.email,
@@ -240,8 +252,8 @@ export const provisionTenant = async (req, res) => {
 export const listTenants = async (req, res) => {
   try {
     const Tenant = await getCentralTenantModel();
-    const tenants = await Tenant.find().sort({ createdAt: -1 });
-    return res.json({ tenants });
+    const tenants = await Tenant.find().sort({ createdAt: -1 }).lean();
+    return res.json({ tenants: tenants.map(t => decryptTenantData(t)) });
   } catch (error) {
     console.error("Error listing tenants:", error);
     return res.status(500).json({ message: "Unable to list tenants" });
@@ -261,7 +273,7 @@ export const toggleTenantStatus = async (req, res) => {
 
     return res.json({
       message: tenant.isActive ? "Tenant activated" : "Tenant deactivated",
-      tenant,
+      tenant: decryptTenantData(tenant),
     });
   } catch (error) {
     console.error("Error toggling tenant status:", error);
@@ -288,7 +300,7 @@ export const updateTenantPlan = async (req, res) => {
 
     return res.json({
       message: `Tenant subscription updated to ${tenant.plan.toUpperCase()}`,
-      tenant,
+      tenant: decryptTenantData(tenant),
     });
   } catch (error) {
     console.error("Error updating tenant plan:", error);
@@ -325,13 +337,13 @@ export const getTenantByTenantId = async (req, res) => {
 
     const tenant = await Tenant.findOne({
       $or: [{ tenantId: cleanId }, { dbName: cleanId }]
-    });
+    }).lean();
 
     if (!tenant) {
       return res.status(404).json({ message: "Tenant not found" });
     }
 
-    return res.json({ tenant });
+    return res.json({ tenant: decryptTenantData(tenant) });
   } catch (error) {
     console.error("Error fetching single tenant:", error);
     return res.status(500).json({ message: "Failed to fetch tenant details" });
@@ -358,8 +370,8 @@ export const updateTenant = async (req, res) => {
     } = req.body;
 
     const s3Config = {
-      bucketName: s3BucketName || tenant.config?.s3BucketName || process.env.AWS_S3_BUCKET,
-      region: s3Region || tenant.config?.s3Region || process.env.AWS_REGION,
+      bucketName: s3BucketName || decrypt(tenant.config?.s3BucketName) || process.env.AWS_S3_BUCKET,
+      region: s3Region || decrypt(tenant.config?.s3Region) || process.env.AWS_REGION,
     };
 
     // Process new Base64 uploads if present
@@ -394,19 +406,43 @@ export const updateTenant = async (req, res) => {
 
     if (logoUrl) tenant.config.logoUrl = logoUrl;
     tenant.config.siteName = resolvedName;
+    if (s3BucketName !== undefined) tenant.config.s3BucketName = encrypt(s3BucketName);
+    if (s3Region !== undefined) tenant.config.s3Region = encrypt(s3Region);
+    if (req.body.config?.s3) {
+      tenant.config.s3 = {
+        key: req.body.config.s3.key ? encrypt(req.body.config.s3.key) : tenant.config.s3?.key,
+        secretKey: req.body.config.s3.secretKey ? encrypt(req.body.config.s3.secretKey) : tenant.config.s3?.secretKey,
+        bucket_name: req.body.config.s3.bucket_name ? encrypt(req.body.config.s3.bucket_name) : (s3BucketName ? encrypt(s3BucketName) : tenant.config.s3?.bucket_name),
+        region: req.body.config.s3.region ? encrypt(req.body.config.s3.region) : (s3Region ? encrypt(s3Region) : tenant.config.s3?.region),
+      };
+    }
 
-    // Update nested objects while retaining existing URLs if not replaced
+    // Update nested objects while retaining existing encrypted values if not replaced
+    const decryptedPersonal = decryptTenantData(tenant).personalDetails || {};
+    const updatedPersonal = {
+      fullName: personalDetails?.fullName || decryptedPersonal.fullName || tenant.owner.name,
+      signature: signatureUrl || personalDetails?.signature || decryptedPersonal.signature || '',
+      phone1: personalDetails?.phone1 || decryptedPersonal.phone1 || tenant.owner.phone,
+      phone2: personalDetails?.phone2 || decryptedPersonal.phone2 || '',
+      email1: personalDetails?.email1 || decryptedPersonal.email1 || tenant.owner.email,
+      email2: personalDetails?.email2 || decryptedPersonal.email2 || '',
+      legalDocNumber: personalDetails?.legalDocNumber || decryptedPersonal.legalDocNumber || '',
+      residentialAddress: personalDetails?.residentialAddress || decryptedPersonal.residentialAddress || '',
+      businessAddress: personalDetails?.businessAddress || decryptedPersonal.businessAddress || '',
+      govtIdProof: govtIdUrl || personalDetails?.govtIdProof || decryptedPersonal.govtIdProof || '',
+    };
+
     tenant.personalDetails = {
-      fullName: personalDetails?.fullName || tenant.personalDetails?.fullName || tenant.owner.name,
-      signature: signatureUrl || personalDetails?.signature || tenant.personalDetails?.signature || '',
-      phone1: personalDetails?.phone1 || tenant.personalDetails?.phone1 || tenant.owner.phone,
-      phone2: personalDetails?.phone2 || tenant.personalDetails?.phone2 || '',
-      email1: personalDetails?.email1 || tenant.personalDetails?.email1 || tenant.owner.email,
-      email2: personalDetails?.email2 || tenant.personalDetails?.email2 || '',
-      legalDocNumber: personalDetails?.legalDocNumber || tenant.personalDetails?.legalDocNumber || '',
-      residentialAddress: personalDetails?.residentialAddress || tenant.personalDetails?.residentialAddress || '',
-      businessAddress: personalDetails?.businessAddress || tenant.personalDetails?.businessAddress || '',
-      govtIdProof: govtIdUrl || personalDetails?.govtIdProof || tenant.personalDetails?.govtIdProof || '',
+      fullName: updatedPersonal.fullName,
+      signature: encrypt(updatedPersonal.signature),
+      phone1: encrypt(updatedPersonal.phone1),
+      phone2: encrypt(updatedPersonal.phone2),
+      email1: updatedPersonal.email1,
+      email2: updatedPersonal.email2,
+      legalDocNumber: encrypt(updatedPersonal.legalDocNumber),
+      residentialAddress: encrypt(updatedPersonal.residentialAddress),
+      businessAddress: encrypt(updatedPersonal.businessAddress),
+      govtIdProof: encrypt(updatedPersonal.govtIdProof),
     };
 
     tenant.hotelDetails = {
@@ -416,18 +452,26 @@ export const updateTenant = async (req, res) => {
       hotelLogo: logoUrl || hotelDetails?.hotelLogo || tenant.hotelDetails?.hotelLogo || '',
     };
 
+    const decryptedCompliance = decryptTenantData(tenant).legalCompliance || {};
+    const updatedCompliance = {
+      gstCertificate: gstUrl || legalCompliance?.gstCertificate || decryptedCompliance.gstCertificate || '',
+      panCardPhoto: panUrl || legalCompliance?.panCardPhoto || decryptedCompliance.panCardPhoto || '',
+      shopLicencePhoto: shopLicenceUrl || legalCompliance?.shopLicencePhoto || decryptedCompliance.shopLicencePhoto || '',
+      fireSafetyNoc: fireNocUrl || legalCompliance?.fireSafetyNoc || decryptedCompliance.fireSafetyNoc || '',
+    };
+
     tenant.legalCompliance = {
-      gstCertificate: gstUrl || legalCompliance?.gstCertificate || tenant.legalCompliance?.gstCertificate || '',
-      panCardPhoto: panUrl || legalCompliance?.panCardPhoto || tenant.legalCompliance?.panCardPhoto || '',
-      shopLicencePhoto: shopLicenceUrl || legalCompliance?.shopLicencePhoto || tenant.legalCompliance?.shopLicencePhoto || '',
-      fireSafetyNoc: fireNocUrl || legalCompliance?.fireSafetyNoc || tenant.legalCompliance?.fireSafetyNoc || '',
+      gstCertificate: encrypt(updatedCompliance.gstCertificate),
+      panCardPhoto: encrypt(updatedCompliance.panCardPhoto),
+      shopLicencePhoto: encrypt(updatedCompliance.shopLicencePhoto),
+      fireSafetyNoc: encrypt(updatedCompliance.fireSafetyNoc),
     };
 
     await tenant.save();
 
     return res.json({
       message: "Tenant details updated successfully",
-      tenant,
+      tenant: decryptTenantData(tenant),
     });
   } catch (error) {
     console.error("Error updating tenant details:", error);

@@ -247,7 +247,7 @@ const MobileCapturePage = () => {
       {/* Main Content */}
       <main className="mc-content">
         <div className="mc-section-header">
-          <h2 className="mc-section-title">Guest Verification Roster</h2>
+          <h2 className="mc-section-title">Guest Verification</h2>
           <button
             type="button"
             className="mc-btn-add-guest"

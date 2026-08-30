@@ -4,9 +4,18 @@ import cors from 'cors';
 import { connectCentralDb } from './config/db.js';
 import indexRoutes from './routes/index.js';
 
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
 dotenv.config();
 
 const app = express();
+
+const desktopImagesPath = path.join(os.homedir(), 'Desktop', 'RishabhGuestHouseImages');
+if (fs.existsSync(desktopImagesPath)) {
+  app.use('/images', express.static(desktopImagesPath));
+}
 
 app.use(cors({
   origin: true,

@@ -31,8 +31,16 @@ app.use((req, res, next) => {
   return next();
 });
 
+import fs from 'fs';
+import os from 'os';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const desktopImagesPath = path.join(os.homedir(), 'Desktop', 'RishabhGuestHouseImages');
+if (fs.existsSync(desktopImagesPath)) {
+  app.use('/images', express.static(desktopImagesPath));
+}
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.get('/', (req, res) => {

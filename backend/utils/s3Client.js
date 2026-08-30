@@ -33,17 +33,20 @@ const extractS3Key = (url) => {
 
 const deleteLocalFileFromUrl = async (fileUrl) => {
   try {
-    // Check if it's a local file:// URL
-    if (!fileUrl.startsWith("file:///")) return false;
-
-    // Convert file URL to local path (handle Windows paths correctly)
-    let localPath = fileUrl.replace("file:///", "");
-    // On Windows, paths like /C:/Users/... need the leading slash removed
-    if (process.platform === "win32" && localPath.match(/^\/[a-zA-Z]:\//)) {
-      localPath = localPath.slice(1);
+    let localPath;
+    if (fileUrl.startsWith("file:///")) {
+      // Convert file URL to local path (handle Windows paths correctly)
+      let rawPath = fileUrl.replace("file:///", "");
+      if (process.platform === "win32" && rawPath.match(/^\/[a-zA-Z]:\//)) {
+        rawPath = rawPath.slice(1);
+      }
+      localPath = path.resolve(rawPath);
+    } else if (fileUrl.startsWith("/images/")) {
+      const relKey = fileUrl.replace(/^\/images\//, "");
+      localPath = path.join(getDesktopPath(), relKey);
+    } else {
+      return false;
     }
-    // Convert forward slashes to platform-specific separator
-    localPath = path.resolve(localPath);
 
     // Only proceed if the path is inside our Desktop storage folder
     const desktopBase = getDesktopPath();

@@ -12,7 +12,7 @@ const parseBase64Data = (base64Str) => {
 
   const matches = base64Str.match(/^data:(image\/[a-zA-Z0-9\+\-\.]+);base64,(.+)$/);
   if (!matches) {
-    if (base64Str.startsWith('http://') || base64Str.startsWith('https://') || base64Str.startsWith('file:///')) {
+    if (base64Str.startsWith('http://') || base64Str.startsWith('https://') || base64Str.startsWith('file:///') || base64Str.startsWith('/images/')) {
       return { isUrl: true, url: base64Str };
     }
     return null;
@@ -25,6 +25,21 @@ const parseBase64Data = (base64Str) => {
   if (ext.includes('svg')) ext = 'svg';
 
   return { contentType, buffer, ext };
+};
+
+const sanitizeLogoUrl = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('file:///')) {
+    const normalized = trimmed.replace(/\\/g, '/');
+    const match = normalized.match(/(?:RishabhGuestHouseImages|images)\/(.+)$/i);
+    if (match) {
+      return `/images/${match[1]}`;
+    }
+    return trimmed.replace(/^file:\/\/\/?([a-zA-Z]:)?/, '/images');
+  }
+  return trimmed;
 };
 
 /**
@@ -41,10 +56,13 @@ export const getSettings = async (req, res) => {
                    'guesthouses';
 
     const Tenant = await getCentralTenantModel();
-    const tenant = await Tenant.findOne({ dbName }).lean();
+    const tenant = await Tenant.findOne({
+      $or: [{ dbName }, { tenantId: dbName }]
+    }).lean();
 
-    const siteName = tenant?.config?.siteName || tenant?.name || 'Arth.AI';
-    const logoUrl = tenant?.config?.logoUrl || tenant?.hotelDetails?.hotelLogo || null;
+    const siteName = tenant?.config?.siteName || tenant?.hotelDetails?.hotelName || tenant?.name || 'Arth.AI';
+    const rawLogo = tenant?.config?.logoUrl || tenant?.hotelDetails?.hotelLogo || null;
+    const logoUrl = sanitizeLogoUrl(rawLogo);
 
     return res.status(200).json({
       siteName,
@@ -77,9 +95,11 @@ export const updateSettings = async (req, res) => {
                    'guesthouses';
 
     const Tenant = await getCentralTenantModel();
-    let tenant = await Tenant.findOne({ dbName });
+    let tenant = await Tenant.findOne({
+      $or: [{ dbName }, { tenantId: dbName }]
+    });
 
-    let finalLogoUrl = logoUrl || null;
+    let finalLogoUrl = sanitizeLogoUrl(logoUrl) || null;
 
     if (logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/')) {
       const parsed = parseBase64Data(logoUrl);
@@ -94,6 +114,8 @@ export const updateSettings = async (req, res) => {
         );
       }
     }
+
+    finalLogoUrl = sanitizeLogoUrl(finalLogoUrl);
 
     if (tenant) {
       if (!tenant.config) tenant.config = {};

@@ -5,12 +5,27 @@ import api from '../../utils/api';
 import '../styles/settings.css';
 import fallbackLogo from '../../assets/logo.png';
 
+const sanitizeClientLogo = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('file:///')) {
+    const normalized = trimmed.replace(/\\/g, '/');
+    const match = normalized.match(/(?:RishabhGuestHouseImages|images)\/(.+)$/i);
+    if (match) {
+      return `/images/${match[1]}`;
+    }
+    return trimmed.replace(/^file:\/\/\/?([a-zA-Z]:)?/, '/images');
+  }
+  return trimmed;
+};
+
 export default function Settings() {
   const dispatch = useDispatch();
   const { siteName, logoUrl } = useSelector((state) => state.siteSettings);
 
   const [nameInput, setNameInput] = useState(siteName);
-  const [previewUrl, setPreviewUrl] = useState(logoUrl);
+  const [previewUrl, setPreviewUrl] = useState(sanitizeClientLogo(logoUrl));
   const [logoFile, setLogoFile] = useState(null);
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -23,9 +38,10 @@ export default function Settings() {
       .then((res) => {
         if (isMounted && res.data) {
           const { siteName: fetchedName, logoUrl: fetchedLogo } = res.data;
+          const cleanLogo = sanitizeClientLogo(fetchedLogo);
           if (fetchedName) setNameInput(fetchedName);
-          if (fetchedLogo !== undefined) setPreviewUrl(fetchedLogo);
-          dispatch(updateSiteSettings({ siteName: fetchedName, logoUrl: fetchedLogo }));
+          if (fetchedLogo !== undefined) setPreviewUrl(cleanLogo);
+          dispatch(updateSiteSettings({ siteName: fetchedName, logoUrl: cleanLogo }));
         }
       })
       .catch((err) => {
@@ -80,7 +96,7 @@ export default function Settings() {
       });
 
       const updatedSiteName = res.data.siteName;
-      const updatedLogoUrl = res.data.logoUrl;
+      const updatedLogoUrl = sanitizeClientLogo(res.data.logoUrl);
 
       setPreviewUrl(updatedLogoUrl);
       setLogoFile(null);
@@ -131,7 +147,17 @@ export default function Settings() {
       <section className="settings-card">
         <h2 className="settings-card-title">Live Preview</h2>
         <div className="settings-preview-bar">
-          <img src={previewUrl || fallbackLogo} alt="Logo preview" className="settings-preview-logo" />
+          <img
+            src={previewUrl || fallbackLogo}
+            alt="Logo preview"
+            className="settings-preview-logo"
+            onError={(e) => {
+              if (e.target.src !== fallbackLogo) {
+                e.target.onerror = null;
+                e.target.src = fallbackLogo;
+              }
+            }}
+          />
           <span className="settings-preview-name">{nameInput.trim() || 'Site Name'}</span>
         </div>
       </section>
@@ -144,7 +170,17 @@ export default function Settings() {
         </p>
 
         <div className="settings-logo-row">
-          <img src={previewUrl || fallbackLogo} alt="Current logo" className="settings-current-logo" />
+          <img
+            src={previewUrl || fallbackLogo}
+            alt="Current logo"
+            className="settings-current-logo"
+            onError={(e) => {
+              if (e.target.src !== fallbackLogo) {
+                e.target.onerror = null;
+                e.target.src = fallbackLogo;
+              }
+            }}
+          />
           <div className="settings-logo-actions">
             <label className="settings-upload-btn" htmlFor="logo-upload">
               {logoFile ? 'Change Image' : 'Upload Image'}

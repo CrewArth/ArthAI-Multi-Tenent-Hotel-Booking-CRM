@@ -145,14 +145,29 @@
   color: #c2410c;
 }
 
-.today-bookings-status.approved {
+.today-bookings-status.approved,
+.today-bookings-status.confirmed {
   background: #ecfdf5;
   color: #047857;
 }
 
-.today-bookings-status.rejected {
+.today-bookings-status.rejected,
+.today-bookings-status.cancelled,
+.today-bookings-status.canceled {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.today-bookings-status.checked-in,
+.today-bookings-status.checked_in {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.today-bookings-status.checked-out,
+.today-bookings-status.checked_out {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 @media (max-width: 800px) {

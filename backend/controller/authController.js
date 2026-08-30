@@ -175,7 +175,9 @@ export const loginUser = async (req, res) => {
     // Check central Tenant subscription expiry date & active status
     try {
       const Tenant = await getCentralTenantModel();
-      const tenantDoc = await Tenant.findOne({ dbName }).lean();
+      const tenantDoc = await Tenant.findOne({
+        $or: [{ dbName }, { tenantId: dbName }]
+      }).lean();
       if (tenantDoc) {
         resolvedTenantDoc = tenantDoc;
         if (tenantDoc.isActive === false) {
@@ -223,9 +225,27 @@ export const loginUser = async (req, res) => {
     console.log(`[Auth Log ✅] SUCCESS! User '${cleanEmail}' logged into database '${dbName}' (Role: ${user.role})`);
     console.log(`========================================\n`);
 
+    const sanitizeLogoUrl = (url) => {
+      if (!url || typeof url !== 'string') return null;
+      const trimmed = url.trim();
+      if (!trimmed) return null;
+      if (trimmed.startsWith('file:///')) {
+        const normalized = trimmed.replace(/\\/g, '/');
+        const match = normalized.match(/(?:RishabhGuestHouseImages|images)\/(.+)$/i);
+        if (match) {
+          return `/images/${match[1]}`;
+        }
+        return trimmed.replace(/^file:\/\/\/?([a-zA-Z]:)?/, '/images');
+      }
+      return trimmed;
+    };
+
+    const rawLogo = resolvedTenantDoc?.config?.logoUrl || resolvedTenantDoc?.hotelDetails?.hotelLogo || null;
+    const finalLogo = sanitizeLogoUrl(rawLogo);
+
     const siteSettings = {
-      siteName: resolvedTenantDoc?.config?.siteName || resolvedTenantDoc?.name || 'Arth.AI',
-      logoUrl: resolvedTenantDoc?.config?.logoUrl || resolvedTenantDoc?.hotelDetails?.hotelLogo || null,
+      siteName: resolvedTenantDoc?.config?.siteName || resolvedTenantDoc?.hotelDetails?.hotelName || resolvedTenantDoc?.name || 'Arth.AI',
+      logoUrl: finalLogo,
     };
 
     return res.status(200).json({ user, token, siteSettings });
