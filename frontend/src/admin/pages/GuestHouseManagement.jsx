@@ -141,6 +141,23 @@ const GuestHouseManagement = () => {
                       >
                         Edit
                       </button>
+                      <button
+                        className="btn-action"
+                        style={{
+                          background: '#e0f2fe',
+                          color: '#0284c7',
+                          border: '1px solid #bae6fd',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          padding: '4px 10px',
+                          borderRadius: '5px',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => navigate(`/super-admin/dynamic-pricing/${gh.guestHouseId || gh._id}`, { state: { hotel: gh } })}
+                        title="Manage Dynamic Pricing"
+                      >
+                        Dynamic Price
+                      </button>
                       <button className="btn-action toggle" onClick={() => toggleMaintenance(gh.guestHouseId)}>
                         {gh.maintenance ? "Activate" : "Maintenance"}
                       </button>

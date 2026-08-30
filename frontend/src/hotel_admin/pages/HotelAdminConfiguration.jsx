@@ -7,6 +7,7 @@ export const HotelAdminConfiguration = () => {
   const [saving, setSaving] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
+  const [dynamicRoomPrice, setDynamicRoomPrice] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -16,6 +17,7 @@ export const HotelAdminConfiguration = () => {
         if (res.data?.configuration) {
           setSendEmail(res.data.configuration.sendEmail !== false);
           setSendWhatsapp(Boolean(res.data.configuration.sendWhatsapp));
+          setDynamicRoomPrice(Boolean(res.data.configuration.dynamicRoomPrice));
         }
       } catch (err) {
         console.error('Error fetching hotel configuration:', err);
@@ -35,11 +37,13 @@ export const HotelAdminConfiguration = () => {
       const res = await api.post('/api/hotel-admin/configuration/update', {
         sendEmail,
         sendWhatsapp,
+        dynamicRoomPrice,
       });
       toast.success(res.data?.message || 'Configuration saved successfully');
       if (res.data?.configuration) {
         setSendEmail(res.data.configuration.sendEmail !== false);
         setSendWhatsapp(Boolean(res.data.configuration.sendWhatsapp));
+        setDynamicRoomPrice(Boolean(res.data.configuration.dynamicRoomPrice));
       }
     } catch (err) {
       console.error('Error saving hotel configuration:', err);
@@ -125,6 +129,27 @@ export const HotelAdminConfiguration = () => {
               id="sendWhatsapp"
               checked={sendWhatsapp}
               onChange={(e) => setSendWhatsapp(e.target.checked)}
+              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label
+              htmlFor="dynamicRoomPrice"
+              style={{
+                fontSize: '15px',
+                fontWeight: 600,
+                color: '#1e293b',
+                cursor: 'pointer',
+              }}
+            >
+              Dynamic Room Price
+            </label>
+            <input
+              type="checkbox"
+              id="dynamicRoomPrice"
+              checked={dynamicRoomPrice}
+              onChange={(e) => setDynamicRoomPrice(e.target.checked)}
               style={{ width: '18px', height: '18px', cursor: 'pointer' }}
             />
           </div>

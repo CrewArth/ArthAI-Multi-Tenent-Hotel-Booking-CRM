@@ -678,6 +678,7 @@ export const getAssignedConfiguration = async (req, res) => {
         guestHouseId: ghObjectId,
         sendEmail: true,
         sendWhatsapp: false,
+        dynamicRoomPrice: false,
       });
     }
 
@@ -689,6 +690,7 @@ export const getAssignedConfiguration = async (req, res) => {
       configuration: {
         sendEmail: config.sendEmail !== false,
         sendWhatsapp: Boolean(config.sendWhatsapp),
+        dynamicRoomPrice: Boolean(config.dynamicRoomPrice),
       },
     });
   } catch (error) {
@@ -705,7 +707,7 @@ export const updateAssignedConfiguration = async (req, res) => {
   try {
     const { GuestHouse, Configuration } = req.tenantModels;
     const assignedId = getAssignedGuestHouseId(req.user);
-    const { sendEmail, sendWhatsapp } = req.body;
+    const { sendEmail, sendWhatsapp, dynamicRoomPrice } = req.body;
 
     if (!assignedId && req.user?.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ message: 'No hotel assigned to your account.' });
@@ -724,6 +726,9 @@ export const updateAssignedConfiguration = async (req, res) => {
     }
     if (sendWhatsapp !== undefined) {
       updateData.sendWhatsapp = Boolean(sendWhatsapp);
+    }
+    if (dynamicRoomPrice !== undefined) {
+      updateData.dynamicRoomPrice = Boolean(dynamicRoomPrice);
     }
 
     const updatedConfig = await Configuration.findOneAndUpdate(
@@ -748,6 +753,7 @@ export const updateAssignedConfiguration = async (req, res) => {
       configuration: {
         sendEmail: updatedConfig.sendEmail !== false,
         sendWhatsapp: Boolean(updatedConfig.sendWhatsapp),
+        dynamicRoomPrice: Boolean(updatedConfig.dynamicRoomPrice),
       },
     });
   } catch (error) {

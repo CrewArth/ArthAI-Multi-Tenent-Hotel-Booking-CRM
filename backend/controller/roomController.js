@@ -249,7 +249,14 @@ export const getRoomsByGuestHouse = async (req, res) => {
       return res.json({ success: true, rooms: cached });
     }
 
-    const rooms = await Room.find({ guestHouseId: gh.guestHouseId, isActive: true }).lean();
+    const rooms = await Room.find({
+      $or: [
+        { guestHouseId: gh.guestHouseId },
+        { guestHouseId: gh._id },
+        { guestHouseId: String(gh._id) },
+      ],
+      isActive: true,
+    }).lean();
     await setCache(cacheKey, rooms, 600);
 
     res.json({ success: true, rooms });

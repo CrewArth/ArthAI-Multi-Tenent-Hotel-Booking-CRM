@@ -14,6 +14,10 @@ const configurationSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  dynamicRoomPrice: {
+    type: Boolean,
+    default: false,
+  },
   extraSettings: {
     type: mongoose.Schema.Types.Mixed,
     default: {},

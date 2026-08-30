@@ -37,6 +37,7 @@ const ContactUs = lazyLoad(() => import('./commonPages/ContactUs'));
 const TermsAndPolicy = lazyLoad(() => import('./commonPages/TermsAndPolicy'));
 const FAQ = lazyLoad(() => import('./commonPages/FAQ'));
 const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage'));
+const DynamicPricingPage = lazyLoad(() => import('./admin/pages/DynamicPricingPage').then(m => ({ default: m.DynamicPricingPage })));
 
 // Hotel Admin Dedicated Module Imports
 const HotelAdminLayout = lazyLoad(() => import('./hotel_admin/components/HotelAdminLayout').then(m => ({ default: m.HotelAdminLayout })));
@@ -147,12 +148,14 @@ function App() {
           <Route path="/admin/receipts" element={<Receipts />} />
           <Route path="/admin/invoice-list" element={<InvoiceList />} />
           <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/dynamic-pricing/:hotelId" element={<DynamicPricingPage />} />
 
           {/* Super Admin routes */}
           <Route path="/super-admin/users" element={<UsersList />} />
           <Route path="/super-admin/dashboard" element={<Overview />} />
           <Route path="/super-admin/hotel" element={<GuestHouseManagement />} />
           <Route path="/super-admin/guesthouses" element={<Navigate to="/super-admin/hotel" replace />} />
+          <Route path="/super-admin/dynamic-pricing/:hotelId" element={<DynamicPricingPage />} />
           <Route path="/super-admin/add-hotel" element={<AddHotelPage />} />
           <Route path="/super-admin/rooms" element={<AddRooms />} />
           <Route path="/super-admin/beds" element={<AddBeds />} />

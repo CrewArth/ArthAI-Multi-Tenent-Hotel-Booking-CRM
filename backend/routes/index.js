@@ -17,6 +17,7 @@ import subscriptionRoutes from './subscriptionRoutes.js';
 import captureSessionRoutes from './captureSessionRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
 import hotelAdminRoutes from './hotelAdminRoutes.js';
+import dynamicPricingRoutes from './dynamicPricingRoutes.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.use('/hotel-admin', hotelAdminRoutes);
 router.use('/guesthouses', guestHouseRoutes);
 router.use('/rooms', roomRoutes);
 router.use('/beds', bedRoutes);
+router.use('/dynamic-pricing', dynamicPricingRoutes);
 router.use('/audit-logs', auditLogRoutes);
 router.use('/admin', adminSummary);
 router.use('/users', userRoutes);
