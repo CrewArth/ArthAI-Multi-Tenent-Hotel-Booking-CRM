@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateSiteSettings, resetSiteSettings } from '../../redux/siteSettingsSlice';
+import api from '../../utils/api';
 import '../styles/settings.css';
 import fallbackLogo from '../../assets/logo.png';
 
@@ -12,8 +13,26 @@ export default function Settings() {
   const [previewUrl, setPreviewUrl] = useState(logoUrl);
   const [logoFile, setLogoFile] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get('/api/settings')
+      .then((res) => {
+        if (isMounted && res.data) {
+          const { siteName: fetchedName, logoUrl: fetchedLogo } = res.data;
+          if (fetchedName) setNameInput(fetchedName);
+          if (fetchedLogo !== undefined) setPreviewUrl(fetchedLogo);
+          dispatch(updateSiteSettings({ siteName: fetchedName, logoUrl: fetchedLogo }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load settings from server:', err);
+      });
+    return () => { isMounted = false; };
+  }, [dispatch]);
 
   /* ── Logo file selection ── */
   const handleFileChange = (e) => {
@@ -46,26 +65,57 @@ export default function Settings() {
   };
 
   /* ── Save ── */
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!nameInput.trim()) {
       setError('Site name cannot be empty.');
       return;
     }
 
-    setError('');
-    dispatch(updateSiteSettings({ siteName: nameInput.trim(), logoUrl: previewUrl }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      setError('');
+      setIsSaving(true);
+      const res = await api.put('/api/settings', {
+        siteName: nameInput.trim(),
+        logoUrl: previewUrl,
+      });
+
+      const updatedSiteName = res.data.siteName;
+      const updatedLogoUrl = res.data.logoUrl;
+
+      setPreviewUrl(updatedLogoUrl);
+      setLogoFile(null);
+      dispatch(updateSiteSettings({ siteName: updatedSiteName, logoUrl: updatedLogoUrl }));
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save settings.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   /* ── Reset to defaults ── */
-  const handleReset = () => {
-    dispatch(resetSiteSettings());
-    setNameInput('Arth.AI');
-    setPreviewUrl(null);
-    setLogoFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    setError('');
+  const handleReset = async () => {
+    try {
+      setError('');
+      setIsSaving(true);
+      const defaultName = 'Arth.AI';
+      const res = await api.put('/api/settings', {
+        siteName: defaultName,
+        logoUrl: null,
+      });
+
+      dispatch(resetSiteSettings());
+      setNameInput(res.data.siteName || defaultName);
+      setPreviewUrl(res.data.logoUrl || null);
+      setLogoFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reset settings.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -139,8 +189,12 @@ export default function Settings() {
 
       {/* ── Actions ── */}
       <div className="settings-actions">
-        <button className="settings-save-btn" onClick={handleSave}>Save Changes</button>
-        <button className="settings-reset-btn" onClick={handleReset}>Reset to Default</button>
+        <button className="settings-save-btn" onClick={handleSave} disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </button>
+        <button className="settings-reset-btn" onClick={handleReset} disabled={isSaving}>
+          Reset to Default
+        </button>
       </div>
     </div>
   );

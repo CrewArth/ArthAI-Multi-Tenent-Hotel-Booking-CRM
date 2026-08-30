@@ -15,11 +15,14 @@ import paymentRoutes from './paymentRoutes.js';
 import tenantRoutes from './tenantRoutes.js';
 import subscriptionRoutes from './subscriptionRoutes.js';
 import captureSessionRoutes from './captureSessionRoutes.js';
+import settingsRoutes from './settingsRoutes.js';
+import hotelAdminRoutes from './hotelAdminRoutes.js';
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
+router.use('/hotel-admin', hotelAdminRoutes);
 router.use('/guesthouses', guestHouseRoutes);
 router.use('/rooms', roomRoutes);
 router.use('/beds', bedRoutes);
@@ -34,5 +37,6 @@ router.use('/taxes', taxRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/tenants', tenantRoutes);
 router.use('/subscription', subscriptionRoutes);
+router.use('/settings', settingsRoutes);
 
 export default router;

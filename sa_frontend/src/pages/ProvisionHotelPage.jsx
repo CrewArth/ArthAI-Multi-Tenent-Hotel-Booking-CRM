@@ -271,7 +271,7 @@ export const ProvisionHotelPage = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
           <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>
-            {isEditMode ? `Edit Hotel: ${formData.hotelDetails.hotelName || routeTenantId}` : 'Enterprise Hotel Onboarding'}
+            {isEditMode ? `Edit Hotel: ${formData.hotelDetails.hotelName || routeTenantId}` : 'New Hotel Onboarding'}
           </h1>
         </div>
 

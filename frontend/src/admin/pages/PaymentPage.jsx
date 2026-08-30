@@ -16,21 +16,34 @@ const formatDate = (value) => {
 const currency = (value) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value || 0);
 
-const compressLogo = (dataUrl, maxSize = 120) =>
-  new Promise((resolve) => {
-    if (!dataUrl) return resolve(null);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/png', 0.85));
-    };
-    img.onerror = () => resolve(null);
-    img.src = dataUrl;
+const compressLogo = (dataUrl, maxSize = 120) => {
+  if (!dataUrl) return Promise.resolve(null);
+  if (typeof dataUrl === 'string' && (dataUrl.startsWith('http://') || dataUrl.startsWith('https://'))) {
+    return Promise.resolve(dataUrl);
+  }
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png', 0.85));
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
   });
+};
 
 const PaymentPage = ({ isOpen = false, onClose, bookingId: bookingIdProp, onInvoiceGenerated, initialPaymentAmount }) => {
   const location = useLocation();

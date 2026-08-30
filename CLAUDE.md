@@ -58,6 +58,14 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 
+## 5. Follow this Structure
+
+Always follow this structure for shipping anything in this project.
+- Always use POST request even for GET requests.
+- Use Feature based folder structure in frontend.
+- Do not write sub heading/ p tag short description in frontend pages.
+- Always use pagination in tables.
+
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
 ---

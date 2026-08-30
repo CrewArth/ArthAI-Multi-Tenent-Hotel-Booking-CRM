@@ -14,7 +14,11 @@ const guestHouseSchema = new mongoose.Schema({
   
   description: { type: String },
 
-  maintenance: { type: Boolean, default: false }
+  maintenance: { type: Boolean, default: false },
+
+  sendEmail: { type: Boolean, default: true },
+
+  sendWhatsapp: { type: Boolean, default: false }
 }, { timestamps: true });
 
 guestHouseSchema.index({ maintenance: 1 });

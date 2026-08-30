@@ -14,23 +14,36 @@ const Reports = () => {
   const isSuperAdmin = String(currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN';
   const logoUrl = useSelector((state) => state.siteSettings.logoUrl);
 
-  // Resize + compress a base64 data URL down to a small thumbnail for PDF embedding.
-  // Keeps the image recognisable while staying well under the request size limit.
-  const compressLogo = (dataUrl, maxSize = 120) =>
-    new Promise((resolve) => {
-      if (!dataUrl) return resolve(null);
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-        canvas.width  = Math.round(img.width  * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/png', 0.85));
-      };
-      img.onerror = () => resolve(null);
-      img.src = dataUrl;
+  // If logo is already an HTTP/S3 URL, pass it directly so the backend fetches and optimizes it.
+  // If it is a base64 data URL, resize + compress it.
+  const compressLogo = (dataUrl, maxSize = 120) => {
+    if (!dataUrl) return Promise.resolve(null);
+    if (typeof dataUrl === 'string' && (dataUrl.startsWith('http://') || dataUrl.startsWith('https://'))) {
+      return Promise.resolve(dataUrl);
+    }
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+            canvas.width  = Math.round(img.width  * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/png', 0.85));
+          } catch {
+            resolve(dataUrl);
+          }
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      } catch {
+        resolve(dataUrl);
+      }
     });
+  };
 
   const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'permissions'
 
@@ -260,7 +273,7 @@ const Reports = () => {
   const currentReportConfig = REPORTS.find((r) => r.id === selectedReportId);
 
   return (
-    <div className="reports-page">
+    <div className="reports-page page-root">
       <div className="reports-header">
         <h1 className="reports-title">Reports Module</h1>
     

@@ -1,0 +1,128 @@
+/* =====================================================
+   HOTEL ADMIN DASHBOARD STYLES — hotelAdminDashboard.css
+===================================================== */
+
+/* ── KPI Grid ── */
+.ha-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+/* ── Stat Card Item ── */
+.ha-stat-card {
+  background: var(--ha-surface, #ffffff);
+  border: 1px solid var(--ha-border, #e2e8f0);
+  border-radius: var(--ha-radius-lg, 12px);
+  padding: 20px;
+  box-shadow: var(--ha-shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.ha-stat-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ha-stat-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ha-text-muted, #64748b);
+}
+
+.ha-stat-card__icon-wrap {
+  padding: 8px;
+  border-radius: var(--ha-radius-md, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ha-stat-card__value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ha-text-main, #0f172a);
+  line-height: 1.2;
+}
+
+.ha-stat-card__subtitle {
+  font-size: 11.5px;
+  color: var(--ha-text-muted, #64748b);
+  margin-top: 4px;
+}
+
+/* ── Quick Links Operations Grid ── */
+.ha-quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.ha-quick-link-card {
+  padding: 16px;
+  border-radius: var(--ha-radius-md, 10px);
+  border: 1px solid var(--ha-border, #e2e8f0);
+  background: #fafafa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.ha-quick-link-card:hover {
+  background: var(--ha-primary-light, #eff6ff);
+  border-color: var(--ha-primary-border, #bfdbfe);
+  transform: translateY(-1px);
+}
+
+.ha-quick-link-icon-wrap {
+  padding: 10px;
+  border-radius: var(--ha-radius-md, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ha-quick-link-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ha-text-main, #0f172a);
+}
+
+/* ── Recent Bookings Table Header ── */
+.ha-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ha-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ha-text-main, #0f172a);
+  margin: 0;
+}
+
+.ha-view-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--ha-primary, #2563eb);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--ha-radius-sm, 6px);
+  transition: background 0.15s ease;
+}
+
+.ha-view-all-btn:hover {
+  background: var(--ha-primary-light, #eff6ff);
+}

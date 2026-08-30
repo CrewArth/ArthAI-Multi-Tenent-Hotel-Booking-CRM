@@ -40,7 +40,23 @@ export const generateReportPdf = async (reportId, filters, user, reqContext = {}
     throw new Error(`Access denied for report '${reportId}'`);
   }
 
-  const { logoUrl, ...reportFilters } = filters;
+  let { logoUrl, ...reportFilters } = filters;
+
+  if (!logoUrl) {
+    try {
+      const { connectMasterDb } = await import('../../config/dbManager.js');
+      const tenantSchema = (await import('../../models/centralModels/Tenant.js')).default;
+      const master = await connectMasterDb();
+      const Tenant = master.models.Tenant || master.model('Tenant', tenantSchema);
+      const dbName = tenantDb?.name || user?.dbName;
+      if (dbName) {
+        const tenantDoc = await Tenant.findOne({ dbName }).select('config.logoUrl hotelDetails.hotelLogo').lean();
+        logoUrl = tenantDoc?.config?.logoUrl || tenantDoc?.hotelDetails?.hotelLogo || null;
+      }
+    } catch (err) {
+      console.warn('Failed to resolve tenant logo from DB:', err.message);
+    }
+  }
 
   if (user.role === 'ADMIN' && user.assignedGuestHouseId) {
     const assignedId = typeof user.assignedGuestHouseId === 'object'

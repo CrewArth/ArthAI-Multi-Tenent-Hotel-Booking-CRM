@@ -33,14 +33,14 @@ const router = express.Router();
 router.post(
   "/:id/capture-session",
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'HOTEL_ADMIN'),
   createCaptureSession
 );
 
 router.post(
   "/:id/capture-session/end",
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'HOTEL_ADMIN'),
   endCaptureSession
 );
 
@@ -48,7 +48,7 @@ router.post(
 router.post(
   "/:id/guests/:guestId/document",
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'HOTEL_ADMIN'),
   uploadSingleDocument,
   processAndUploadGuestDocument,
   uploadManualGuestDocument
@@ -60,7 +60,7 @@ router.post("/", createBooking);
 router.post(
   "/admin",
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'HOTEL_ADMIN'),
   uploadVerificationImage,
   processAndUploadVerificationImage,
   createAdminBooking
@@ -93,7 +93,7 @@ router.get("/:id", authenticate, getBookingById);
 router.put(
   "/:id/admin",
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize('ADMIN', 'SUPER_ADMIN', 'HOTEL_ADMIN'),
   uploadVerificationImage,
   processAndUploadVerificationImage,
   updateAdminBooking

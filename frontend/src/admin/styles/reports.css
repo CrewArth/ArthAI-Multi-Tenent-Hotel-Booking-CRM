@@ -1,6 +1,7 @@
 .reports-page {
-  padding: 2rem;
-  max-width: 1000px;
+  padding: 0;
+  width: 100%;
+  max-width: 1200px;
 }
 
 .reports-header {

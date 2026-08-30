@@ -9,6 +9,7 @@ import '../styles/login.css';
 import api from "../../utils/api";
 import { getAuthenticatedRedirectPath, getRedirectPathForRole } from "../../utils/auth";
 import { setCredentials } from "../../redux/authSlice";
+import { updateSiteSettings } from "../../redux/siteSettingsSlice";
 
 // Email Validation Schema
 const schema = yup.object({
@@ -63,6 +64,9 @@ export default function LoginPage() {
 
       const res = await api.post("/api/auth/signin", { ...data, logoUrl });
       dispatch(setCredentials({ user: res.data.user, token: res.data.token }));
+      if (res.data.siteSettings) {
+        dispatch(updateSiteSettings(res.data.siteSettings));
+      }
 
       toast.success("Login Successful!", { autoClose: 1000 });
 

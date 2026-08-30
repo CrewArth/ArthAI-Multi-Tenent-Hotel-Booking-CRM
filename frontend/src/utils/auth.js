@@ -57,8 +57,12 @@ export const normalizeRole = (role) => {
 export const getRedirectPathForRole = (role) => {
   const normalizedRole = normalizeRole(role);
 
-  if (normalizedRole === "SUPER_ADMIN" || normalizedRole === "HOTEL_ADMIN") {
+  if (normalizedRole === "SUPER_ADMIN") {
     return "/super-admin/dashboard";
+  }
+
+  if (normalizedRole === "HOTEL_ADMIN") {
+    return "/hotel-admin/dashboard";
   }
 
   if (normalizedRole === "ADMIN") {

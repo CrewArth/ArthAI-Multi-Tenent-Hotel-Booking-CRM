@@ -49,7 +49,6 @@ const Navbar = () => {
         <p className="navbar-title">{siteName}</p>
       </div>
 
-      {/* Hamburger Icon for Mobile */}
       <div className="mobile-menu-icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
         <FaBars />
       </div>

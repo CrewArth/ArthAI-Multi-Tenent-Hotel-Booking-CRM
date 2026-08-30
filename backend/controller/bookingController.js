@@ -29,6 +29,33 @@ const parseFamilyMembers = (familyMembers) => {
     }));
 };
 
+const getNotificationConfig = async (tenantModels, guestHouse) => {
+  const { Configuration } = tenantModels || {};
+  if (!Configuration || !guestHouse?._id) {
+    return {
+      sendEmail: guestHouse?.sendEmail !== false,
+      sendWhatsapp: Boolean(guestHouse?.sendWhatsapp),
+    };
+  }
+
+  try {
+    const config = await Configuration.findOne({
+      $or: [{ guestHouseId: guestHouse._id }, { guestHouseId: null }],
+    }).lean();
+
+    return {
+      sendEmail: config ? config.sendEmail !== false : (guestHouse.sendEmail !== false),
+      sendWhatsapp: config ? Boolean(config.sendWhatsapp) : Boolean(guestHouse.sendWhatsapp),
+    };
+  } catch (err) {
+    console.error('Error fetching notification config:', err);
+    return {
+      sendEmail: guestHouse?.sendEmail !== false,
+      sendWhatsapp: Boolean(guestHouse?.sendWhatsapp),
+    };
+  }
+};
+
 const parseRoomIds = (body) => {
   const rawIds = body.roomIds ?? body['roomIds[]'];
   let ids = Array.isArray(rawIds) ? rawIds : rawIds;
@@ -72,7 +99,7 @@ const checkRoomAvailability = async ({ Booking, roomIds, bedId, checkInDate, che
   if (bedId && roomIds.length === 1) {
     const query = {
       bedId,
-      status: "approved",
+      status: { $in: ["approved", "confirmed", "checked-in"] },
       checkIn: { $lt: checkOutDate },
       checkOut: { $gt: checkInDate },
     };
@@ -86,7 +113,7 @@ const checkRoomAvailability = async ({ Booking, roomIds, bedId, checkInDate, che
 
   for (const roomId of roomIds) {
     const query = {
-      status: "approved",
+      status: { $in: ["approved", "confirmed", "checked-in"] },
       bedId: null,
       checkIn: { $lt: checkOutDate },
       checkOut: { $gt: checkInDate },
@@ -252,19 +279,25 @@ export const createAdminBooking = async (req, res) => {
       bookingId: booking._id,
     }, req.tenantDb).catch((error) => console.error("NormalUser upsert error:", error));
 
-    sendEmail({
-      to: email,
-      subject: "Room Booked Successfully",
-      html: bookingRequest({ email, firstName: fullName.split(' ')[0] || fullName, lastName: fullName.split(' ').slice(1).join(' ') || '' }, booking, guestHouse),
-    }).catch((error) => console.error("Email send error:", error));
+    const { sendEmail: shouldSendEmail, sendWhatsapp: shouldSendWhatsapp } = await getNotificationConfig(req.tenantModels, guestHouse);
 
-    sendBookingWhatsApp({
-      to: phone,
-      guestHouseName: guestHouse.guestHouseName,
-      checkIn: booking.checkIn,
-      checkOut: booking.checkOut,
-      roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", "),
-    }).catch((error) => console.error("WhatsApp send error:", error));
+    if (shouldSendEmail) {
+      sendEmail({
+        to: email,
+        subject: "Room Booked Successfully",
+        html: bookingRequest({ email, firstName: fullName.split(' ')[0] || fullName, lastName: fullName.split(' ').slice(1).join(' ') || '' }, booking, guestHouse),
+      }).catch((error) => console.error("Email send error:", error));
+    }
+
+    if (shouldSendWhatsapp) {
+      sendBookingWhatsApp({
+        to: phone,
+        guestHouseName: guestHouse.guestHouseName,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", "),
+      }).catch((error) => console.error("WhatsApp send error:", error));
+    }
 
       await deletePatternCache(`tenant:${dbName}:*`);
 
@@ -349,19 +382,25 @@ export const createBooking = async (req, res) => {
 
     res.status(201).json({ message: "Booking request submitted", newBooking });
 
-    sendEmail({
-      to: user.email || req.body.email,
-      subject: "Room Booked Successfully",
-      html: bookingRequest(user, newBooking, guestHouse),
-    }).catch(err => console.error("Email send error:", err));
+    const { sendEmail: shouldSendEmail, sendWhatsapp: shouldSendWhatsapp } = await getNotificationConfig(req.tenantModels, guestHouse);
 
-    sendBookingWhatsApp({
-      to: req.body.phone || user.phone,
-      guestHouseName: guestHouse.guestHouseName,
-      checkIn: newBooking.checkIn,
-      checkOut: newBooking.checkOut,
-      roomNumber: "Pending assignment",
-    }).catch(err => console.error("WhatsApp send error:", err));
+    if (shouldSendEmail) {
+      sendEmail({
+        to: user.email || req.body.email,
+        subject: "Room Booked Successfully",
+        html: bookingRequest(user, newBooking, guestHouse),
+      }).catch(err => console.error("Email send error:", err));
+    }
+
+    if (shouldSendWhatsapp) {
+      sendBookingWhatsApp({
+        to: req.body.phone || user.phone,
+        guestHouseName: guestHouse.guestHouseName,
+        checkIn: newBooking.checkIn,
+        checkOut: newBooking.checkOut,
+        roomNumber: "Pending assignment",
+      }).catch(err => console.error("WhatsApp send error:", err));
+    }
 
     logAction({
       action: "BOOKING_CREATED",
@@ -583,21 +622,27 @@ export const approveBooking = async (req, res) => {
 
     res.json({ message: "Booking approved successfully", booking: updatedBooking });
 
-    sendEmail({
-      to: user.email,
-      subject: "✅ Booking Approved",
-      html: bookingStatusUpdate(user, updatedBooking, guestHouse, "approved"),
-    }).catch(err => console.error("❌ Failed to send approval email:", err));
+    const { sendEmail: shouldSendEmail, sendWhatsapp: shouldSendWhatsapp } = await getNotificationConfig(req.tenantModels, guestHouse);
 
-    Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
-      .then(rooms => sendBookingWhatsApp({
-        to: user.phone,
-        guestHouseName: guestHouse.guestHouseName,
-        checkIn: updatedBooking.checkIn,
-        checkOut: updatedBooking.checkOut,
-        roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
-      }))
-      .catch(err => console.error("❌ WhatsApp send error (approve):", err));
+    if (shouldSendEmail) {
+      sendEmail({
+        to: user.email,
+        subject: "✅ Booking Approved",
+        html: bookingStatusUpdate(user, updatedBooking, guestHouse, "approved"),
+      }).catch(err => console.error("❌ Failed to send approval email:", err));
+    }
+
+    if (shouldSendWhatsapp) {
+      Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
+        .then(rooms => sendBookingWhatsApp({
+          to: user.phone,
+          guestHouseName: guestHouse.guestHouseName,
+          checkIn: updatedBooking.checkIn,
+          checkOut: updatedBooking.checkOut,
+          roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
+        }))
+        .catch(err => console.error("❌ WhatsApp send error (approve):", err));
+    }
 
     logAction({
       action: "BOOKING_APPROVED",
@@ -637,21 +682,27 @@ export const rejectBooking = async (req, res) => {
 
     res.json({ message: "Booking rejected successfully", booking: updatedBooking });
 
-    sendEmail({
-      to: user.email,
-      subject: "❌ Booking Rejected",
-      html: bookingStatusUpdate(user, updatedBooking, guestHouse, "rejected"),
-    }).catch(err => console.error("❌ Failed to send rejection email:", err));
+    const { sendEmail: shouldSendEmailReject, sendWhatsapp: shouldSendWhatsappReject } = await getNotificationConfig(req.tenantModels, guestHouse);
 
-    Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
-      .then(rooms => sendBookingWhatsApp({
-        to: user.phone,
-        guestHouseName: guestHouse.guestHouseName,
-        checkIn: updatedBooking.checkIn,
-        checkOut: updatedBooking.checkOut,
-        roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
-      }))
-      .catch(err => console.error("❌ WhatsApp send error (reject):", err));
+    if (shouldSendEmailReject) {
+      sendEmail({
+        to: user.email,
+        subject: "❌ Booking Rejected",
+        html: bookingStatusUpdate(user, updatedBooking, guestHouse, "rejected"),
+      }).catch(err => console.error("❌ Failed to send rejection email:", err));
+    }
+
+    if (shouldSendWhatsappReject) {
+      Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
+        .then(rooms => sendBookingWhatsApp({
+          to: user.phone,
+          guestHouseName: guestHouse.guestHouseName,
+          checkIn: updatedBooking.checkIn,
+          checkOut: updatedBooking.checkOut,
+          roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
+        }))
+        .catch(err => console.error("❌ WhatsApp send error (reject):", err));
+    }
 
     logAction({
       action: "BOOKING_REJECTED",
@@ -689,7 +740,7 @@ export const checkAvailability = async (req, res) => {
 
     const bookingQuery = {
       guestHouseId: guestHouse._id,
-      status: "approved",
+      status: { $in: ["approved", "confirmed", "checked-in"] },
       $or: [
         {
           checkIn: { $lte: new Date(checkOut) },
@@ -778,19 +829,25 @@ export const cancelBooking = async (req, res) => {
     res.json({ message: "Booking cancelled successfully", booking: updatedBooking });
 
     if (user && guestHouse) {
-      sendEmail({
-        to: user.email,
-        subject: "🚫 Booking Cancelled",
-        html: bookingStatusUpdate(user, updatedBooking, guestHouse, "cancelled"),
-      }).catch(err => console.error("❌ Failed to send cancellation email:", err));
+      const { sendEmail: shouldSendEmailCancel, sendWhatsapp: shouldSendWhatsappCancel } = await getNotificationConfig(req.tenantModels, guestHouse);
 
-      Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
-        .then(rooms => sendCancelWhatsApp({
-          to: user.phone,
-          roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
-          guestHouseName: guestHouse.guestHouseName,
-        }))
-        .catch(err => console.error("❌ WhatsApp send error (cancel):", err));
+      if (shouldSendEmailCancel) {
+        sendEmail({
+          to: user.email,
+          subject: "🚫 Booking Cancelled",
+          html: bookingStatusUpdate(user, updatedBooking, guestHouse, "cancelled"),
+        }).catch(err => console.error("❌ Failed to send cancellation email:", err));
+      }
+
+      if (shouldSendWhatsappCancel) {
+        Room.find({ _id: { $in: updatedBooking.roomIds || [] } })
+          .then(rooms => sendCancelWhatsApp({
+            to: user.phone,
+            roomNumber: rooms.map(r => `Room ${r.roomNumber}`).join(", ") || "N/A",
+            guestHouseName: guestHouse.guestHouseName,
+          }))
+          .catch(err => console.error("❌ WhatsApp send error (cancel):", err));
+      }
     }
 
     logAction({

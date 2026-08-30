@@ -18,21 +18,6 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 2,
   });
 
-const drawLogo = (doc, logoUrl, x, y, width, height) => {
-  if (!logoUrl || typeof logoUrl !== 'string') return false;
-  try {
-    const matches = logoUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) return false;
-    const imageData = Buffer.from(matches[2], 'base64');
-    const innerW = Math.max(0, width - 16);
-    const innerH = Math.max(0, height - 16);
-    doc.image(imageData, x + 8, y + 8, { fit: [innerW, innerH] });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 export const generateInvoicePdf = async (invoice, meta = {}) => {
   const { doc, getBuffer } = createPdfStream();
   const createdOn = formatDate(invoice.createdAt || new Date());
@@ -66,7 +51,10 @@ export const generateInvoicePdf = async (invoice, meta = {}) => {
   doc.font('Helvetica-Bold').fontSize(26).fillColor('#111827')
     .text('INVOICE', headerX, 40);
 
-  if (!drawLogo(doc, logoUrl, logoX, logoY, logoWidth, logoHeight)) {
+  const innerW = Math.max(0, logoWidth - 16);
+  const innerH = Math.max(0, logoHeight - 16);
+  const logoDrawn = await drawImageFromSource(doc, logoUrl, logoX + 8, logoY + 8, { fit: [innerW, innerH] });
+  if (!logoDrawn) {
     doc.font('Helvetica-Bold').fontSize(12).fillColor('#111827')
       .text(companyName, logoX + 8, logoY + 12, { width: logoWidth - 16, align: 'center' });
     doc.font('Helvetica').fontSize(8).fillColor('#6b7280')

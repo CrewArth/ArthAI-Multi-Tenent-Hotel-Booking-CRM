@@ -8,16 +8,18 @@ import paymentSchema from './Payment.js';
 import invoiceSchema from './Invoice.js';
 import auditLogSchema from './AuditLog.js';
 import counterSchema from './Counter.js';
+import configurationSchema from './Configuration.js';
 
 export default function initTenantModels(conn) {
-  if (!conn.models.GuestHouse) conn.model('GuestHouse', guestHouseSchema);
-  if (!conn.models.Room)       conn.model('Room', roomSchema);
-  if (!conn.models.Bed)        conn.model('Bed', bedSchema);
-  if (!conn.models.Booking)    conn.model('Booking', bookingSchema);
-  if (!conn.models.User)       conn.model('User', userSchema);
-  if (!conn.models.Tax)        conn.model('Tax', taxSchema);
-  if (!conn.models.Payment)    conn.model('Payment', paymentSchema);
-  if (!conn.models.Invoice)    conn.model('Invoice', invoiceSchema);
-  if (!conn.models.AuditLog)   conn.model('AuditLog', auditLogSchema);
-  if (!conn.models.Counter)    conn.model('Counter', counterSchema);
+  if (!conn.models.GuestHouse)    conn.model('GuestHouse', guestHouseSchema);
+  if (!conn.models.Room)          conn.model('Room', roomSchema);
+  if (!conn.models.Bed)           conn.model('Bed', bedSchema);
+  if (!conn.models.Booking)       conn.model('Booking', bookingSchema);
+  if (!conn.models.User)          conn.model('User', userSchema);
+  if (!conn.models.Tax)           conn.model('Tax', taxSchema);
+  if (!conn.models.Payment)       conn.model('Payment', paymentSchema);
+  if (!conn.models.Invoice)       conn.model('Invoice', invoiceSchema);
+  if (!conn.models.AuditLog)      conn.model('AuditLog', auditLogSchema);
+  if (!conn.models.Counter)       conn.model('Counter', counterSchema);
+  if (!conn.models.Configuration) conn.model('Configuration', configurationSchema);
 }

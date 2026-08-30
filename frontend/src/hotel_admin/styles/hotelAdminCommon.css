@@ -1,0 +1,371 @@
+/* =====================================================
+   HOTEL ADMIN COMMON DESIGN SYSTEM — hotelAdminCommon.css
+===================================================== */
+
+:root {
+  --ha-primary: #2563eb;
+  --ha-primary-hover: #1d4ed8;
+  --ha-primary-light: #eff6ff;
+  --ha-primary-border: #bfdbfe;
+
+  --ha-bg: #f8fafc;
+  --ha-surface: #ffffff;
+  --ha-border: #e2e8f0;
+  --ha-border-light: #f1f5f9;
+
+  --ha-text-main: #0f172a;
+  --ha-text-secondary: #475569;
+  --ha-text-muted: #64748b;
+  --ha-text-light: #94a3b8;
+
+  --ha-success: #16a34a;
+  --ha-success-bg: #dcfce7;
+  --ha-success-border: #bbf7d0;
+
+  --ha-danger: #dc2626;
+  --ha-danger-bg: #fef2f2;
+  --ha-danger-border: #fecaca;
+
+  --ha-warning: #d97706;
+  --ha-warning-bg: #fef3c7;
+  --ha-warning-border: #fde68a;
+
+  --ha-radius-sm: 6px;
+  --ha-radius-md: 8px;
+  --ha-radius-lg: 12px;
+  --ha-radius-xl: 16px;
+
+  --ha-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --ha-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+}
+
+/* ── Container / Page Root ── */
+.ha-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* ── Page Header Bar ── */
+.ha-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ha-page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ha-text-main);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ha-page-subtitle {
+  font-size: 13px;
+  color: var(--ha-text-muted);
+  margin: 4px 0 0 0;
+}
+
+.ha-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Standard Card Surface ── */
+.ha-card {
+  background: var(--ha-surface);
+  border: 1px solid var(--ha-border);
+  border-radius: var(--ha-radius-lg);
+  padding: 20px;
+  box-shadow: var(--ha-shadow-sm);
+}
+
+/* ── Filter / Search Bar Surface ── */
+.ha-filter-bar {
+  background: var(--ha-surface);
+  border: 1px solid var(--ha-border);
+  border-radius: var(--ha-radius-lg);
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.ha-search-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+}
+
+.ha-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ha-text-light);
+  pointer-events: none;
+}
+
+.ha-search-input {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  border-radius: var(--ha-radius-md);
+  border: 1px solid #cbd5e1;
+  font-size: 13.5px;
+  outline: none;
+  background: var(--ha-surface);
+  color: var(--ha-text-main);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ha-search-input:focus {
+  border-color: var(--ha-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.ha-select {
+  padding: 8px 12px;
+  border-radius: var(--ha-radius-md);
+  border: 1px solid #cbd5e1;
+  font-size: 13px;
+  background: var(--ha-surface);
+  color: var(--ha-text-main);
+  outline: none;
+  font-weight: 600;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.ha-select:focus {
+  border-color: var(--ha-primary);
+}
+
+/* ── Buttons ── */
+.ha-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--ha-radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  border: none;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.ha-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ha-btn--primary {
+  background: var(--ha-primary);
+  color: #ffffff;
+}
+
+.ha-btn--primary:hover:not(:disabled) {
+  background: var(--ha-primary-hover);
+}
+
+.ha-btn--secondary {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: var(--ha-text-secondary);
+}
+
+.ha-btn--secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  color: var(--ha-text-main);
+}
+
+.ha-btn--success {
+  background: var(--ha-success-bg);
+  border: 1px solid var(--ha-success-border);
+  color: var(--ha-success);
+}
+
+.ha-btn--success:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.ha-btn--danger {
+  background: var(--ha-danger-bg);
+  border: 1px solid var(--ha-danger-border);
+  color: var(--ha-danger);
+}
+
+.ha-btn--danger:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.ha-btn--sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.ha-btn--icon {
+  padding: 6px;
+  border-radius: var(--ha-radius-sm);
+}
+
+/* ── Badges ── */
+.ha-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.ha-badge--success {
+  background: var(--ha-success-bg);
+  color: var(--ha-success);
+  border: 1px solid var(--ha-success-border);
+}
+
+.ha-badge--primary {
+  background: var(--ha-primary-light);
+  color: var(--ha-primary);
+  border: 1px solid var(--ha-primary-border);
+}
+
+.ha-badge--warning {
+  background: var(--ha-warning-bg);
+  color: var(--ha-warning);
+  border: 1px solid var(--ha-warning-border);
+}
+
+.ha-badge--danger {
+  background: var(--ha-danger-bg);
+  color: var(--ha-danger);
+  border: 1px solid var(--ha-danger-border);
+}
+
+.ha-badge--neutral {
+  background: #f1f5f9;
+  color: var(--ha-text-secondary);
+  border: 1px solid #e2e8f0;
+}
+
+/* ── Modal Backdrop & Card ── */
+.ha-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.ha-modal-card {
+  background: #ffffff;
+  border-radius: var(--ha-radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+  animation: haModalFadeIn 0.2s ease-out;
+}
+
+@keyframes haModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ha-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ha-text-main);
+  margin: 0 0 16px 0;
+}
+
+.ha-modal-error {
+  background: var(--ha-danger-bg);
+  border: 1px solid var(--ha-danger-border);
+  color: var(--ha-danger);
+  padding: 10px 14px;
+  border-radius: var(--ha-radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ha-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.ha-form-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ha-text-secondary);
+}
+
+.ha-form-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--ha-radius-md);
+  border: 1px solid #cbd5e1;
+  font-size: 13.5px;
+  color: var(--ha-text-main);
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.ha-form-input:focus {
+  border-color: var(--ha-primary);
+}
+
+.ha-form-input:disabled {
+  background: #f8fafc;
+  color: var(--ha-text-main);
+  cursor: not-allowed;
+}
+
+.ha-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ha-border-light);
+}

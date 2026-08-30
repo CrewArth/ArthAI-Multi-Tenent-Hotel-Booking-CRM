@@ -1,4 +1,7 @@
-import { Suspense } from 'react';
+import { useEffect, Suspense } from 'react';
+import { useDispatch } from 'react-redux';
+import { updateSiteSettings } from './redux/siteSettingsSlice';
+import api from './utils/api';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import lazyLoad from './utils/lazyLoad';
 import ProtectedRoute from './users/routes/ProtectedRoute';
@@ -36,11 +39,10 @@ const FAQ = lazyLoad(() => import('./commonPages/FAQ'));
 const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage'));
 
 // Hotel Admin Dedicated Module Imports
-const HotelAdminLayout = lazyLoad(() => import('./hotel_admin/HotelAdminLayout').then(m => ({ default: m.HotelAdminLayout })));
-const HotelAdminDashboard = lazyLoad(() => import('./hotel_admin/HotelAdminDashboard').then(m => ({ default: m.HotelAdminDashboard })));
-const HotelAdminEditProperty = lazyLoad(() => import('./hotel_admin/HotelAdminEditProperty').then(m => ({ default: m.HotelAdminEditProperty })));
-const HotelAdminRoomManagement = lazyLoad(() => import('./hotel_admin/HotelAdminRoomManagement').then(m => ({ default: m.HotelAdminRoomManagement })));
-const HotelAdminBedManagement = lazyLoad(() => import('./hotel_admin/HotelAdminBedManagement').then(m => ({ default: m.HotelAdminBedManagement })));
+const HotelAdminLayout = lazyLoad(() => import('./hotel_admin/components/HotelAdminLayout').then(m => ({ default: m.HotelAdminLayout })));
+const HotelAdminDashboard = lazyLoad(() => import('./hotel_admin/pages/HotelAdminDashboard').then(m => ({ default: m.HotelAdminDashboard })));
+const HotelAdminBookings = lazyLoad(() => import('./hotel_admin/pages/HotelAdminBookings').then(m => ({ default: m.HotelAdminBookings })));
+const HotelAdminConfiguration = lazyLoad(() => import('./hotel_admin/pages/HotelAdminConfiguration').then(m => ({ default: m.HotelAdminConfiguration })));
 
 import ScrollToTop from './components/ScrollToTop';
 import { getAuthenticatedRedirectPath } from './utils/auth';
@@ -50,6 +52,22 @@ import "react-toastify/dist/ReactToastify.css";
 
 
 function App() {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get('/api/settings')
+      .then((res) => {
+        if (isMounted && res.data) {
+          dispatch(updateSiteSettings(res.data));
+        }
+      })
+      .catch((err) => {
+        console.warn('Initial settings sync error:', err);
+      });
+    return () => { isMounted = false; };
+  }, [dispatch]);
+
   const RootRedirect = () => {
     const redirectPath = getAuthenticatedRedirectPath();
 
@@ -154,9 +172,13 @@ function App() {
           }
         >
           <Route path="/hotel-admin/dashboard" element={<HotelAdminDashboard />} />
-          <Route path="/hotel-admin/edit-property" element={<HotelAdminEditProperty />} />
-          <Route path="/hotel-admin/rooms" element={<HotelAdminRoomManagement />} />
-          <Route path="/hotel-admin/beds" element={<HotelAdminBedManagement />} />
+          <Route path="/hotel-admin/bookings" element={<HotelAdminBookings />} />
+          <Route path="/hotel-admin/rooms" element={<AddRooms />} />
+          <Route path="/hotel-admin/beds" element={<AddBeds />} />
+          <Route path="/hotel-admin/invoices" element={<InvoiceList />} />
+          <Route path="/hotel-admin/receipts" element={<Receipts />} />
+          <Route path="/hotel-admin/reports" element={<Reports />} />
+          <Route path="/hotel-admin/configuration" element={<HotelAdminConfiguration />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

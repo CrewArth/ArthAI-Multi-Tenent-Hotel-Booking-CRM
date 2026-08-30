@@ -171,11 +171,13 @@ export const loginUser = async (req, res) => {
       return res.status(404).json({ message: "User Not Found!" });
     }
 
+    let resolvedTenantDoc = null;
     // Check central Tenant subscription expiry date & active status
     try {
       const Tenant = await getCentralTenantModel();
       const tenantDoc = await Tenant.findOne({ dbName }).lean();
       if (tenantDoc) {
+        resolvedTenantDoc = tenantDoc;
         if (tenantDoc.isActive === false) {
           console.log(`[Auth Log ❌] Organization '${tenantDoc.tenantId}' is DEACTIVATED`);
           return res.status(403).json({ message: "Hotel organization is currently deactivated. Please contact support." });
@@ -221,7 +223,12 @@ export const loginUser = async (req, res) => {
     console.log(`[Auth Log ✅] SUCCESS! User '${cleanEmail}' logged into database '${dbName}' (Role: ${user.role})`);
     console.log(`========================================\n`);
 
-    return res.status(200).json({ user, token });
+    const siteSettings = {
+      siteName: resolvedTenantDoc?.config?.siteName || resolvedTenantDoc?.name || 'Arth.AI',
+      logoUrl: resolvedTenantDoc?.config?.logoUrl || resolvedTenantDoc?.hotelDetails?.hotelLogo || null,
+    };
+
+    return res.status(200).json({ user, token, siteSettings });
   } catch (error) {
     console.error("[Auth Log Error] Login exception:", error);
     return res.status(500).json({ message: error.message });

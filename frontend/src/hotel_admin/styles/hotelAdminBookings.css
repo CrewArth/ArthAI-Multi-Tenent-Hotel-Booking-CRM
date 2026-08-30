@@ -1,0 +1,41 @@
+/* =====================================================
+   HOTEL ADMIN BOOKINGS STYLES — hotelAdminBookings.css
+===================================================== */
+
+.ha-bookings-user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ha-bookings-user-name {
+  font-weight: 700;
+  color: var(--ha-text-main, #1e293b);
+}
+
+.ha-bookings-user-phone {
+  font-size: 11.5px;
+  color: var(--ha-text-muted, #64748b);
+}
+
+.ha-bookings-user-email {
+  font-size: 11px;
+  color: var(--ha-text-light, #94a3b8);
+}
+
+.ha-bookings-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.ha-bookings-due {
+  font-size: 11px;
+  color: var(--ha-danger, #dc2626);
+  font-weight: 700;
+}
+
+.ha-bookings-paid {
+  font-size: 11px;
+  color: var(--ha-success, #16a34a);
+  font-weight: 600;
+}

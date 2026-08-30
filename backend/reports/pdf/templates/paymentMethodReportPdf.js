@@ -18,16 +18,6 @@ const fmtDateTime = (val) => {
 const fmtCurrency = (val) =>
   `Rs. ${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const drawLogo = (doc, logoUrl, x, y, size) => {
-  if (!logoUrl || typeof logoUrl !== 'string') return false;
-  try {
-    const matches = logoUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) return false;
-    doc.image(Buffer.from(matches[2], 'base64'), x, y, { width: size, height: size, fit: [size, size] });
-    return true;
-  } catch { return false; }
-};
-
 /**
  * Generates the Payment Method Wise Report PDF.
  *
@@ -52,7 +42,7 @@ export const generatePaymentMethodReportPdf = async (data, filters, meta) => {
 
   // ── Header ────────────────────────────────────────────────────────────────
   const LOGO_SIZE = 40;
-  drawLogo(doc, logoUrl, L, y-10, LOGO_SIZE);
+  await drawImageFromSource(doc, logoUrl, L, y - 10, { width: LOGO_SIZE, height: LOGO_SIZE, fit: [LOGO_SIZE, LOGO_SIZE] });
 
   doc.fontSize(16).font('Helvetica-Bold').fillColor('#0f172a')
     .text('Payment Method Wise Report', L, y, { align: 'center', width: W });

@@ -1,0 +1,95 @@
+/* =====================================================
+   REUSABLE DATA TABLE STYLES — dataTable.css
+===================================================== */
+
+.ha-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--ha-radius-md, 8px);
+  background: #ffffff;
+  border: 1px solid var(--ha-border, #e2e8f0);
+}
+
+.ha-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13.5px;
+}
+
+.ha-data-table thead tr {
+  background: #f8fafc;
+  border-bottom: 2px solid var(--ha-border, #e2e8f0);
+  color: var(--ha-text-secondary, #475569);
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.ha-data-table th {
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+
+.ha-data-table td {
+  padding: 14px 16px;
+  color: var(--ha-text-secondary, #334155);
+  border-bottom: 1px solid var(--ha-border-light, #f1f5f9);
+  vertical-align: middle;
+}
+
+.ha-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ha-data-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
+.ha-data-table th.align-left,
+.ha-data-table td.align-left {
+  text-align: left;
+}
+
+.ha-data-table th.align-center,
+.ha-data-table td.align-center {
+  text-align: center;
+}
+
+.ha-data-table th.align-right,
+.ha-data-table td.align-right {
+  text-align: right;
+}
+
+/* ── Loading and Empty states ── */
+.ha-table-loading,
+.ha-table-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ha-text-muted, #64748b);
+  font-size: 14px;
+}
+
+.ha-table-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ha-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(37, 99, 235, 0.2);
+  border-top-color: var(--ha-primary, #2563eb);
+  border-radius: 50%;
+  animation: haSpin 0.7s linear infinite;
+}
+
+@keyframes haSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

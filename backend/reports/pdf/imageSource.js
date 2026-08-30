@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
 import { s3 } from '../../utils/s3Client.js';
 
 const DATA_URL_REGEX = /^data:image\/[^;]+;base64,(.+)$/i;
@@ -13,7 +14,7 @@ const toFilePathFromFileUrl = (fileUrl) => {
   return decodeURIComponent(withoutScheme);
 };
 
-export const loadImageBuffer = async (source) => {
+const getRawBuffer = async (source) => {
   if (!source || typeof source !== 'string') {
     return null;
   }
@@ -36,7 +37,7 @@ export const loadImageBuffer = async (source) => {
   const s3Match = trimmed.match(S3_URL_REGEX);
   if (s3Match) {
     try {
-      const [, bucket, region, key] = s3Match;
+      const [, bucket, , key] = s3Match;
       const response = await s3.send(new GetObjectCommand({
         Bucket: bucket || process.env.AWS_S3_BUCKET,
         Key: decodeURIComponent(key),
@@ -70,10 +71,32 @@ export const loadImageBuffer = async (source) => {
     return Buffer.from(arrayBuffer);
   }
 
-  return fs.readFile(trimmed);
+  try {
+    return await fs.readFile(trimmed);
+  } catch {
+    return null;
+  }
+};
+
+export const loadImageBuffer = async (source) => {
+  try {
+    const rawBuffer = await getRawBuffer(source);
+    if (!rawBuffer || rawBuffer.length === 0) {
+      return null;
+    }
+
+    // Convert any image format (WebP, JPEG, SVG, GIF, etc.) to standard PNG for PDFKit
+    return await sharp(rawBuffer)
+      .png({ quality: 90 })
+      .toBuffer();
+  } catch (err) {
+    console.warn('[PDF loadImageBuffer Error]:', err.message);
+    return null;
+  }
 };
 
 export const drawImageFromSource = async (doc, source, x, y, options = {}) => {
+  if (!source) return false;
   try {
     const imageBuffer = await loadImageBuffer(source);
     if (!imageBuffer) {
@@ -82,7 +105,8 @@ export const drawImageFromSource = async (doc, source, x, y, options = {}) => {
 
     doc.image(imageBuffer, x, y, options);
     return true;
-  } catch {
+  } catch (err) {
+    console.warn('[PDF drawImageFromSource Error]:', err.message);
     return false;
   }
 };

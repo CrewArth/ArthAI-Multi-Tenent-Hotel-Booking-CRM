@@ -30,24 +30,6 @@ const formatDateTimeStr = (val) => {
 };
 
 /**
- * Attempts to embed a base64 logo into the PDF doc.
- * Returns true if successful, false if the logo is missing or invalid.
- */
-const drawLogo = (doc, logoUrl, x, y, size) => {
-  if (!logoUrl || typeof logoUrl !== 'string') return false;
-  try {
-    // logoUrl is a data URL: "data:<mime>;base64,<data>"
-    const matches = logoUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) return false;
-    const imageData = Buffer.from(matches[2], 'base64');
-    doc.image(imageData, x, y, { width: size, height: size, fit: [size, size] });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/**
  * Generates PDF for "Booking by Guest House" report.
  *
  * @param {Object} data - { guestHouse, bookings }
@@ -72,7 +54,7 @@ export const generateBookingByGuestHousePdf = async (data, filters, meta) => {
 
   // 1. Header — logo top-left, title centred
   const LOGO_SIZE = 40;
-  const logoDrawn = drawLogo(doc, logoUrl, LEFT, y, LOGO_SIZE);
+  await drawImageFromSource(doc, logoUrl, LEFT, y, { width: LOGO_SIZE, height: LOGO_SIZE, fit: [LOGO_SIZE, LOGO_SIZE] });
 
   doc.fontSize(18).font('Helvetica-Bold').fillColor('#0f172a')
     .text(guestHouse?.guestHouseName || 'Guest House', LEFT, y, { align: 'center', width: TABLE_WIDTH });

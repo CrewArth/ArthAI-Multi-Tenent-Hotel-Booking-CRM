@@ -37,17 +37,6 @@ const formatNights = (val) => {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 };
 
-const drawLogo = (doc, logoUrl, x, y, size) => {
-  if (!logoUrl || typeof logoUrl !== 'string') return false;
-  try {
-    const matches = logoUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!matches) return false;
-    const imageData = Buffer.from(matches[2], 'base64');
-    doc.image(imageData, x, y, { width: size, height: size, fit: [size, size] });
-    return true;
-  } catch { return false; }
-};
-
 // ── Main export ─────────────────────────────────────────────────────────────
 
 /**
@@ -114,7 +103,7 @@ export const generateMonthlyRevenueByGuestHousePdf = async (data, filters, meta)
 
   // ── 1. Header — logo + titles ─────────────────────────────────────────────
   const LOGO_SIZE = 36;
-  drawLogo(doc, logoUrl, LEFT, y, LOGO_SIZE);
+  await drawImageFromSource(doc, logoUrl, LEFT, y, { width: LOGO_SIZE, height: LOGO_SIZE, fit: [LOGO_SIZE, LOGO_SIZE] });
 
   doc.fontSize(17).font('Helvetica-Bold').fillColor('#0f172a')
     .text(guestHouse?.guestHouseName || 'Guest House', LEFT, y, { align: 'center', width: TABLE_WIDTH });

@@ -24,6 +24,9 @@ export const SaDashboard = () => {
   const [newCredentials, setNewCredentials] = useState(null);
   const [newTenantName, setNewTenantName] = useState('');
 
+  const [pendingPlanChange, setPendingPlanChange] = useState(null);
+  const [updatingPlan, setUpdatingPlan] = useState(false);
+
   // Table Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -54,13 +57,32 @@ export const SaDashboard = () => {
     }
   };
 
-  const handleUpdatePlan = async (tenantId, newPlan) => {
+  const handlePlanSelectChange = (tenant, newPlan) => {
+    if (tenant.plan === newPlan) return;
+    setPendingPlanChange({
+      tenantId: tenant.tenantId,
+      tenantName: tenant.name,
+      currentPlan: tenant.plan,
+      newPlan,
+    });
+  };
+
+  const confirmPlanChange = async () => {
+    if (!pendingPlanChange) return;
+    setUpdatingPlan(true);
     try {
-      await saTenantApi.updateTenantPlan(tenantId, newPlan);
-      fetchDashboard();
+      await saTenantApi.updateTenantPlan(pendingPlanChange.tenantId, pendingPlanChange.newPlan);
+      await fetchDashboard();
     } catch (err) {
       console.error('Error updating tenant plan:', err);
+    } finally {
+      setUpdatingPlan(false);
+      setPendingPlanChange(null);
     }
+  };
+
+  const cancelPlanChange = () => {
+    setPendingPlanChange(null);
   };
 
   const handleProvisionSuccess = (credentials, tenantName) => {
@@ -340,7 +362,7 @@ export const SaDashboard = () => {
                         <td style={{ padding: '16px' }}>
                           <select
                             value={t.plan}
-                            onChange={(e) => handleUpdatePlan(t.tenantId, e.target.value)}
+                            onChange={(e) => handlePlanSelectChange(t, e.target.value)}
                             style={{
                               padding: '6px 12px',
                               borderRadius: '6px',
@@ -512,6 +534,79 @@ export const SaDashboard = () => {
           tenantName={newTenantName}
           onClose={() => setNewCredentials(null)}
         />
+      )}
+
+      {/* Subscription Plan Change Confirmation Modal */}
+      {pendingPlanChange && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '16px', maxWidth: '440px', width: '100%',
+            padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fde68a',
+                flexShrink: 0
+              }}>
+                <AlertTriangle size={22} color="#d97706" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
+                  Confirm Plan Change
+                </h3>
+                
+              </div>
+            </div>
+
+            <div style={{
+              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px',
+              padding: '16px', marginBottom: '20px', fontSize: '14px', color: '#334155', lineHeight: '1.5'
+            }}>
+              Are you sure you want to change the subscription plan for <strong>{pendingPlanChange.tenantName}</strong> from{' '}
+              <span style={{ fontWeight: '700', color: '#dc2626', background: '#fee2e2', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', fontSize: '12px' }}>
+                {pendingPlanChange.currentPlan}
+              </span>{' '}
+              to{' '}
+              <span style={{ fontWeight: '700', color: '#15803d', background: '#dcfce7', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase', fontSize: '12px' }}>
+                {pendingPlanChange.newPlan}
+              </span>?
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={cancelPlanChange}
+                disabled={updatingPlan}
+                style={{
+                  padding: '9px 20px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                  background: '#ffffff', color: '#475569', fontWeight: '700', fontSize: '13px',
+                  cursor: 'pointer', transition: 'all 0.15s ease'
+                }}
+              >
+                No
+              </button>
+
+              <button
+                type="button"
+                onClick={confirmPlanChange}
+                disabled={updatingPlan}
+                style={{
+                  padding: '9px 22px', borderRadius: '8px', border: 'none',
+                  background: '#2563eb', color: '#ffffff', fontWeight: '700', fontSize: '13px',
+                  cursor: 'pointer', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {updatingPlan ? 'Updating...' : 'Yes'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

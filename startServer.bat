@@ -1,11 +1,6 @@
 @echo off
-:: Change to the directory where this batch file is located
-cd /d "%~dp0"
-
-:: Start Frontend server
-start cmd /k "cd frontend && npm run dev"
-
-:: Start Backend server
-start cmd /k "cd backend && npm start"
-
-echo Servers are starting...
+wt.exe -M ^
+new-tab --title "frontend" -d "D:\GuestHouseBookingSystem\frontend" powershell -NoExit -Command "npm run dev" ; ^
+new-tab --title "backend" -d "D:\GuestHouseBookingSystem\backend" powershell -NoExit -Command "npm run dev" ; ^
+new-tab --title "sa_backend" -d "D:\GuestHouseBookingSystem\sa_backend" powershell -NoExit -Command "npm run dev" ; ^
+new-tab --title "sa_frontend" -d "D:\GuestHouseBookingSystem\sa_frontend" powershell -NoExit -Command "npm run dev"
