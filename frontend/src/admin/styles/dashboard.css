@@ -224,6 +224,7 @@
 .btn-action.create  { background: #10b981; color: #fff; }
 .btn-action.export  { background: #16a34a; color: #fff; }
 .btn-action.primary { background: #2563eb; color: #fff; }
+.btn-action.dynamic { background: #0284c7; color: #fff; }
 
 /* ── Primary CTA button ── */
 .btn-primary-cta {

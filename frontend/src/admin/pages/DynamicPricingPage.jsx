@@ -300,29 +300,28 @@ export const DynamicPricingPage = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="ha-filter-bar">
-        <form onSubmit={handleSearchSubmit} className="ha-search-wrapper" style={{ display: 'flex', gap: '8px' }}>
+      <div className="dp-filter-bar">
+        <form onSubmit={handleSearchSubmit} className="dp-search-wrapper">
           <input
             type="text"
             placeholder="Search rules by name, room type, or rule type..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="ha-search-input"
-            style={{ paddingLeft: '12px' }}
+            className="dp-search-input"
           />
           <button type="submit" className="dp-btn dp-btn-secondary">
             Search
           </button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ha-text-secondary)' }}>
+        <div className="dp-filter-group">
+          <span className="dp-filter-label">
             Rule Type:
           </span>
           <select
             value={ruleTypeFilter}
             onChange={(e) => setRuleTypeFilter(e.target.value)}
-            className="ha-select"
+            className="dp-select"
           >
             <option value="all">All Rule Types ({totalCount})</option>
             <option value="weekend">Weekend Rules</option>

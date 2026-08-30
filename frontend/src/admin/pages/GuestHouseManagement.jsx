@@ -116,7 +116,7 @@ const GuestHouseManagement = () => {
               <th>Name</th>
               <th>Location</th>
               <th>Status</th>
-              <th>Actions</th>
+              <th style={{ textAlign: 'right', paddingRight: '1rem', minWidth: '340px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -133,8 +133,8 @@ const GuestHouseManagement = () => {
                       {gh.maintenance ? "Maintenance" : "Active"}
                     </span>
                   </td>
-                  <td>
-                    <div className="actions-cell">
+                  <td style={{ textAlign: 'right', paddingRight: '1rem' }}>
+                    <div className="actions-cell" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap', gap: '6px' }}>
                       <button 
                         className="btn-action edit" 
                         onClick={() => navigate('/super-admin/add-hotel', { state: { hotel: gh } })}
@@ -142,17 +142,7 @@ const GuestHouseManagement = () => {
                         Edit
                       </button>
                       <button
-                        className="btn-action"
-                        style={{
-                          background: '#e0f2fe',
-                          color: '#0284c7',
-                          border: '1px solid #bae6fd',
-                          fontWeight: 600,
-                          fontSize: '12px',
-                          padding: '4px 10px',
-                          borderRadius: '5px',
-                          cursor: 'pointer',
-                        }}
+                        className="btn-action dynamic"
                         onClick={() => navigate(`/super-admin/dynamic-pricing/${gh.guestHouseId || gh._id}`, { state: { hotel: gh } })}
                         title="Manage Dynamic Pricing"
                       >
