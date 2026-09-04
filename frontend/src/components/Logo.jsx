@@ -23,20 +23,18 @@ const Logo = () => {
 
   return (
     <div className='navbar-logo'>
-      <a href="/">
-        <img
-          src={cleanLogoUrl || fallbackLogo}
-          alt="Site Logo"
-          id='nav-logo'
-          draggable='false'
-          onError={(e) => {
-            if (e.target.src !== fallbackLogo) {
-              e.target.onerror = null;
-              e.target.src = fallbackLogo;
-            }
-          }}
-        />
-      </a>
+      <img
+        src={cleanLogoUrl || fallbackLogo}
+        alt="Site Logo"
+        id='nav-logo'
+        draggable='false'
+        onError={(e) => {
+          if (e.target.src !== fallbackLogo) {
+            e.target.onerror = null;
+            e.target.src = fallbackLogo;
+          }
+        }}
+      />
     </div>
   );
 };

@@ -512,3 +512,46 @@ export const updateUserWidgets = async (req, res) => {
     res.status(500).json({ error: "Server error while updating widget permissions" });
   }
 };
+
+export const listRegularUsers = async (req, res) => {
+  try {
+    const { User, GuestHouse } = req.tenantModels;
+    const page = parseInt(req.body.page, 10) || 1;
+    const limit = parseInt(req.body.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.body.search ? String(req.body.search).trim() : '';
+
+    const queryFilter = { role: 'USER' };
+
+    if (search) {
+      const searchRegex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      queryFilter.$or = [
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { identityNumber: searchRegex },
+      ];
+    }
+
+    let users = await User.find(queryFilter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalUsers = await User.countDocuments(queryFilter);
+    const totalPages = Math.ceil(totalUsers / limit) || 1;
+
+    return res.json({
+      users,
+      totalUsers,
+      totalPages,
+      currentPage: page,
+    });
+  } catch (err) {
+    console.error("listRegularUsers error:", err);
+    return res.status(500).json({ error: "Server error while fetching regular users" });
+  }
+};
+

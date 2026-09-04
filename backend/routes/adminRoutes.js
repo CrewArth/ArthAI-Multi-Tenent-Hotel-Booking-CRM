@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getAdminSummary,
   listUsers,
+  listRegularUsers,
   getBookingsPerDay,
   getTopGuestHouses,
   createUserByAdmin,
@@ -18,6 +19,7 @@ const router = express.Router();
 router.post('/summary', authenticate, getAdminSummary);
 router.post('/me', authenticate, getMe);
 router.post('/users/list', authenticate, listUsers);
+router.post('/users/regular-users', authenticate, listRegularUsers);
 router.post(
   '/users',
   authenticate,
