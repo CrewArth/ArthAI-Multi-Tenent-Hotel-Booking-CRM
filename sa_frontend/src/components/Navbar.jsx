@@ -27,19 +27,19 @@ export const Navbar = () => {
       alignItems: 'center',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '1440px', margin: '0 auto' }}>
-        
+
         {/* Brand Logo & Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <img
             src={logoImg}
-            alt="Arth.AI Logo"
+            alt="Neuvera Logo"
             style={{ height: '42px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }}
             onClick={() => navigate('/')}
             draggable="false"
           />
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>
-              Arth.AI
+              Neuvera
             </h2>
           </div>
         </div>

@@ -66,17 +66,23 @@ export const generateReportPdf = async (reportId, filters, user, reqContext = {}
     }
   }
 
-  if (user.role === 'ADMIN' && user.assignedGuestHouseId) {
-    const assignedId = typeof user.assignedGuestHouseId === 'object'
-      ? user.assignedGuestHouseId.guestHouseId
-      : user.assignedGuestHouseId;
+  const normalizedRole = String(user.role || '').toUpperCase();
+  if ((normalizedRole === 'ADMIN' || normalizedRole === 'HOTEL_ADMIN' || normalizedRole === 'HOTEL-ADMIN') && user.assignedGuestHouseId) {
+    const assignedCustomId = typeof user.assignedGuestHouseId === 'object'
+      ? String(user.assignedGuestHouseId.guestHouseId || '')
+      : String(user.assignedGuestHouseId || '');
+    const assignedMongoId = typeof user.assignedGuestHouseId === 'object'
+      ? String(user.assignedGuestHouseId._id || '')
+      : '';
 
-    if (assignedId && reportFilters.guestHouseId && reportFilters.guestHouseId !== assignedId) {
+    const filterGhId = String(reportFilters.guestHouseId || '');
+
+    if (filterGhId && filterGhId !== assignedCustomId && filterGhId !== assignedMongoId) {
       throw new Error(`You are only permitted to generate reports for your assigned guest house.`);
     }
 
-    if (assignedId && !reportFilters.guestHouseId) {
-      reportFilters.guestHouseId = assignedId;
+    if (!reportFilters.guestHouseId) {
+      reportFilters.guestHouseId = assignedCustomId || assignedMongoId;
     }
   }
 

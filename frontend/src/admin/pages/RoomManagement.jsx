@@ -8,29 +8,43 @@ import { RupeeIcon } from '../../common/icons';
 import { getStoredUser } from '../../utils/auth';
 
 const RoomManagement = () => {
+  const [searchParams] = useSearchParams();
+  const ghFromQuery = searchParams.get('guestHouseId');
+
+  const user = getStoredUser();
+  const rawAssigned = user?.assignedGuestHouseId;
+  const assignedId = typeof rawAssigned === 'object'
+    ? (rawAssigned?.guestHouseId || rawAssigned?._id)
+    : rawAssigned;
+  const isHotelAdmin = user?.role === 'HOTEL_ADMIN' || user?.role === 'HOTEL-ADMIN';
+  const isScopedAdmin = isHotelAdmin || (user?.role === 'ADMIN' && Boolean(assignedId));
+
   const [rooms, setRooms]               = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [isModalOpen, setIsModalOpen]   = useState(false);
-  const [guestHouse, setGuestHouse]     = useState(null);
-  const [guestHouses, setGuestHouses]   = useState([]);
-  const [selectedGHId, setSelectedGHId] = useState(null);
+  const [guestHouse, setGuestHouse]     = useState(isScopedAdmin && typeof rawAssigned === 'object' && rawAssigned ? rawAssigned : null);
+  const [guestHouses, setGuestHouses]   = useState(isScopedAdmin && typeof rawAssigned === 'object' && rawAssigned ? [rawAssigned] : []);
+  const [selectedGHId, setSelectedGHId] = useState(ghFromQuery || (isScopedAdmin && assignedId ? assignedId : null));
   const [loading, setLoading]           = useState(false);
   const [subUsage, setSubUsage]         = useState(null);
   const [togglingRoomId, setTogglingRoomId] = useState(null);
-
-  const [searchParams] = useSearchParams();
-  const ghFromQuery = searchParams.get('guestHouseId');
 
   const fetchGuestHouses = async () => {
     try {
       const res = await api.post('/api/guesthouses/list');
       let list = Array.isArray(res.data) ? res.data : [];
-      const user = getStoredUser();
-      const isScopedAdmin = user?.role === 'HOTEL_ADMIN' || user?.role === 'HOTEL-ADMIN' || (user?.role === 'ADMIN' && user?.assignedGuestHouseId);
-      const assignedId = user?.assignedGuestHouseId;
 
       if (isScopedAdmin && assignedId) {
-        list = list.filter(g => String(g.guestHouseId) === String(assignedId) || String(g._id) === String(assignedId));
+        const targetStr = String(assignedId).trim().toLowerCase();
+        let assigned = list.filter(
+          (g) =>
+            String(g.guestHouseId || '').trim().toLowerCase() === targetStr ||
+            String(g._id || '').trim().toLowerCase() === targetStr
+        );
+        if (assigned.length === 0 && typeof rawAssigned === 'object' && rawAssigned) {
+          assigned = [rawAssigned];
+        }
+        list = assigned;
         if (list.length > 0) {
           const targetId = list[0].guestHouseId || list[0]._id;
           setSelectedGHId(targetId);
@@ -163,9 +177,11 @@ const RoomManagement = () => {
           <select
             className="toolbar-select"
             value={selectedGHId || ''}
+            disabled={isHotelAdmin || (isScopedAdmin && Boolean(selectedGHId))}
+            style={isHotelAdmin || (isScopedAdmin && Boolean(selectedGHId)) ? { opacity: 0.85, cursor: 'not-allowed' } : {}}
             onChange={(e) => setSelectedGHId(e.target.value || null)}
           >
-            <option value="">Select Hotel</option>
+            {!selectedGHId && <option value="">Select Hotel</option>}
             {guestHouses.map((g) => (
               <option key={g.guestHouseId || g._id} value={g.guestHouseId || g._id}>
                 {g.guestHouseName}

@@ -276,7 +276,7 @@ export const loginUser = async (req, res) => {
     const finalLogo = sanitizeLogoUrl(rawLogo);
 
     const siteSettings = {
-      siteName: resolvedTenantDoc?.config?.siteName || resolvedTenantDoc?.hotelDetails?.hotelName || resolvedTenantDoc?.name || 'Arth.AI',
+      siteName: resolvedTenantDoc?.config?.siteName || resolvedTenantDoc?.hotelDetails?.hotelName || resolvedTenantDoc?.name || 'Neuvera',
       logoUrl: finalLogo,
     };
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import { updateUser } from '../../redux/authSlice';
 import { REPORTS, isReportAllowed } from '../../common/reportsConfig';
 import { MONTHS } from '../../common/months';
 import { PAYMENT_METHODS } from '../../common/paymentMethods';
@@ -10,6 +11,7 @@ import { getCurrentMonthDateRange } from '../utils/dateUtils';
 import '../styles/reports.css';
 
 const Reports = () => {
+  const dispatch = useDispatch();
   const currentUser = useSelector((state) => state.auth.user);
   const isSuperAdmin = String(currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN';
   const logoUrl = useSelector((state) => state.siteSettings.logoUrl);
@@ -80,29 +82,76 @@ const Reports = () => {
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [savingPermissions, setSavingPermissions] = useState(false);
 
-  // Fetch Guest Houses for filters
+  // Fetch Guest Houses for filters & ensure fresh user hotel assignment
   useEffect(() => {
-    api
-      .post('/api/guesthouses/list')
-      .then((res) => {
+    let isMounted = true;
+
+    const loadGuestHouses = async () => {
+      try {
+        let activeUser = currentUser;
+        const userRole = String(activeUser?.role || '').toUpperCase();
+        const isScopedAdmin = userRole === 'ADMIN' || userRole === 'HOTEL_ADMIN' || userRole === 'HOTEL-ADMIN';
+
+        // For admin / hotel admin, refresh profile from /api/admin/me to get the latest assigned hotel
+        if (isScopedAdmin) {
+          try {
+            const meRes = await api.post('/api/admin/me');
+            if (meRes.data?.user && isMounted) {
+              activeUser = meRes.data.user;
+              dispatch(updateUser(meRes.data.user));
+            }
+          } catch {
+            // fallback to current user in state if /api/admin/me is unavailable
+          }
+        }
+
+        const res = await api.post('/api/guesthouses/list');
+        if (!isMounted) return;
+
         const list = Array.isArray(res.data) ? res.data : res.data?.guestHouses || [];
 
-        // ADMIN / HOTEL_ADMIN: restrict to their assigned guest house only
-        const assignedId = currentUser?.assignedGuestHouseId;
-        const userRole = String(currentUser?.role || '').toUpperCase();
-        if (assignedId && (userRole === 'ADMIN' || userRole === 'HOTEL_ADMIN' || userRole === 'HOTEL-ADMIN')) {
-          const assigned = list.filter(
-            (gh) => gh.guestHouseId === assignedId || gh._id === assignedId
-          );
+        const rawAssigned = activeUser?.assignedGuestHouseId;
+        const assignedId = typeof rawAssigned === 'object'
+          ? (rawAssigned?.guestHouseId || rawAssigned?._id)
+          : rawAssigned;
+
+        if (isScopedAdmin && assignedId) {
+          const targetStr = String(assignedId).trim().toLowerCase();
+          let assigned = list.filter((gh) => {
+            const ghId = String(gh.guestHouseId || '').trim().toLowerCase();
+            const ghMongoId = String(gh._id || '').trim().toLowerCase();
+            return ghId === targetStr || ghMongoId === targetStr;
+          });
+
+          // Fallback: If list doesn't contain it yet or cache lag, but activeUser has the object, use rawAssigned
+          if (assigned.length === 0 && typeof rawAssigned === 'object' && rawAssigned) {
+            assigned = [rawAssigned];
+          }
+
           setGuestHouses(assigned);
-          if (assigned.length > 0) setGuestHouseId(assigned[0].guestHouseId || assigned[0]._id);
-        } else {
+          if (assigned.length > 0) {
+            setGuestHouseId(assigned[0].guestHouseId || assigned[0]._id);
+          }
+        } else if (!isScopedAdmin) {
           setGuestHouses(list);
-          if (list.length > 0) setGuestHouseId(list[0].guestHouseId || list[0]._id);
+          if (list.length > 0) {
+            setGuestHouseId((prev) => prev || list[0].guestHouseId || list[0]._id);
+          }
+        } else {
+          setGuestHouses([]);
+          setGuestHouseId('');
         }
-      })
-      .catch((err) => console.error('Error fetching guest houses:', err));
-  }, [currentUser]);
+      } catch (err) {
+        console.error('Error fetching guest houses:', err);
+      }
+    };
+
+    loadGuestHouses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.role]);
 
   // Fetch Admins list for Super Admin permissions tab
   useEffect(() => {
@@ -423,8 +472,8 @@ const Reports = () => {
                         }
                       >
                         {guestHouses.map((gh) => (
-                          <option key={gh._id} value={gh.guestHouseId || gh._id}>
-                            {gh.guestHouseName} ({gh.guestHouseId})
+                          <option key={gh._id || gh.guestHouseId} value={gh.guestHouseId || gh._id}>
+                            {gh.guestHouseName || 'Hotel'} {gh.guestHouseId ? `(${gh.guestHouseId})` : ''}
                           </option>
                         ))}
                       </select>

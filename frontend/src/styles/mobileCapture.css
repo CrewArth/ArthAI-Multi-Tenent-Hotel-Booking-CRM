@@ -305,6 +305,16 @@
   animation: mcSpin 0.7s linear infinite;
 }
 
+.mc-spinner.mc-spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  border-color: #fecaca;
+  border-top-color: #dc2626;
+  margin: 0;
+  display: inline-block;
+}
+
 @keyframes mcSpin {
   to { transform: rotate(360deg); }
 }
@@ -422,4 +432,55 @@
   color: #64748b;
   margin: 0;
   line-height: 1.4;
+}
+
+/* End Session Action */
+.mc-session-actions {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mc-btn-end-session {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: #ffffff;
+  color: #dc2626;
+  border: 1.5px solid #f87171;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+}
+
+.mc-btn-end-session:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.mc-btn-end-session:active:not(:disabled) {
+  transform: scale(0.98);
+  background: #fee2e2;
+}
+
+.mc-btn-end-session:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mc-end-session-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0;
 }

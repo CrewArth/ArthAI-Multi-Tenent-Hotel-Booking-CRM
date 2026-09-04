@@ -2,6 +2,7 @@ import { logAction } from '../utils/auditLogger.js';
 import { deleteFromS3 } from "../utils/s3Client.js";
 import { generateId } from '../utils/generateId.js';
 import { getCache, setCache, deletePatternCache } from '../config/redis.js';
+import { isObjectId } from '../utils/isObjectId.js';
 
 const MAX_GUEST_HOUSES = 4;
 
@@ -256,7 +257,13 @@ export const getGuestHouseById = async (req, res) => {
       return res.status(200).json({ success: true, guestHouse: cached });
     }
 
-    const guestHouse = await GuestHouse.findOne({ guestHouseId }).lean();
+    const isObjId = isObjectId(guestHouseId);
+    const guestHouse = await GuestHouse.findOne({
+      $or: [
+        { guestHouseId },
+        ...(isObjId ? [{ _id: guestHouseId }] : []),
+      ],
+    }).lean();
 
     if (!guestHouse) {
       return res.status(404).json({ message: "Guest House not found" });

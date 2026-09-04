@@ -116,7 +116,7 @@ export default function Settings() {
     try {
       setError('');
       setIsSaving(true);
-      const defaultName = 'Arth.AI';
+      const defaultName = 'Neuvera';
       const res = await api.put('/api/settings', {
         siteName: defaultName,
         logoUrl: null,

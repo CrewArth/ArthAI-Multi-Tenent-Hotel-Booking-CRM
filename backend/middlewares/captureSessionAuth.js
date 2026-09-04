@@ -54,7 +54,7 @@ export const authenticateCaptureSession = async (req, res, next) => {
     // Check if session has been invalidated or expired
     if (booking.captureSession) {
       if (booking.captureSession.active === false) {
-        return res.status(401).json({ message: 'Capture session has been ended by the desk' });
+        return res.status(401).json({ message: 'Capture session has been ended' });
       }
       if (booking.captureSession.sessionId && booking.captureSession.sessionId !== payload.sessionId) {
         return res.status(401).json({ message: 'This capture session has been superseded by a newer session' });

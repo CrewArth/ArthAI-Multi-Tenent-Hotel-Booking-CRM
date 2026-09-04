@@ -32,7 +32,7 @@ export const SaLogin = () => {
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <img
             src={logoImg}
-            alt="Arth.AI Logo"
+            alt="Neuvera Logo"
             style={{ height: '52px', width: 'auto', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }}
             draggable="false"
           />

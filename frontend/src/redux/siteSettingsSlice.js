@@ -20,7 +20,7 @@ const saveToStorage = (settings) => {
 };
 
 const defaults = {
-  siteName: 'Arth.AI',
+  siteName: 'Neuvera',
   logoUrl: null, // null → use the bundled logo.png fallback
 };
 

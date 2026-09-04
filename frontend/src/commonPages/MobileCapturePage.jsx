@@ -24,6 +24,9 @@ const MobileCapturePage = () => {
   const [newMember, setNewMember] = useState({ name: '', relation: '', age: '' });
   const [addingMember, setAddingMember] = useState(false);
 
+  // End Capture Session State
+  const [endingSession, setEndingSession] = useState(false);
+
   const fileInputRefs = useRef({});
 
   // ── 1. Fetch Session Roster ──
@@ -177,6 +180,36 @@ const MobileCapturePage = () => {
     }
   };
 
+  // ── 5. End Capture Session from Phone ──
+  const handleEndSession = async () => {
+    if (!window.confirm('Are you sure you want to end this verification session? Once ended, no further documents can be submitted.')) {
+      return;
+    }
+
+    setEndingSession(true);
+    try {
+      await api.post(
+        '/api/capture-session/end',
+        { bookingId: sessionData?.bookingId },
+        {
+          params: { token },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      toast.success('Capture session ended successfully');
+      setIsExpired(true);
+      setErrorMsg('Capture session has been ended.');
+    } catch (err) {
+      console.error('[MOBILE_CAPTURE] end session error:', err);
+      toast.error(err.response?.data?.message || 'Failed to end capture session');
+    } finally {
+      setEndingSession(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mc-container" style={{ display: 'grid', placeItems: 'center' }}>
@@ -189,22 +222,27 @@ const MobileCapturePage = () => {
   }
 
   if (isExpired || errorMsg) {
+    const isEnded = errorMsg?.toLowerCase().includes('ended');
     return (
       <div className="mc-container">
         <header className="mc-header">
           <div className="mc-brand-title">
-            <span>🏨</span> Guest House Verification
+            Guest House Verification
           </div>
         </header>
         <div className="mc-content">
           <div className="mc-expired-card">
-            <span className="mc-expired-icon">⌛</span>
-            <h2 className="mc-expired-title">Session Expired or Inactive</h2>
+            <span className="mc-expired-icon">{isEnded ? '✓' : '⌛'}</span>
+            <h2 className="mc-expired-title" style={isEnded ? { color: '#0f172a' } : {}}>
+              {isEnded ? 'Capture Session Ended' : 'Session Expired or Inactive'}
+            </h2>
             <p className="mc-expired-desc">
               {errorMsg || 'This mobile capture session has expired or was ended by the front desk.'}
             </p>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              Please ask the desk staff to generate a new QR code on the booking screen.
+              {isEnded
+                ? 'Thank you! You may now safely close this window.'
+                : 'Please ask the desk staff to generate a new QR code on the booking screen.'}
             </p>
           </div>
         </div>
@@ -222,7 +260,7 @@ const MobileCapturePage = () => {
       <header className="mc-header">
         <div className="mc-header-top">
           <h1 className="mc-brand-title">
-            <span>🏨</span> {guestHouseName || 'Guest House'}
+            {guestHouseName || 'Guest House'}
           </h1>
           <span className="mc-badge-live">● Live</span>
         </div>
@@ -272,7 +310,7 @@ const MobileCapturePage = () => {
               fontWeight: 600,
             }}
           >
-            <span>🎉</span> All guest verification documents captured! The desktop booking screen has been updated live.
+            All guest verification documents captured! The desktop booking screen has been updated live.
           </div>
         )}
 
@@ -374,6 +412,28 @@ const MobileCapturePage = () => {
             </div>
           );
         })}
+
+        {/* End Capture Session Action */}
+        <div className="mc-session-actions">
+          <button
+            type="button"
+            className="mc-btn-end-session"
+            onClick={handleEndSession}
+            disabled={endingSession}
+          >
+            {endingSession ? (
+              <>
+                <span className="mc-spinner mc-spinner-sm" />
+                Ending Session...
+              </>
+            ) : (
+              'End Capture Session'
+            )}
+          </button>
+          <p className="mc-end-session-hint">
+            Finish verification and end this mobile session.
+          </p>
+        </div>
       </main>
 
       {/* Add Family Member Bottom Sheet */}

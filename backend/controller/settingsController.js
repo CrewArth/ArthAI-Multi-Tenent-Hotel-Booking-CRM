@@ -49,18 +49,18 @@ const sanitizeLogoUrl = (url) => {
 export const getSettings = async (req, res) => {
   try {
     const dbName = req.tenantDb?.name ||
-                   req.headers['x-tenant-id'] ||
-                   req.headers['x-tenant-slug'] ||
-                   req.query?.tenantSlug ||
-                   process.env.DEFAULT_TENANT_DB ||
-                   'guesthouses';
+      req.headers['x-tenant-id'] ||
+      req.headers['x-tenant-slug'] ||
+      req.query?.tenantSlug ||
+      process.env.DEFAULT_TENANT_DB ||
+      'guesthouses';
 
     const Tenant = await getCentralTenantModel();
     const tenant = await Tenant.findOne({
       $or: [{ dbName }, { tenantId: dbName }]
     }).lean();
 
-    const siteName = tenant?.config?.siteName || tenant?.hotelDetails?.hotelName || tenant?.name || 'Arth.AI';
+    const siteName = tenant?.config?.siteName || tenant?.hotelDetails?.hotelName || tenant?.name || 'Neuvera';
     const rawLogo = tenant?.config?.logoUrl || tenant?.hotelDetails?.hotelLogo || null;
     const logoUrl = sanitizeLogoUrl(rawLogo);
 
@@ -88,11 +88,11 @@ export const updateSettings = async (req, res) => {
 
     const trimmedSiteName = siteName.trim();
     const dbName = req.tenantDb?.name ||
-                   req.userInfo?.dbName ||
-                   req.headers['x-tenant-id'] ||
-                   req.headers['x-tenant-slug'] ||
-                   process.env.DEFAULT_TENANT_DB ||
-                   'guesthouses';
+      req.userInfo?.dbName ||
+      req.headers['x-tenant-id'] ||
+      req.headers['x-tenant-slug'] ||
+      process.env.DEFAULT_TENANT_DB ||
+      'guesthouses';
 
     const Tenant = await getCentralTenantModel();
     let tenant = await Tenant.findOne({

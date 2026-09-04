@@ -137,9 +137,6 @@ export default function LoginPage() {
                 />
                 <label htmlFor="rememberMe" className="checkbox-label">Remember me</label>
               </div>
-              <button type="button" className="forgot-password-link" onClick={handleForgotPassword}>
-                Forgot password?
-              </button>
             </div>
 
             <button type="submit" className="login-button" disabled={!isValid || isSubmitting}>
