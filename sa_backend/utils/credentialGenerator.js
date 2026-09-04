@@ -25,6 +25,9 @@ export const generateTenantCredentials = (tenantSlug, ownerEmail) => {
   const superAdminEmail = `${cleanSlug}_superadmin@${domain}`;
   const superAdminPassword = generateSecurePassword(12);
 
+  const hotelAdminEmail = `${cleanSlug}_hoteladmin@${domain}`;
+  const hotelAdminPassword = generateSecurePassword(12);
+
   const adminEmail = `${cleanSlug}_admin@${domain}`;
   const adminPassword = generateSecurePassword(12);
 
@@ -33,6 +36,11 @@ export const generateTenantCredentials = (tenantSlug, ownerEmail) => {
       email: superAdminEmail,
       password: superAdminPassword,
       role: 'SUPER_ADMIN',
+    },
+    hotelAdmin: {
+      email: hotelAdminEmail,
+      password: hotelAdminPassword,
+      role: 'HOTEL_ADMIN',
     },
     admin: {
       email: adminEmail,

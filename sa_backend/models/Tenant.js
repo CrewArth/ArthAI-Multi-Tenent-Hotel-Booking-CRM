@@ -51,8 +51,10 @@ const tenantSchema = new mongoose.Schema({
   },
   credentials: {
     superAdminEmail: { type: String },
+    hotelAdminEmail: { type: String },
     adminEmail: { type: String },
     superAdminPassword: { type: String },
+    hotelAdminPassword: { type: String },
     adminPassword: { type: String },
   },
   personalDetails: {

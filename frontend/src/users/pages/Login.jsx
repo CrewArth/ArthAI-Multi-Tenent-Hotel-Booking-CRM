@@ -75,7 +75,7 @@ export default function LoginPage() {
       }, 1200);
 
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed", { autoClose: 1000 });
+      toast.error(error.response?.data?.message || "Login failed", { autoClose: 2500 });
     }
   };
 

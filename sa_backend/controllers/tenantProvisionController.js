@@ -153,8 +153,10 @@ export const provisionTenant = async (req, res) => {
       },
       credentials: {
         superAdminEmail: credentials.superAdmin.email,
+        hotelAdminEmail: credentials.hotelAdmin.email,
         adminEmail: credentials.admin.email,
         superAdminPassword: credentials.superAdmin.password,
+        hotelAdminPassword: credentials.hotelAdmin.password,
         adminPassword: credentials.admin.password,
       },
       personalDetails: personalDetails ? {
@@ -211,6 +213,17 @@ export const provisionTenant = async (req, res) => {
       login_secret_key: superAdminSecret,
     });
 
+    const hotelAdminSecret = crypto.randomBytes(40).toString('hex');
+    await User.create({
+      firstName: resolvedOwnerName.split(' ')[0] || 'Hotel',
+      lastName: 'Admin',
+      email: credentials.hotelAdmin.email,
+      password: credentials.hotelAdmin.password,
+      role: 'HOTEL_ADMIN',
+      isActive: true,
+      login_secret_key: hotelAdminSecret,
+    });
+
     const adminSecret = crypto.randomBytes(40).toString('hex');
     await User.create({
       firstName: resolvedOwnerName.split(' ')[0] || 'GuestHouse',
@@ -236,6 +249,10 @@ export const provisionTenant = async (req, res) => {
         superAdmin: {
           email: credentials.superAdmin.email,
           password: credentials.superAdmin.password,
+        },
+        hotelAdmin: {
+          email: credentials.hotelAdmin.email,
+          password: credentials.hotelAdmin.password,
         },
         admin: {
           email: credentials.admin.email,

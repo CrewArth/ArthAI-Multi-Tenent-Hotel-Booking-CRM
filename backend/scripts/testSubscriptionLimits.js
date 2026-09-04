@@ -25,9 +25,9 @@ const runTests = async () => {
   console.log(' - ENTERPRISE:', enterpriseLimits);
 
   if (
-    basicLimits.maxHotels === 1 && basicLimits.maxRoomsPerHotel === 10 && basicLimits.maxAdminsPerHotel === 1 &&
-    proLimits.maxHotels === 3 && proLimits.maxRoomsPerHotel === 20 && proLimits.maxAdminsPerHotel === 3 &&
-    enterpriseLimits.maxHotels === 5 && enterpriseLimits.maxRoomsPerHotel === 50 && enterpriseLimits.maxAdminsPerHotel === 5
+    basicLimits.maxHotels === 1 && basicLimits.maxRoomsPerHotel === 10 && basicLimits.maxAdminsPerHotel === 2 &&
+    proLimits.maxHotels === 3 && proLimits.maxRoomsPerHotel === 20 && proLimits.maxAdminsPerHotel === 4 &&
+    enterpriseLimits.maxHotels === 5 && enterpriseLimits.maxRoomsPerHotel === 50 && enterpriseLimits.maxAdminsPerHotel === 8
   ) {
     console.log('\n✅ Subscription Matrix Configuration Verified 100% Correct!');
   } else {
@@ -75,7 +75,7 @@ const runTests = async () => {
   const mockAdminReq = {
     tenantModels: {
       User: {
-        countDocuments: async () => 1, // Already 1 admin exists
+        countDocuments: async () => 2, // Already 2 admins exist (limit reached)
       },
     },
     subscription: {

@@ -26,6 +26,12 @@ export const sendWelcomeCredentialsEmail = async ({ ownerEmail, ownerName, tenan
           <h3 style="margin-top: 0; color: #0f172a;">🔐 Tenant Super Admin Credentials</h3>
           <p style="margin: 4px 0;"><strong>Email:</strong> <code>${credentials.superAdmin.email}</code></p>
           <p style="margin: 4px 0;"><strong>Password:</strong> <code>${credentials.superAdmin.password}</code></p>
+          ${credentials.hotelAdmin ? `
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
+          <h3 style="margin-top: 0; color: #0f172a;">🏨 Tenant Hotel Admin Credentials</h3>
+          <p style="margin: 4px 0;"><strong>Email:</strong> <code>${credentials.hotelAdmin.email}</code></p>
+          <p style="margin: 4px 0;"><strong>Password:</strong> <code>${credentials.hotelAdmin.password}</code></p>
+          ` : ''}
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
           <h3 style="margin-top: 0; color: #0f172a;">🔑 Tenant Admin Credentials</h3>
           <p style="margin: 4px 0;"><strong>Email:</strong> <code>${credentials.admin.email}</code></p>

@@ -56,9 +56,36 @@ export const CredentialsModal = ({ credentials, tenantName, onClose }) => {
           </div>
         </div>
 
+        {/* Hotel Admin Credentials */}
+        {credentials.hotelAdmin && (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '14px' }}>
+            <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#8b5cf6', marginBottom: '10px' }}>Tenant Hotel Admin Account</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Email:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <code style={{ fontSize: '13px', color: '#0f172a', fontWeight: '700' }}>{credentials.hotelAdmin?.email}</code>
+                  <button onClick={() => handleCopy(credentials.hotelAdmin?.email, 'ha_email')} style={{ background: 'transparent', color: '#64748b' }}>
+                    {copiedKey === 'ha_email' ? <Check size={15} color="#16a34a" /> : <Copy size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Password:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <code style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 'bold' }}>{credentials.hotelAdmin?.password}</code>
+                  <button onClick={() => handleCopy(credentials.hotelAdmin?.password, 'ha_pass')} style={{ background: 'transparent', color: '#64748b' }}>
+                    {copiedKey === 'ha_pass' ? <Check size={15} color="#16a34a" /> : <Copy size={15} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* House Admin Credentials */}
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '20px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#16a34a', marginBottom: '10px' }}>Tenant House Admin Account</h4>
+          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#16a34a', marginBottom: '10px' }}>Tenant Admin Account</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '6px' }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Email:</span>

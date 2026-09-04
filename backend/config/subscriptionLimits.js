@@ -8,19 +8,19 @@ export const SUBSCRIPTION_PLANS = {
     name: 'Basic',
     maxHotels: 1,
     maxRoomsPerHotel: 10,
-    maxAdminsPerHotel: 1,
+    maxAdminsPerHotel: 2,
   },
   pro: {
     name: 'Pro',
     maxHotels: 3,
     maxRoomsPerHotel: 20,
-    maxAdminsPerHotel: 3,
+    maxAdminsPerHotel: 4,
   },
   enterprise: {
     name: 'Enterprise',
     maxHotels: 5,
     maxRoomsPerHotel: 50,
-    maxAdminsPerHotel: 5,
+    maxAdminsPerHotel: 8,
   },
 };
 

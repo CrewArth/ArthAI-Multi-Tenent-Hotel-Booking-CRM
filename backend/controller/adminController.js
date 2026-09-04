@@ -288,7 +288,13 @@ export const getMe = async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     if (user.assignedGuestHouseId) {
-      const guestHouse = await GuestHouse.findOne({ guestHouseId: user.assignedGuestHouseId }).lean();
+      const isObjId = isObjectId(user.assignedGuestHouseId);
+      const guestHouse = await GuestHouse.findOne({
+        $or: [
+          { guestHouseId: user.assignedGuestHouseId },
+          ...(isObjId ? [{ _id: user.assignedGuestHouseId }] : []),
+        ],
+      }).lean();
       user.assignedGuestHouseId = guestHouse;
     }
 

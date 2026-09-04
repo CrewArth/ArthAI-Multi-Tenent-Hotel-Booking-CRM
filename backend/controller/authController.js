@@ -9,6 +9,8 @@ import { getTenantDb, connectMasterDb } from "../config/dbManager.js";
 import { getClientIp } from "../utils/ipHelper.js";
 import tenantSchema from "../models/centralModels/Tenant.js";
 import { invalidateUserSession } from "../middlewares/auth.js";
+import { isObjectId } from "../utils/isObjectId.js";
+import { normalizeRole } from "../utils/roles.js";
 
 const getCentralTenantModel = async () => {
   const master = await connectMasterDb();
@@ -41,6 +43,7 @@ const resolveTargetDbName = async (req, email) => {
       const tenant = await Tenant.findOne({
         $or: [
           { 'credentials.superAdminEmail': cleanEmail },
+          { 'credentials.hotelAdminEmail': cleanEmail },
           { 'credentials.adminEmail': cleanEmail },
           { 'owner.email': cleanEmail },
         ]
@@ -207,6 +210,35 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid Credentials" });
     }
 
+    const normalizedRole = normalizeRole(user.role);
+    let resolvedAssignedGuestHouse = null;
+    if (normalizedRole === 'ADMIN' || normalizedRole === 'HOTEL_ADMIN') {
+      const assignedId = typeof user.assignedGuestHouseId === 'object'
+        ? (user.assignedGuestHouseId?.guestHouseId || user.assignedGuestHouseId?._id)
+        : user.assignedGuestHouseId;
+
+      if (!assignedId || (typeof assignedId === 'string' && !assignedId.trim())) {
+        console.log(`[Auth Log ❌] User '${cleanEmail}' (Role: ${user.role}) has no hotel assigned`);
+        console.log(`========================================\n`);
+        return res.status(403).json({ message: "Hotel not assigned yet" });
+      }
+
+      const GuestHouse = tenantDb.models.GuestHouse || tenantDb.model('GuestHouse');
+      const isObjId = isObjectId(String(assignedId).trim());
+      resolvedAssignedGuestHouse = await GuestHouse.findOne({
+        $or: [
+          { guestHouseId: String(assignedId).trim() },
+          ...(isObjId ? [{ _id: String(assignedId).trim() }] : [])
+        ]
+      }).lean();
+
+      if (!resolvedAssignedGuestHouse) {
+        console.log(`[Auth Log ❌] User '${cleanEmail}' assigned hotel '${assignedId}' not found in database '${dbName}'`);
+        console.log(`========================================\n`);
+        return res.status(403).json({ message: "Hotel not assigned yet" });
+      }
+    }
+
     const secretKey = crypto.randomBytes(40).toString("hex");
     user.login_secret_key = secretKey;
     user.last_login = new Date();
@@ -248,7 +280,32 @@ export const loginUser = async (req, res) => {
       logoUrl: finalLogo,
     };
 
-    return res.status(200).json({ user, token, siteSettings });
+    let userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.passwordResetToken;
+    delete userObj.passwordResetExpires;
+
+    if (resolvedAssignedGuestHouse) {
+      userObj.assignedGuestHouseId = resolvedAssignedGuestHouse;
+    } else if (userObj.assignedGuestHouseId) {
+      try {
+        const GuestHouse = tenantDb.models.GuestHouse || tenantDb.model('GuestHouse');
+        const isObjId = isObjectId(userObj.assignedGuestHouseId);
+        const gh = await GuestHouse.findOne({
+          $or: [
+            { guestHouseId: userObj.assignedGuestHouseId },
+            ...(isObjId ? [{ _id: userObj.assignedGuestHouseId }] : [])
+          ]
+        }).lean();
+        if (gh) {
+          userObj.assignedGuestHouseId = gh;
+        }
+      } catch (ghErr) {
+        console.warn('[Auth Log Warning] Failed to populate assignedGuestHouseId on login:', ghErr.message);
+      }
+    }
+
+    return res.status(200).json({ user: userObj, token, siteSettings });
   } catch (error) {
     console.error("[Auth Log Error] Login exception:", error);
     return res.status(500).json({ message: error.message });

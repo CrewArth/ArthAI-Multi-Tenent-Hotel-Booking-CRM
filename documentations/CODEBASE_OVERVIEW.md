@@ -631,9 +631,9 @@ Auto-increment sequences for guestHouseId, room numbers, etc.
 
 | Plan       | Max Hotels | Max Rooms/Hotel | Max Admins/Hotel |
 | ---------- | ---------- | --------------- | ---------------- |
-| basic      | 1          | 10              | 1                |
-| pro        | 3          | 20              | 3                |
-| enterprise | 5          | 50              | 5                |
+| basic      | 1          | 10              | 2                |
+| pro        | 3          | 20              | 4                |
+| enterprise | 5          | 50              | 8                |
 
 Enforced via `middlewares/subscriptionMiddleware.js` on room/hotel/admin creation.
 

@@ -120,8 +120,10 @@ export const encryptTenantData = (tenantData = {}) => {
   // 2. Encrypt Credentials
   if (clone.credentials) {
     if (clone.credentials.superAdminEmail) clone.credentials.superAdminEmail = encrypt(clone.credentials.superAdminEmail);
+    if (clone.credentials.hotelAdminEmail) clone.credentials.hotelAdminEmail = encrypt(clone.credentials.hotelAdminEmail);
     if (clone.credentials.adminEmail) clone.credentials.adminEmail = encrypt(clone.credentials.adminEmail);
     if (clone.credentials.superAdminPassword) clone.credentials.superAdminPassword = encrypt(clone.credentials.superAdminPassword);
+    if (clone.credentials.hotelAdminPassword) clone.credentials.hotelAdminPassword = encrypt(clone.credentials.hotelAdminPassword);
     if (clone.credentials.adminPassword) clone.credentials.adminPassword = encrypt(clone.credentials.adminPassword);
   }
 
@@ -170,8 +172,10 @@ export const decryptTenantData = (tenantData = {}) => {
   // 2. Decrypt Credentials
   if (doc.credentials) {
     if (doc.credentials.superAdminEmail) doc.credentials.superAdminEmail = decrypt(doc.credentials.superAdminEmail);
+    if (doc.credentials.hotelAdminEmail) doc.credentials.hotelAdminEmail = decrypt(doc.credentials.hotelAdminEmail);
     if (doc.credentials.adminEmail) doc.credentials.adminEmail = decrypt(doc.credentials.adminEmail);
     if (doc.credentials.superAdminPassword) doc.credentials.superAdminPassword = decrypt(doc.credentials.superAdminPassword);
+    if (doc.credentials.hotelAdminPassword) doc.credentials.hotelAdminPassword = decrypt(doc.credentials.hotelAdminPassword);
     if (doc.credentials.adminPassword) doc.credentials.adminPassword = decrypt(doc.credentials.adminPassword);
   }
 
