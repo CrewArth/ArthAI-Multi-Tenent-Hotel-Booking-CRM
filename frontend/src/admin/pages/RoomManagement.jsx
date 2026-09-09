@@ -104,7 +104,7 @@ const RoomManagement = () => {
 
   const handleAdd = async (newRoom) => {
     try {
-      await api.post('/api/rooms', { ...newRoom, roomType: newRoom.roomType || 'single', guestHouseId: selectedGHId });
+      await api.post('/api/rooms', { ...newRoom, roomType: newRoom.roomType || 'Standard', guestHouseId: selectedGHId });
       toast.success('Room created successfully');
       fetchRooms(selectedGHId);
       fetchSubUsage();
@@ -113,7 +113,7 @@ const RoomManagement = () => {
 
   const handleEdit = async (updated) => {
     try {
-      await api.put(`/api/rooms/${selectedRoom._id}`, { ...updated, roomType: updated.roomType || 'single' });
+      await api.put(`/api/rooms/${selectedRoom._id}`, { ...updated, roomType: updated.roomType || 'Standard' });
       toast.success('Room updated');
       fetchRooms(selectedGHId);
     } catch (err) { toast.error(err?.response?.data?.message || 'Failed to update room'); }
@@ -212,6 +212,7 @@ const RoomManagement = () => {
             <thead>
               <tr>
                 <th>Room No.</th>
+                <th>Room Type</th>
                 <th>Capacity</th>
                 <th>Price (per night)</th>
                 <th>Discount</th>
@@ -222,7 +223,7 @@ const RoomManagement = () => {
             </thead>
             <tbody>
               {rooms.length === 0 ? (
-                <tr><td colSpan="7" className="table-empty">No rooms found. Select a hotel or add a new room.</td></tr>
+                <tr><td colSpan="8" className="table-empty">No rooms found. Select a hotel or add a new room.</td></tr>
               ) : (
                 rooms.map((room) => {
                   const price    = room.price    ?? 0;
@@ -232,6 +233,7 @@ const RoomManagement = () => {
                   return (
                   <tr key={room._id}>
                     <td>Room {room.roomNumber}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{room.roomType || '—'}</td>
                     <td>{room.roomCapacity}</td>
                     <td>{price ? `${RupeeIcon}${price.toLocaleString('en-IN')}` : '—'}</td>
                     <td>{discount ? `${discount}%` : '—'}</td>

@@ -404,7 +404,7 @@ const AdminRoomBooking = () => {
   const selectedBed = beds.find((b) => b._id === form.bedId);
   const selectedRoomNames = rooms
     .filter((r) => form.roomIds.includes(r._id))
-    .map((r) => `Room ${r.roomNumber}`);
+    .map((r) => r.roomType ? `Room ${r.roomNumber} (${r.roomType})` : `Room ${r.roomNumber}`);
 
   if (loading) {
     return <div className="page-root"><p style={{ color: '#64748b' }}>Loading booking details…</p></div>;
@@ -468,13 +468,15 @@ const AdminRoomBooking = () => {
                     .filter((room) => !unavailableRooms.includes(room._id))
                     .map((room) => ({
                       _id: room._id,
-                      name: `Room ${room.roomNumber} · ${room.roomType}`,
+                      name: room.roomType ? `Room ${room.roomNumber} (${room.roomType})` : `Room ${room.roomNumber}`,
                     }))}
                   selectedValues={form.roomIds
                     .filter((roomId) => !unavailableRooms.includes(roomId))
                     .map((roomId) => {
                       const room = rooms.find((item) => item._id === roomId);
-                      return room ? { _id: room._id, name: `Room ${room.roomNumber} · ${room.roomType}` } : { _id: roomId, name: roomId };
+                      return room
+                        ? { _id: room._id, name: room.roomType ? `Room ${room.roomNumber} (${room.roomType})` : `Room ${room.roomNumber}` }
+                        : { _id: roomId, name: roomId };
                     })}
                   onSelect={handleRoomSelection}
                   onRemove={handleRoomSelection}
@@ -498,7 +500,7 @@ const AdminRoomBooking = () => {
                   <option value="">Select bed (optional)</option>
                   {beds.map((b) => (
                     <option key={b._id} value={b._id} disabled={unavailableBeds.includes(b._id)}>
-                      Bed {b.bedNumber} · {b.bedType}{unavailableBeds.includes(b._id) ? ' (Booked)' : ''}
+                      Bed {b.bedNumber}{b.bedType ? ` (${b.bedType})` : ''}{unavailableBeds.includes(b._id) ? ' (Booked)' : ''}
                     </option>
                   ))}
                 </select>
@@ -724,7 +726,7 @@ const AdminRoomBooking = () => {
               <div className="arb-review-grid">
                 <div><span>Hotel</span><strong>{displayHotelName}</strong></div>
                 <div><span>Rooms</span><strong>{selectedRoomNames.length ? selectedRoomNames.join(', ') : '—'}</strong></div>
-                <div><span>Bed</span><strong>{selectedBed ? `Bed ${selectedBed.bedNumber} · ${selectedBed.bedType}` : '—'}</strong></div>
+                <div><span>Bed</span><strong>{selectedBed ? `Bed ${selectedBed.bedNumber}${selectedBed.bedType ? ` (${selectedBed.bedType})` : ''}` : '—'}</strong></div>
                 <div><span>Check In</span><strong>{formatDate(form.checkIn)}</strong></div>
                 <div><span>Check Out</span><strong>{formatDate(form.checkOut)}</strong></div>
               </div>

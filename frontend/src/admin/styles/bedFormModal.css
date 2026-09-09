@@ -16,7 +16,7 @@
   background: white;
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0px 10px 40px rgba(0,0,0,0.12);
+  box-shadow: 0px 10px 40px rgba(0, 0, 0, 0.12);
 }
 
 .modal-title {
@@ -26,11 +26,16 @@
   margin-bottom: 16px;
 }
 
-.room-form,
 .bed-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .form-group label,
@@ -49,36 +54,67 @@
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   font-size: 15px;
+  box-sizing: border-box;
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.bed-form input:focus,
+.form-group select:focus,
+.bed-form select:focus {
   border-color: #2563eb;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 /* ---------------------- BUTTONS ---------------------- */
-.room-form-buttons,
 .bed-form-buttons {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  margin-top: 8px;
+}
+
+/* Base button styles */
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.btn:active {
+  transform: translateY(1px);
 }
 
 .btn.submit {
   background: #2563eb;
   color: white;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
 }
 
 .btn.cancel {
   background: #64748b;
   color: white;
+  box-shadow: 0 1px 2px rgba(100, 116, 139, 0.2);
 }
 
 .btn.submit:hover {
   background: #1d4ed8;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
 .btn.cancel:hover {
   background: #475569;
+  box-shadow: 0 4px 10px rgba(71, 85, 105, 0.2);
 }

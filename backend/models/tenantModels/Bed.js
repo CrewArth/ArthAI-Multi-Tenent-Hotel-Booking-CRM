@@ -14,8 +14,8 @@ const bedSchema = new mongoose.Schema({
 
   bedType: {
     type: String,
-    enum: ["single", "double", "suite"],
     required: true,
+    trim: true,
   },
 
   isAvailable: {

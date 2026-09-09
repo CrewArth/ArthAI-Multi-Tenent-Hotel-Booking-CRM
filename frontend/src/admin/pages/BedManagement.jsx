@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import BedFormModal from '../components/BedFormModal';
+import BedConfigModal from '../components/BedConfigModal';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
 
@@ -22,8 +23,22 @@ const BedManagement = () => {
   const [selectedBed, setSelectedBed]   = useState(null);
   const [isModalOpen, setIsModalOpen]   = useState(false);
   const [togglingBedId, setTogglingBedId] = useState(null);
+  const [bedConfigs, setBedConfigs]     = useState([]);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
-  useEffect(() => { fetchGuestHouses(); }, []);
+  useEffect(() => {
+    fetchGuestHouses();
+    fetchBedConfigs();
+  }, []);
+
+  const fetchBedConfigs = async () => {
+    try {
+      const res = await api.post('/api/beds/configs/list');
+      if (res.data?.configs) setBedConfigs(res.data.configs);
+    } catch (err) {
+      console.error('Failed to load bed configs:', err);
+    }
+  };
 
   const fetchGuestHouses = async () => {
     try {
@@ -76,11 +91,12 @@ const BedManagement = () => {
 
   const handleAdd = async (newBed) => {
     const room = rooms.find((r) => String(r._id) === String(selectedRoom));
-    if (!room) return alert('Select a valid room.');
-    if (beds.filter((b) => b.isActive).length >= room.roomCapacity)
-      return alert(`Room capacity is ${room.roomCapacity}. Cannot add more beds.`);
+    if (!room) return toast.error('Select a valid room.');
+    if (beds.filter((b) => b.isActive).length >= room.roomCapacity) {
+      return toast.warning(`Room capacity is ${room.roomCapacity}. Cannot add more beds.`);
+    }
     try {
-      await api.post('/api/beds', { ...newBed, roomId: selectedRoom, bedType: newBed.bedType || 'single' });
+      await api.post('/api/beds', { ...newBed, roomId: selectedRoom, bedType: newBed.bedType });
       toast.success('Bed created successfully');
       fetchBedsForRoom(selectedRoom);
       setIsModalOpen(false);
@@ -89,7 +105,7 @@ const BedManagement = () => {
 
   const handleEdit = async (updated) => {
     try {
-      await api.put(`/api/beds/${selectedBed._id}`, { ...updated, bedType: updated.bedType || 'single' });
+      await api.put(`/api/beds/${selectedBed._id}`, { ...updated, bedType: updated.bedType });
       toast.success('Bed updated');
       fetchBedsForRoom(selectedRoom);
       setIsModalOpen(false);
@@ -136,12 +152,16 @@ const BedManagement = () => {
 
   const handleAutoCreate = async () => {
     if (!selectedRoom) return toast.error('Select a room first');
+    if (!bedConfigs || bedConfigs.length === 0) {
+      return toast.warning('Please configure at least one bed type in "Bed Config" first');
+    }
     const room = rooms.find((r) => String(r._id) === String(selectedRoom));
     if (!room) return toast.error('Room not found');
     const existing = beds.filter((b) => b.isActive).length;
     if (existing >= room.roomCapacity) return toast.warning(`Room already at full capacity (${room.roomCapacity})`);
     try {
-      const res = await api.post('/api/beds/auto-create', { roomId: selectedRoom, bedType: 'single' });
+      const selectedType = bedConfigs[0]?.bedType;
+      const res = await api.post('/api/beds/auto-create', { roomId: selectedRoom, bedType: selectedType });
       toast.success(res.data.message || 'Beds created successfully');
       fetchBedsForRoom(selectedRoom);
     } catch (err) { toast.error(err?.response?.data?.error || 'Failed to auto-create beds'); }
@@ -189,7 +209,12 @@ const BedManagement = () => {
             className="btn-primary-cta"
             disabled={!selectedRoom}
             onClick={() => {
-              if (!selectedRoom) { alert('Please select a room first'); return; }
+              if (!selectedRoom) { toast.error('Please select a room first'); return; }
+              const room = rooms.find((r) => String(r._id) === String(selectedRoom));
+              if (room && beds.filter((b) => b.isActive).length >= room.roomCapacity) {
+                toast.warning(`Room capacity is ${room.roomCapacity}. Cannot add more beds.`);
+                return;
+              }
               setIsModalOpen(true);
             }}
           >
@@ -201,6 +226,13 @@ const BedManagement = () => {
             onClick={handleAutoCreate}
           >
           Auto Create Beds
+          </button>
+          <button
+            type="button"
+            className="btn-secondary-cta"
+            onClick={() => setIsConfigModalOpen(true)}
+          >
+            Bed Config
           </button>
         </div>
       </div>
@@ -257,6 +289,16 @@ const BedManagement = () => {
           onClose={() => { setIsModalOpen(false); setSelectedBed(null); }}
           onSubmit={selectedBed ? handleEdit : handleAdd}
           initialData={selectedBed}
+          bedConfigs={bedConfigs}
+        />
+      )}
+
+      {isConfigModalOpen && (
+        <BedConfigModal
+          isOpen={isConfigModalOpen}
+          onClose={() => setIsConfigModalOpen(false)}
+          configs={bedConfigs}
+          onConfigUpdated={(updated) => setBedConfigs(updated)}
         />
       )}
     </div>

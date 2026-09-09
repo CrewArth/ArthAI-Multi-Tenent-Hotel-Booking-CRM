@@ -5,7 +5,7 @@ const roomSchema = new mongoose.Schema({
 
     roomNumber: { type: Number },
     
-    roomType: { type: String, enum: ["single", "double", "family"], required: true },
+    roomType: { type: String, required: true, trim: true, default: 'Standard' },
     
     isAvailable: { type: Boolean, default: true },
     

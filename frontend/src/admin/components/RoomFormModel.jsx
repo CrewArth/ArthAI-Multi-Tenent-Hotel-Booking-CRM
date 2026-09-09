@@ -5,6 +5,7 @@ import '../styles/roomFormModel.css';
 const RoomFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [roomData, setRoomData] = useState({
     roomNumber: '',
+    roomType: '',
     roomCapacity: '',
     price: '',
     discountPercentage: '',
@@ -14,12 +15,13 @@ const RoomFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     if (initialData) {
       setRoomData({
         roomNumber:         initialData.roomNumber         || '',
+        roomType:           initialData.roomType           || '',
         roomCapacity:       initialData.roomCapacity       || '',
         price:              initialData.price              ?? '',
         discountPercentage: initialData.discountPercentage ?? '',
       });
     } else {
-      setRoomData({ roomNumber: '', roomCapacity: '', price: '', discountPercentage: '' });
+      setRoomData({ roomNumber: '', roomType: '', roomCapacity: '', price: '', discountPercentage: '' });
     }
   }, [initialData]);
 
@@ -31,8 +33,8 @@ const RoomFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!roomData.roomNumber || !roomData.roomCapacity || Number(roomData.roomCapacity) < 1) {
-      alert('Please provide a valid room number and capacity (min 1).');
+    if (!roomData.roomNumber || !roomData.roomType?.trim() || !roomData.roomCapacity || Number(roomData.roomCapacity) < 1) {
+      alert('Please provide a valid room number, room type, and capacity (min 1).');
       return;
     }
 
@@ -42,7 +44,7 @@ const RoomFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
       return;
     }
 
-    onSubmit(roomData);
+    onSubmit({ ...roomData, roomType: roomData.roomType.trim() });
     onClose();
   };
 
@@ -71,6 +73,31 @@ const RoomFormModal = ({ isOpen, onClose, onSubmit, initialData }) => {
               required
               min="1"
             />
+          </div>
+
+          <div className="form-group">
+            <label>Room Type</label>
+            <input
+              type="text"
+              name="roomType"
+              value={roomData.roomType}
+              onChange={handleChange}
+              placeholder="e.g. Deluxe, Standard, Suite"
+              required
+              list="room-type-suggestions"
+            />
+            <datalist id="room-type-suggestions">
+              <option value="Single" />
+              <option value="Double" />
+              <option value="Deluxe" />
+              <option value="Super Deluxe" />
+              <option value="Suite" />
+              <option value="Family" />
+              <option value="Standard" />
+              <option value="Executive" />
+              <option value="AC" />
+              <option value="Non-AC" />
+            </datalist>
           </div>
 
           <div className="form-group">

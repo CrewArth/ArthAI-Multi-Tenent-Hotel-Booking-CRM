@@ -5,27 +5,23 @@ const roomSchema = new mongoose.Schema({
     guestHouseId: { type: String, ref: "GuestHouse", required: true },
 
     roomNumber: { type: Number },
-    
-    roomType: { type: String, enum: ["single", "double", "family"], required: true },
-    
+
+    roomType: { type: String, required: true, trim: true, default: 'Standard' },
+
     isAvailable: { type: Boolean, default: true },
-    
-    roomCapacity: {type: Number, required: true},
+
+    roomCapacity: { type: Number, required: true },
 
     price: { type: Number, required: false },
 
     discountPercentage: { type: Number, required: false, default: 0, min: 0, max: 100 },
 
-    // Soft delete / active flag (needed by controllers & queries)
     isActive: { type: Boolean, default: true },
 
 }, { timestamps: true });
 
-// Uniqueness: a room number must be unique within a guest house
 roomSchema.index({ guestHouseId: 1, roomNumber: 1 }, { unique: true });
-// Listing rooms by guest house (most common query)
 roomSchema.index({ guestHouseId: 1, isActive: 1 });
-// Availability filtering
 roomSchema.index({ guestHouseId: 1, isAvailable: 1, isActive: 1 });
 
 export default mongoose.model("Room", roomSchema);

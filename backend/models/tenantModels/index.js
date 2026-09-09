@@ -10,6 +10,7 @@ import auditLogSchema from './AuditLog.js';
 import counterSchema from './Counter.js';
 import configurationSchema from './Configuration.js';
 import dynamicPricingSchema from './DynamicPricing.js';
+import bedConfigSchema from './BedConfig.js';
 
 export default function initTenantModels(conn) {
   if (!conn.models.GuestHouse)     conn.model('GuestHouse', guestHouseSchema);
@@ -24,4 +25,5 @@ export default function initTenantModels(conn) {
   if (!conn.models.Counter)        conn.model('Counter', counterSchema);
   if (!conn.models.Configuration)  conn.model('Configuration', configurationSchema);
   if (!conn.models.DynamicPricing) conn.model('DynamicPricing', dynamicPricingSchema);
+  if (!conn.models.BedConfig)      conn.model('BedConfig', bedConfigSchema);
 }

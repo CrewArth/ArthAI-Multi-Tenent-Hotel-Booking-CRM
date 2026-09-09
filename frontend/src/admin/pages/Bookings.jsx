@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FaFileExcel } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -6,6 +7,7 @@ import api from "../../utils/api";
 import editIcon from "../../assets/edit.svg";
 import { getCurrentMonthDateRange } from "../utils/dateUtils";
 import CaptureSessionModal from "../components/CaptureSessionModal";
+import { getStoredUser, normalizeRole } from "../../utils/auth";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -17,6 +19,11 @@ const LIMIT = 10;
 
 const Bookings = () => {
   const navigate = useNavigate();
+  const reduxUser = useSelector((state) => state.auth?.user);
+  const currentUser = reduxUser || getStoredUser();
+  const normalizedRole = normalizeRole(currentUser?.role);
+  const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
+
   const { startDate: defaultStart, endDate: defaultEnd } = getCurrentMonthDateRange();
   const [bookings, setBookings]               = useState([]);
   const [loading, setLoading]                 = useState(true);
@@ -197,7 +204,7 @@ const Bookings = () => {
           <thead>
             <tr>
               <th className="center">#</th>
-              <th>Hotel</th>
+              {isSuperAdmin && <th>Hotel</th>}
               <th>Guest</th>
               <th>Check In</th>
               <th>Check Out</th>
@@ -209,7 +216,7 @@ const Bookings = () => {
           </thead>
           <tbody>
             {bookings.length === 0 ? (
-              <tr><td colSpan="9" className="table-empty">No bookings found</td></tr>
+              <tr><td colSpan={isSuperAdmin ? "9" : "8"} className="table-empty">No bookings found</td></tr>
             ) : (
               bookings.map((b, i) => {
                 const index = (currentPage - 1) * LIMIT + i + 1;
@@ -218,7 +225,7 @@ const Bookings = () => {
                 return (
                   <tr key={b._id}>
                     <td className="center">{index}</td>
-                    <td>{b.guestHouseId?.guestHouseName || "—"}</td>
+                    {isSuperAdmin && <td>{b.guestHouseId?.guestHouseName || "—"}</td>}
                     <td>
                       {b.userId?.firstName || "—"}
                       {b.userId?.lastName ? ` ${b.userId.lastName}` : ""}
@@ -330,7 +337,7 @@ const Bookings = () => {
                 <p><strong>Guest</strong>{selected.userId?.firstName || selected.fullName || "—"} {selected.userId?.lastName || ""}</p>
                 <p><strong>Email</strong>{selected.userId?.email || selected.email || "—"}</p>
                 <p><strong>Phone</strong>{selected.userId?.phone || selected.phone || "—"}</p>
-                <p><strong>Hotel</strong>{selected.guestHouseId?.guestHouseName || "—"}</p>
+                {isSuperAdmin && <p><strong>Hotel</strong>{selected.guestHouseId?.guestHouseName || "—"}</p>}
                 <p><strong>Room</strong>{Array.isArray(selected.roomIds) && selected.roomIds.length ? selected.roomIds.map(r => r?.roomNumber ? `Room ${r.roomNumber}` : '').filter(Boolean).join(', ') || '—' : '—'}</p>
                 <p><strong>Bed</strong>{selected.bedId?.bedNumber ? `Bed ${selected.bedId.bedNumber} (${selected.bedId.bedType})` : "—"}</p>
                 <p><strong>Check-In</strong>{formatDate(selected.checkIn)}</p>

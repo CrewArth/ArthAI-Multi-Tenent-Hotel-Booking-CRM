@@ -1,4 +1,5 @@
 import { logAction } from '../utils/auditLogger.js';
+import CentralBedConfig from '../models/BedConfig.js';
 
 // Create a new Bed
 export const createBed = async (req, res) => {
@@ -15,12 +16,37 @@ export const createBed = async (req, res) => {
       return res.status(400).json({ error: `Room capacity exceeded. Max capacity is ${room.roomCapacity}` });
     }
 
-    const existingBed = await Bed.findOne({ roomId, bedNumber, isActive: true });
-    if (existingBed) {
+    const parsedBedNumber = Number(bedNumber);
+    if (isNaN(parsedBedNumber) || parsedBedNumber < 1) {
+      return res.status(400).json({ error: "Valid bed number is required" });
+    }
+
+    const existingActiveBed = await Bed.findOne({ roomId, bedNumber: parsedBedNumber, isActive: true });
+    if (existingActiveBed) {
       return res.status(400).json({ error: "Bed Number already exists in this room" });
     }
 
-    const bed = await Bed.create({ roomId, bedNumber, bedType: bedType || 'single' });
+    if (!bedType || !bedType.trim()) {
+      return res.status(400).json({ error: "Bed Type is required" });
+    }
+
+    const existingInactiveBed = await Bed.findOne({ roomId, bedNumber: parsedBedNumber, isActive: false });
+    let bed;
+    if (existingInactiveBed) {
+      existingInactiveBed.isActive = true;
+      existingInactiveBed.isAvailable = true;
+      existingInactiveBed.bedType = bedType.trim();
+      await existingInactiveBed.save();
+      bed = existingInactiveBed;
+    } else {
+      bed = await Bed.create({
+        roomId,
+        bedNumber: parsedBedNumber,
+        bedType: bedType.trim(),
+        isAvailable: true,
+        isActive: true,
+      });
+    }
 
     await logAction({
       action: 'BED_CREATED',
@@ -31,10 +57,11 @@ export const createBed = async (req, res) => {
         roomId: bed.roomId,
         bedNumber: bed.bedNumber,
         bedType: bed.bedType,
+        reactivated: Boolean(existingInactiveBed),
       },
     }, req.tenantDb);
 
-    const beds = await Bed.find({ roomId, isActive: true });
+    const beds = await Bed.find({ roomId, isActive: true }).sort({ bedNumber: 1 });
 
     return res.status(201).json({
       success: true,
@@ -43,7 +70,10 @@ export const createBed = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating bed: ', error);
-    res.status(500).json({ error: "Server error while creating bed" });
+    if (error.code === 11000) {
+      return res.status(400).json({ error: "Bed Number already exists in this room" });
+    }
+    return res.status(500).json({ error: error?.message || "Server error while creating bed" });
   }
 };
 
@@ -90,7 +120,7 @@ export const updateBed = async (req, res) => {
       details: { updatedFields: req.body },
     }, req.tenantDb);
 
-    const beds = await Bed.find({ roomId: updatedBed.roomId, isActive: true });
+    const beds = await Bed.find({ roomId: updatedBed.roomId, isActive: true }).sort({ bedNumber: 1 });
 
     return res.json({
       success: true,
@@ -99,7 +129,10 @@ export const updateBed = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating bed: ", error);
-    return res.status(500).json({ error: "Server error while updating beds" });
+    if (error.code === 11000) {
+      return res.status(400).json({ error: "Bed Number already exists in this room" });
+    }
+    return res.status(500).json({ error: error?.message || "Server error while updating bed" });
   }
 };
 
@@ -178,10 +211,22 @@ export const softDeleteBed = async (req, res) => {
 export const autoCreateBeds = async (req, res) => {
   try {
     const { Bed, Room } = req.tenantModels;
-    const { roomId, bedType = 'single' } = req.body;
+    const BedConfig = req.tenantModels?.BedConfig || CentralBedConfig;
+    let { roomId, bedType } = req.body;
 
     if (!roomId) {
       return res.status(400).json({ error: 'roomId is required' });
+    }
+
+    if (!bedType || !bedType.trim()) {
+      const firstConfig = await BedConfig.findOne({ isActive: true }).sort({ createdAt: 1 });
+      if (firstConfig) {
+        bedType = firstConfig.bedType;
+      } else {
+        return res.status(400).json({ error: 'No bed type configured. Please configure bed types first in Bed Config.' });
+      }
+    } else {
+      bedType = bedType.trim();
     }
 
     const room = await Room.findById(roomId);
@@ -193,31 +238,44 @@ export const autoCreateBeds = async (req, res) => {
     const existingBedsCount = existingBeds.length;
 
     if (existingBedsCount >= room.roomCapacity) {
-      return res.status(400).json({ 
-        error: `Room is already at full capacity (${room.roomCapacity} beds). Cannot create more beds.` 
+      return res.status(400).json({
+        error: `Room is already at full capacity (${room.roomCapacity} beds). Cannot create more beds.`
       });
     }
 
     const bedsToCreate = room.roomCapacity - existingBedsCount;
 
-    let nextBedNumber = 1;
-    if (existingBeds.length > 0) {
-      const maxBedNumber = Math.max(...existingBeds.map(b => b.bedNumber));
-      nextBedNumber = maxBedNumber + 1;
+    const activeBedNumbers = new Set(existingBeds.map(b => b.bedNumber));
+    const numbersToCreate = [];
+    let candidate = 1;
+    while (numbersToCreate.length < bedsToCreate && candidate <= 1000) {
+      if (!activeBedNumbers.has(candidate)) {
+        numbersToCreate.push(candidate);
+      }
+      candidate++;
     }
 
-    const bedsToInsert = [];
-    for (let i = 0; i < bedsToCreate; i++) {
-      bedsToInsert.push({
-        roomId,
-        bedNumber: nextBedNumber + i,
-        bedType,
-        isAvailable: true,
-        isActive: true,
-      });
+    const createdBeds = [];
+    for (const num of numbersToCreate) {
+      const existingInactive = await Bed.findOne({ roomId, bedNumber: num, isActive: false });
+      let bed;
+      if (existingInactive) {
+        existingInactive.isActive = true;
+        existingInactive.isAvailable = true;
+        existingInactive.bedType = bedType;
+        await existingInactive.save();
+        bed = existingInactive;
+      } else {
+        bed = await Bed.create({
+          roomId,
+          bedNumber: num,
+          bedType,
+          isAvailable: true,
+          isActive: true,
+        });
+      }
+      createdBeds.push(bed);
     }
-
-    const createdBeds = await Bed.insertMany(bedsToInsert);
 
     for (const bed of createdBeds) {
       await logAction({
@@ -245,10 +303,85 @@ export const autoCreateBeds = async (req, res) => {
   } catch (error) {
     console.error('Error auto-creating beds:', error);
     if (error.code === 11000) {
-      return res.status(400).json({ 
-        error: 'Bed number conflict. Some beds may have been created. Please refresh and try again.' 
+      return res.status(400).json({
+        error: 'Bed number conflict. Some beds may have been created. Please refresh and try again.'
       });
     }
     return res.status(500).json({ error: 'Server error while auto-creating beds' });
+  }
+};
+
+// ── Bed Configuration Endpoints ──────────────────────
+export const listBedConfigs = async (req, res) => {
+  try {
+    const BedConfig = req.tenantModels?.BedConfig || CentralBedConfig;
+    const configs = await BedConfig.find({ isActive: true }).sort({ createdAt: 1 });
+    return res.json({ success: true, configs: configs || [] });
+  } catch (error) {
+    console.error('Error listing bed configs:', error);
+    return res.status(500).json({ error: 'Server error while listing bed configs' });
+  }
+};
+
+export const saveBedConfig = async (req, res) => {
+  try {
+    const BedConfig = req.tenantModels?.BedConfig || CentralBedConfig;
+    const { bedType, capacity } = req.body;
+
+    if (!bedType || !bedType.trim()) {
+      return res.status(400).json({ error: 'Bed Type is required' });
+    }
+
+    const trimmedType = bedType.trim();
+    const parsedCapacity = Number(capacity);
+
+    if (isNaN(parsedCapacity) || parsedCapacity < 1) {
+      return res.status(400).json({ error: 'Valid capacity (min 1) is required' });
+    }
+
+    const escaped = trimmedType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existing = await BedConfig.findOne({
+      bedType: { $regex: new RegExp(`^${escaped}$`, 'i') },
+    });
+
+    let config;
+    if (existing) {
+      existing.bedType = trimmedType;
+      existing.capacity = parsedCapacity;
+      existing.isActive = true;
+      await existing.save();
+      config = existing;
+    } else {
+      config = await BedConfig.create({
+        bedType: trimmedType,
+        capacity: parsedCapacity,
+      });
+    }
+
+    const configs = await BedConfig.find({ isActive: true }).sort({ createdAt: 1 });
+    return res.status(200).json({
+      success: true,
+      message: 'Bed configuration saved successfully',
+      config,
+      configs,
+    });
+  } catch (error) {
+    console.error('Error saving bed config:', error);
+    return res.status(500).json({ error: 'Server error while saving bed config' });
+  }
+};
+
+export const deleteBedConfig = async (req, res) => {
+  try {
+    const BedConfig = req.tenantModels?.BedConfig || CentralBedConfig;
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'Config ID is required' });
+
+    await BedConfig.findByIdAndUpdate(id, { isActive: false });
+    const configs = await BedConfig.find({ isActive: true }).sort({ createdAt: 1 });
+    return res.json({ success: true, message: 'Bed configuration deleted', configs });
+  } catch (error) {
+    console.error('Error deleting bed config:', error);
+    return res.status(500).json({ error: 'Server error while deleting bed config' });
   }
 };

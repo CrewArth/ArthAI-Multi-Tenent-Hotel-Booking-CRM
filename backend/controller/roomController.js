@@ -32,7 +32,7 @@ export const createRoom = async (req, res) => {
     const room = await Room.create({
       guestHouseId: gh.guestHouseId,
       roomNumber,
-      roomType: roomType || 'single',
+      roomType: (roomType && roomType.trim()) || 'Standard',
       roomCapacity,
       price,
       discountPercentage: discountPercentage ?? 0,
