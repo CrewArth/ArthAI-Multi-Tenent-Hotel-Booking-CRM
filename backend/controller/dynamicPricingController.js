@@ -60,15 +60,51 @@ export const listPricingRules = async (req, res) => {
       ];
     }
 
-    const [totalCount, rules] = await Promise.all([
+    const [totalCount, rawRules] = await Promise.all([
       DynamicPricing.countDocuments(filter),
       DynamicPricing.find(filter)
-        .populate('createdBy', 'firstName lastName email role')
         .sort({ priority: -1, createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
         .lean(),
     ]);
+
+    const User = req.tenantModels.User;
+    const userIds = [];
+    const userEmails = [];
+
+    rawRules.forEach((rule) => {
+      if (!rule.createdBy) return;
+      const val = String(rule.createdBy);
+      if (/^[a-f\d]{24}$/i.test(val)) {
+        userIds.push(val);
+      } else if (val.includes('@')) {
+        userEmails.push(val.toLowerCase());
+      }
+    });
+
+    const userDocs = User ? await User.find({
+      $or: [
+        ...(userIds.length > 0 ? [{ _id: { $in: userIds } }] : []),
+        ...(userEmails.length > 0 ? [{ email: { $in: userEmails } }] : []),
+      ],
+    }, 'firstName lastName email role').lean() : [];
+
+    const userMap = {};
+    userDocs.forEach((u) => {
+      userMap[String(u._id)] = u;
+      if (u.email) userMap[u.email.toLowerCase()] = u;
+    });
+
+    const rules = rawRules.map((rule) => {
+      if (!rule.createdBy) return rule;
+      const key = String(rule.createdBy);
+      const foundUser = userMap[key] || userMap[key.toLowerCase()];
+      return {
+        ...rule,
+        createdBy: foundUser || (key.includes('@') ? { email: key, firstName: 'Super Admin', role: 'SUPER_ADMIN' } : rule.createdBy),
+      };
+    });
 
     const totalPages = Math.ceil(totalCount / limitNum) || 1;
 

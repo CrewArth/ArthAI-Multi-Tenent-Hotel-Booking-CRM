@@ -1,4 +1,4 @@
-import { Home, Building2, DoorOpen, BookOpen, Bed, FileText, PersonStanding, Settings, FileBarChart, PlusCircle, List, Receipt } from 'lucide-react';
+import { Home, Building2, DoorOpen, BookOpen, Bed, FileText, PersonStanding, Settings, FileBarChart, PlusCircle, List, Receipt, User } from 'lucide-react';
 
 export const superAdminSidebarData = [
   {
@@ -81,6 +81,12 @@ export const adminSidebarData = [
     name: "Booking's List",
     icon: List,
     navigate: '/admin/guest-house-bookings',
+  },
+  {
+    id: 'MC_USER_PROFILE',
+    name: 'User Profile',
+    icon: User,
+    navigate: '/admin/user-profiles',
   },
   {
     id: 'MC_RECEIPTS',

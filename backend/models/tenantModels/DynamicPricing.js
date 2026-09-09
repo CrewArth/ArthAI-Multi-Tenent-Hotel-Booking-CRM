@@ -52,7 +52,7 @@ const dynamicPricingSchema = new mongoose.Schema({
     default: 0,
   },
   createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.Mixed,
     ref: 'User',
   },
 }, { timestamps: true });
