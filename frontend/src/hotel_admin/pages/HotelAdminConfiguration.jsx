@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import Loader from '../../components/Loader';
 
 export const HotelAdminConfiguration = () => {
   const [loading, setLoading] = useState(true);
@@ -54,11 +55,7 @@ export const HotelAdminConfiguration = () => {
   };
 
   if (loading) {
-    return (
-      <div style={{ width: '100%', height: '100%', padding: '20px' }}>
-        Loading...
-      </div>
-    );
+    return <Loader minHeight="300px" size={48} />;
   }
 
   return (

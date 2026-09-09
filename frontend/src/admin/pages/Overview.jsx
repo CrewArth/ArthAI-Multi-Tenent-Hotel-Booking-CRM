@@ -29,7 +29,7 @@ const Overview = ({ showTodayBookings = false }) => {
   });
 
   const [refreshing, setRefreshing] = useState(false);
-  const [bookingsTrend, setBookingsTrend]   = useState({ data: [], loading: false, rangeLabel: "" });
+  const [bookingsTrend, setBookingsTrend] = useState({ data: [], loading: false, rangeLabel: "" });
   const [topGuestHouses, setTopGuestHouses] = useState({ data: [], loading: false, rangeLabel: "" });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [draft, setDraft] = useState({ startDate: '', endDate: '' });
@@ -128,7 +128,7 @@ const Overview = ({ showTodayBookings = false }) => {
           className="date-range-btn"
           onClick={() => { setDraft({ ...dateRange }); setPickerOpen((o) => !o); }}
         >
-          📅 {dateRange.startDate} → {dateRange.endDate}
+          {dateRange.startDate} → {dateRange.endDate}
         </button>
 
         {pickerOpen && (

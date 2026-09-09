@@ -10,6 +10,7 @@ import api from "../../utils/api";
 import { getAuthenticatedRedirectPath, getRedirectPathForRole } from "../../utils/auth";
 import { setCredentials } from "../../redux/authSlice";
 import { updateSiteSettings } from "../../redux/siteSettingsSlice";
+import Loader from "../../components/Loader";
 
 // Email Validation Schema
 const schema = yup.object({
@@ -31,6 +32,14 @@ export default function LoginPage() {
   });
 
   const [rememberMe, setRememberMe] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPageLoading(false);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail");
@@ -85,6 +94,7 @@ export default function LoginPage() {
 
   return (
     <>
+      {(pageLoading || isSubmitting) && <Loader overlay />}
       <div className="login-container">
         <div className="login-wrapper">
           <div className="login-header">

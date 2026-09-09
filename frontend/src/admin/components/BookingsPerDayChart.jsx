@@ -8,9 +8,12 @@ const BookingsPerDayChart = ({ data = [], loading, rangeLabel }) => {
     day: "numeric",
   });
 
-  const labels = data.map((item) =>
-    formatter.format(new Date(item.date ?? item._id))
-  );
+  const labels = Array.isArray(data) ? data.map((item) => {
+    const rawDate = item?.date ?? item?._id;
+    if (!rawDate) return "";
+    const d = new Date(rawDate);
+    return isNaN(d.getTime()) ? String(rawDate) : formatter.format(d);
+  }) : [];
 
   const chartData = {
     labels,

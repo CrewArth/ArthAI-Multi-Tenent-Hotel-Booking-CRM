@@ -67,10 +67,12 @@ const Navbar = () => {
   const handleAuth = () => {
     if (isLoggedIn) {
       dispatch(logout());
-      navigate("/signin");
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.replace('/signin');
       return;
     }
-    navigate("/signin");
+    navigate('/signin');
   };
 
   return (

@@ -36,7 +36,8 @@ export default function Calendar({ assignedGhId = null }) {
       const response = await api.post('/api/bookings/calendar', assignedGhId ? { guestHouseId: assignedGhId } : {});
       
       // Transform bookings into FullCalendar events
-      const calendarEvents = response.data.bookings.map((booking) => {
+      const rawBookings = Array.isArray(response.data?.bookings) ? response.data.bookings : [];
+      const calendarEvents = rawBookings.map((booking) => {
         const userName = booking.userId
           ? `${booking.userId.firstName || ''} ${booking.userId.lastName || ''}`.trim()
           : 'Unknown User';

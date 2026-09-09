@@ -4,12 +4,13 @@ import { updateSiteSettings } from './redux/siteSettingsSlice';
 import api from './utils/api';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import lazyLoad from './utils/lazyLoad';
+import Loader from './components/Loader';
 import ProtectedRoute from './users/routes/ProtectedRoute';
 import PublicRoute from './users/routes/PublicRoute';
 import Dashboard from './users/pages/Dashboard';
 import ProtectedAdminRoute from './admin/routes/ProtectedAdminRoute';
-const LoginPage = lazyLoad(() => import('./users/pages/Login'));
-const AdminDashboard = lazyLoad(() => import('./admin/pages/AdminDashboard'));
+import LoginPage from './users/pages/Login';
+import AdminDashboard from './admin/pages/AdminDashboard';
 const AdminUserDashboard = lazyLoad(() => import('./admin/pages/AdminUserDashboard'));
 const AdminRoomBooking = lazyLoad(() => import('./admin/pages/AdminRoomBooking'));
 const Profile = lazyLoad(() => import('./users/pages/Profile'));
@@ -41,7 +42,7 @@ const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage
 const DynamicPricingPage = lazyLoad(() => import('./admin/pages/DynamicPricingPage').then(m => ({ default: m.DynamicPricingPage })));
 
 // Hotel Admin Dedicated Module Imports
-const HotelAdminLayout = lazyLoad(() => import('./hotel_admin/components/HotelAdminLayout').then(m => ({ default: m.HotelAdminLayout })));
+import HotelAdminLayout from './hotel_admin/components/HotelAdminLayout';
 const HotelAdminDashboard = lazyLoad(() => import('./hotel_admin/pages/HotelAdminDashboard').then(m => ({ default: m.HotelAdminDashboard })));
 const HotelAdminBookings = lazyLoad(() => import('./hotel_admin/pages/HotelAdminBookings').then(m => ({ default: m.HotelAdminBookings })));
 const HotelAdminConfiguration = lazyLoad(() => import('./hotel_admin/pages/HotelAdminConfiguration').then(m => ({ default: m.HotelAdminConfiguration })));
@@ -70,16 +71,6 @@ function App() {
     return () => { isMounted = false; };
   }, [dispatch]);
 
-  const RootRedirect = () => {
-    const redirectPath = getAuthenticatedRedirectPath();
-
-    if (redirectPath) {
-      return <Navigate to={redirectPath} replace />;
-    }
-
-    return <LoginPage />;
-  };
-
   return (
 
     <>
@@ -87,26 +78,13 @@ function App() {
     
     <BrowserRouter>
       <ScrollToTop />
-      <Suspense
-        fallback={
-          <div
-            style={{
-              minHeight: '100vh',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: '1rem',
-              color: '#334155',
-            }}
-          >
-            Loading...
-          </div>
-        }
-      >
+      <Suspense fallback={<Loader />}>
         <Routes>
         
         {/* ------------------ PUBLIC ROUTES ------------------ */}
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/signin" element={<LoginPage />} />
+        <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/signin" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/login" element={<Navigate to="/signin" replace />} />
         <Route path="/signup" element={<Navigate to="/signin" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />

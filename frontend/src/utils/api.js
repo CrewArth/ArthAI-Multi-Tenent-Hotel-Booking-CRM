@@ -44,6 +44,9 @@ api.interceptors.response.use(
       ) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/signin' && window.location.pathname !== '/') {
+          window.location.replace('/signin');
+        }
       }
     }
     return Promise.reject(error);

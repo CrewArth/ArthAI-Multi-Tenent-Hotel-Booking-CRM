@@ -73,11 +73,12 @@ export const getRedirectPathForRole = (role) => {
 };
 
 export const getAuthenticatedRedirectPath = () => {
+  const token = getStoredToken();
   const user = getStoredUser();
 
-  if (user?.role) {
+  if (token && user?.role) {
     return getRedirectPathForRole(user.role);
   }
 
-  return getStoredToken() ? "/dashboard" : null;
+  return null;
 };
