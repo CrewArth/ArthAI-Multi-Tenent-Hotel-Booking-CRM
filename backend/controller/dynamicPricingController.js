@@ -189,10 +189,10 @@ export const createPricingRule = async (req, res) => {
       entityId: newRule._id,
       performedBy: req.user?.email || 'Super Admin',
       details: { name: newRule.name, ruleType: newRule.ruleType, hotel: gh.guestHouseName },
-    }, req.tenantDb).catch(() => {});
+    }, req.tenantDb).catch(() => { });
 
     const dbName = req.tenantDb?.name || 'default';
-    await deletePatternCache(`tenant:${dbName}:*`).catch(() => {});
+    await deletePatternCache(`tenant:${dbName}:*`).catch(() => { });
 
     return res.status(201).json({
       message: 'Dynamic pricing rule created successfully',
@@ -259,10 +259,10 @@ export const updatePricingRule = async (req, res) => {
       entityId: updatedRule._id,
       performedBy: req.user?.email || 'Super Admin',
       details: updateFields,
-    }, req.tenantDb).catch(() => {});
+    }, req.tenantDb).catch(() => { });
 
     const dbName = req.tenantDb?.name || 'default';
-    await deletePatternCache(`tenant:${dbName}:*`).catch(() => {});
+    await deletePatternCache(`tenant:${dbName}:*`).catch(() => { });
 
     return res.status(200).json({
       message: 'Dynamic pricing rule updated successfully',
@@ -293,7 +293,7 @@ export const togglePricingRule = async (req, res) => {
     await rule.save();
 
     const dbName = req.tenantDb?.name || 'default';
-    await deletePatternCache(`tenant:${dbName}:*`).catch(() => {});
+    await deletePatternCache(`tenant:${dbName}:*`).catch(() => { });
 
     return res.status(200).json({
       message: `Rule marked as ${rule.isActive ? 'Active' : 'Inactive'}`,
@@ -326,10 +326,10 @@ export const deletePricingRule = async (req, res) => {
       entityId: deleted._id,
       performedBy: req.user?.email || 'Super Admin',
       details: { name: deleted.name },
-    }, req.tenantDb).catch(() => {});
+    }, req.tenantDb).catch(() => { });
 
     const dbName = req.tenantDb?.name || 'default';
-    await deletePatternCache(`tenant:${dbName}:*`).catch(() => {});
+    await deletePatternCache(`tenant:${dbName}:*`).catch(() => { });
 
     return res.status(200).json({ message: 'Dynamic pricing rule deleted successfully' });
   } catch (error) {
@@ -396,10 +396,10 @@ export const toggleHotelConfigStatus = async (req, res) => {
     const updateVal = dynamicRoomPrice !== undefined
       ? Boolean(dynamicRoomPrice)
       : !(
-          await Configuration.findOne({ guestHouseId: gh._id }).then(
-            (c) => c?.dynamicRoomPrice
-          )
-        );
+        await Configuration.findOne({ guestHouseId: gh._id }).then(
+          (c) => c?.dynamicRoomPrice
+        )
+      );
 
     const updatedConfig = await Configuration.findOneAndUpdate(
       { guestHouseId: gh._id },
@@ -408,7 +408,7 @@ export const toggleHotelConfigStatus = async (req, res) => {
     );
 
     const dbName = req.tenantDb?.name || 'default';
-    await deletePatternCache(`tenant:${dbName}:*`).catch(() => {});
+    await deletePatternCache(`tenant:${dbName}:*`).catch(() => { });
 
     return res.status(200).json({
       message: `Dynamic pricing ${updateVal ? 'enabled' : 'disabled'} for ${gh.guestHouseName}`,

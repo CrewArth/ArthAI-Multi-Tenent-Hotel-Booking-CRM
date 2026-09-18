@@ -1,11 +1,12 @@
 import express from 'express';
-import User from '../models/User.js';
+import { syncCentralUserSafely } from '../utils/centralUserDirectory.js';
 
 const router = express.Router();
 
 //POSTMAN POST Req for Admin Creation
 router.post('/create-admin', async(req, res) => {
     try{
+        const { User } = req.tenantModels;
         const {firstName, lastName, email, phone, password} = req.body;
 
         const existingUser = await User.findOne({email});
@@ -24,6 +25,7 @@ router.post('/create-admin', async(req, res) => {
         });
 
         await admin.save();
+        await syncCentralUserSafely({ user: admin, dbName: req.tenantDb?.name }, 'legacy admin creation');
         res.status(201).json({
             message: "Super Admin Created Sucessfully", admin
         })

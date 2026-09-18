@@ -10,10 +10,36 @@ import { generateTenantCredentials } from '../utils/credentialGenerator.js';
 import { sendWelcomeCredentialsEmail } from '../utils/emailService.js';
 import { uploadBase64Document } from '../utils/s3UploadService.js';
 import { encrypt, decrypt, encryptTenantData, decryptTenantData } from '../utils/encryption.js';
+import centralUserSchema from '../../backend/models/centralModels/CentralUser.js';
 
 const getCentralTenantModel = async () => {
   const master = await connectCentralDb();
   return master.models.Tenant || master.model('Tenant', tenantSchema);
+};
+
+const syncProvisionedUsersToDirectory = async ({ users, tenantId, dbName }) => {
+  try {
+    const master = await connectCentralDb();
+    const CentralUser = master.models.CentralUser || master.model('CentralUser', centralUserSchema);
+    await CentralUser.bulkWrite(users.map((user) => ({
+      updateOne: {
+        filter: { dbName, userId: user._id },
+        update: { $set: {
+          email: String(user.email).trim().toLowerCase(),
+          tenantId,
+          dbName,
+          userId: user._id,
+          role: user.role,
+          isActive: user.isActive !== false,
+        } },
+        upsert: true,
+      },
+    })), { ordered: false });
+  } catch (error) {
+    // Provisioning remains compatible if the directory is temporarily unavailable;
+    // the backfill or legacy login fallback will repair the missing entries.
+    console.error('[CentralUserDirectory] Failed to sync provisioned users:', error.message);
+  }
 };
 
 export const getDashboardSummary = async (req, res) => {
@@ -202,7 +228,7 @@ export const provisionTenant = async (req, res) => {
     }
 
     const superAdminSecret = crypto.randomBytes(40).toString('hex');
-    await User.create({
+    const superAdminUser = await User.create({
       firstName: resolvedOwnerName.split(' ')[0] || 'Tenant',
       lastName: resolvedOwnerName.split(' ').slice(1).join(' ') || 'SuperAdmin',
       email: credentials.superAdmin.email,
@@ -214,7 +240,7 @@ export const provisionTenant = async (req, res) => {
     });
 
     const hotelAdminSecret = crypto.randomBytes(40).toString('hex');
-    await User.create({
+    const hotelAdminUser = await User.create({
       firstName: resolvedOwnerName.split(' ')[0] || 'Hotel',
       lastName: 'Admin',
       email: credentials.hotelAdmin.email,
@@ -225,7 +251,7 @@ export const provisionTenant = async (req, res) => {
     });
 
     const adminSecret = crypto.randomBytes(40).toString('hex');
-    await User.create({
+    const adminUser = await User.create({
       firstName: resolvedOwnerName.split(' ')[0] || 'GuestHouse',
       lastName: 'Manager',
       email: credentials.admin.email,
@@ -233,6 +259,12 @@ export const provisionTenant = async (req, res) => {
       role: 'ADMIN',
       isActive: true,
       login_secret_key: adminSecret,
+    });
+
+    await syncProvisionedUsersToDirectory({
+      users: [superAdminUser, hotelAdminUser, adminUser],
+      tenantId: slug,
+      dbName,
     });
 
     sendWelcomeCredentialsEmail({

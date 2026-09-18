@@ -3,6 +3,7 @@ import { adminCreatedUserEmail } from '../utils/emailTemplates/adminCreatedUser.
 import { logAction } from '../utils/auditLogger.js';
 import { normalizeUser } from '../utils/roles.js';
 import { isObjectId } from '../utils/isObjectId.js';
+import { syncCentralUserSafely } from '../utils/centralUserDirectory.js';
 
 const getGuestHouseFilter = async (user, GuestHouse) => {
   if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
@@ -426,6 +427,11 @@ export const createUserByAdmin = async (req, res) => {
     });
 
     await newUser.save();
+    await syncCentralUserSafely({
+      user: newUser,
+      dbName: req.tenantDb?.name,
+      tenantId: req.tenantDb?.name,
+    }, 'admin user creation');
 
     const performerEmail = req.user?.email || "Admin";
 

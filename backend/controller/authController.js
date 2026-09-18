@@ -11,6 +11,7 @@ import tenantSchema from "../models/centralModels/Tenant.js";
 import { invalidateUserSession } from "../middlewares/auth.js";
 import { isObjectId } from "../utils/isObjectId.js";
 import { normalizeRole } from "../utils/roles.js";
+import { findCentralUserByEmail, syncCentralUserSafely } from "../utils/centralUserDirectory.js";
 
 const getCentralTenantModel = async () => {
   const master = await connectMasterDb();
@@ -39,6 +40,12 @@ const resolveTargetDbName = async (req, email) => {
     const cleanEmail = email.toLowerCase().trim();
     console.log(`[Auth Log] Attempting central auto-resolution for email: ${cleanEmail}`);
     try {
+      const directoryUser = await findCentralUserByEmail(cleanEmail);
+      if (directoryUser?.dbName) {
+        console.log(`[Auth Log] Auto-resolved '${cleanEmail}' -> DB '${directoryUser.dbName}' via Central User Directory`);
+        return directoryUser.dbName;
+      }
+
       const Tenant = await getCentralTenantModel();
       const tenant = await Tenant.findOne({
         $or: [
@@ -63,6 +70,7 @@ const resolveTargetDbName = async (req, email) => {
           const tUser = await User.findOne({ email: cleanEmail }).lean();
           if (tUser) {
             console.log(`[Auth Log] ✅ Discovered user record in active tenant DB '${t.dbName}'`);
+            await syncCentralUserSafely({ user: tUser, dbName: t.dbName, tenantId: t.tenantId }, 'legacy login resolution');
             return t.dbName;
           }
         } catch (scanErr) {
@@ -109,6 +117,7 @@ export const registerUser = async (req, res) => {
       last_login: new Date(),
     });
     await newUser.save();
+    await syncCentralUserSafely({ user: newUser, dbName, tenantId: req.body?.tenantSlug || dbName }, 'registration');
 
     const clientIp = getClientIp(req);
     const token = generateToken(newUser, {

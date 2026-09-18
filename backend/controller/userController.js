@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { logAction } from "../utils/auditLogger.js";
 import { invalidateUserSession } from "../middlewares/auth.js";
+import { removeCentralUserSafely, syncCentralUserSafely } from "../utils/centralUserDirectory.js";
 
 const getTrackedDetails = (payload = {}) => {
   const allowedFields = [
@@ -95,6 +96,8 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: "User not Found!" });
     }
 
+    await syncCentralUserSafely({ user: updatedUser, dbName: req.tenantDb?.name }, 'user update');
+
     await invalidateUserSession(req.tenantDb?.name, updatedUser._id);
 
     await logAction({
@@ -143,6 +146,8 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    await removeCentralUserSafely({ userId: deleted._id, dbName: req.tenantDb?.name, email: deleted.email }, 'user deletion');
+
     await invalidateUserSession(req.tenantDb?.name, deleted._id);
 
     await logAction({
@@ -178,6 +183,8 @@ export const deactivateUser = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    await syncCentralUserSafely({ user, dbName: req.tenantDb?.name }, 'user deactivation');
+
     await invalidateUserSession(req.tenantDb?.name, user._id);
 
     await logAction({
@@ -207,6 +214,8 @@ export const toggleUserStatus = async (req, res) => {
 
     user.isActive = !user.isActive;
     await user.save();
+
+    await syncCentralUserSafely({ user, dbName: req.tenantDb?.name }, 'user status change');
 
     await invalidateUserSession(req.tenantDb?.name, user._id);
 

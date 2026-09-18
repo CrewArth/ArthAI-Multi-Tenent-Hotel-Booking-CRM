@@ -32,15 +32,6 @@ export default function LoginPage() {
   });
 
   const [rememberMe, setRememberMe] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPageLoading(false);
-    }, 450);
-    return () => clearTimeout(timer);
-  }, []);
-
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberedEmail");
     const savedPassword = localStorage.getItem("rememberedPassword");
@@ -78,23 +69,16 @@ export default function LoginPage() {
       }
 
       toast.success("Login Successful!", { autoClose: 1000 });
-
-      setTimeout(() => {
-        navigate(getRedirectPathForRole(res.data.user.role));
-      }, 1200);
+      navigate(getRedirectPathForRole(res.data.user.role), { replace: true });
 
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed", { autoClose: 2500 });
     }
   };
 
-  const handleForgotPassword = () => {
-    navigate("/forgot-password");
-  };
-
   return (
     <>
-      {(pageLoading || isSubmitting) && <Loader overlay />}
+      {isSubmitting && <Loader overlay />}
       <div className="login-container">
         <div className="login-wrapper">
           <div className="login-header">

@@ -1,4 +1,5 @@
 import DefaultUser from "../models/User.js";
+import { syncCentralUserSafely } from "./centralUserDirectory.js";
 
 /**
  * Upsert a guest into the User collection with role = "USER".
@@ -68,6 +69,9 @@ export const upsertNormalUser = async ({
     }
     existingUser.totalBookings = existingUser.bookingIds.length;
     await existingUser.save();
+    if (tenantDbOrUserModel?.name) {
+      await syncCentralUserSafely({ user: existingUser, dbName: tenantDbOrUserModel.name }, 'normal user upsert');
+    }
     console.log(`👤 NormalUser updated: ${existingUser.email || existingUser.phone}`);
     return existingUser;
   }
@@ -80,6 +84,10 @@ export const upsertNormalUser = async ({
     totalBookings:          bookingId ? 1 : 0,
     registeredGuestHouseId: guestHouseId || null,
   });
+
+  if (tenantDbOrUserModel?.name) {
+    await syncCentralUserSafely({ user: newUser, dbName: tenantDbOrUserModel.name }, 'normal user creation');
+  }
 
   console.log(`👤 NormalUser created: ${newUser.email || newUser.phone}`);
   return newUser;

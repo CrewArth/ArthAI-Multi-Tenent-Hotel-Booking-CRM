@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getTenantDb } from '../config/dbManager.js';
+import { syncCentralUserSafely } from './centralUserDirectory.js';
 
 export const seedTenantDb = async ({ tenantId, dbName, adminEmail, adminPassword, firstName = 'Tenant', lastName = 'Admin' }) => {
   const tenantDb = await getTenantDb(dbName);
@@ -39,6 +40,8 @@ export const seedTenantDb = async ({ tenantId, dbName, adminEmail, adminPassword
     } else {
       adminUser = existingAdmin;
     }
+
+    await syncCentralUserSafely({ user: adminUser, dbName, tenantId }, 'tenant seed');
   }
 
   return { tenantDb, adminUser };
