@@ -90,7 +90,11 @@ const bookingSchema = new mongoose.Schema(
 bookingSchema.index({ bedId: 1, status: 1, checkIn: 1, checkOut: 1 });
 bookingSchema.index({ userId: 1, createdAt: -1 });
 bookingSchema.index({ guestHouseId: 1, createdAt: -1 });
+bookingSchema.index({ status: 1, createdAt: -1 });
+bookingSchema.index({ guestHouseId: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ status: 1, checkIn: 1 });
 bookingSchema.index({ createdAt: -1 });
+bookingSchema.index({ checkOut: 1, checkIn: 1 });
+bookingSchema.index({ guestHouseId: 1, checkOut: 1, checkIn: 1 });
 
 export default bookingSchema;

@@ -283,7 +283,7 @@ const AddHotelPage = () => {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '18px' }}>
             <button
               type="button"
-              className="btn-action edit"
+              className="btn-secondary-cta"
               onClick={() => navigate('/super-admin/hotel')}
               style={{ padding: '9px 20px', fontSize: '0.9rem' }}
             >

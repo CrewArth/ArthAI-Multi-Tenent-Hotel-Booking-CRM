@@ -17,7 +17,7 @@ const getGuestHouseFilter = async (user, GuestHouse) => {
           { guestHouseId: ghId },
           ...(isObjId ? [{ _id: ghId }] : []),
         ],
-      }).lean();
+      }).select('_id').lean();
       if (gh) return { guestHouseId: gh._id };
     }
   }
@@ -34,55 +34,34 @@ export const getAdminSummary = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
-    const isTodayBooking = {
-      $cond: {
-        if: {
-          $or: [
-            { $gte: ["$createdAt", today] },
-            {
-              $and: [
-                { $lte: ["$checkIn", now] },
-                { $gte: ["$checkOut", today] }
-              ]
-            }
-          ]
-        },
-        then: 1,
-        else: 0
-      }
+    const todayQuery = {
+      ...bookingQuery,
+      $or: [
+        { createdAt: { $gte: today } },
+        { checkIn: { $lte: now }, checkOut: { $gte: today } },
+      ],
     };
 
-    const pipeline = [
-      { $match: bookingQuery },
-      {
-        $group: {
-          _id: null,
-          totalBookings: { $sum: 1 },
-          approvedBookings: { $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] } },
-          pendingBookings: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
-          cancelledBookings: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } },
-          rejectedBookings: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
-          todaysBookings: { $sum: isTodayBooking }
-        }
-      }
-    ];
-
-    const [totalUsers, totalGuestHouses, bookingResult] = await Promise.all([
+    // Independent indexed counts avoid loading and grouping every booking document.
+    const [
+      totalUsers,
+      totalGuestHouses,
+      totalBookings,
+      approvedBookings,
+      pendingBookings,
+      cancelledBookings,
+      rejectedBookings,
+      todaysBookings,
+    ] = await Promise.all([
       User.countDocuments({ role: 'ADMIN' }),
       GuestHouse.countDocuments(),
-      Booking.aggregate(pipeline).exec()
+      Booking.countDocuments(bookingQuery),
+      Booking.countDocuments({ ...bookingQuery, status: 'approved' }),
+      Booking.countDocuments({ ...bookingQuery, status: 'pending' }),
+      Booking.countDocuments({ ...bookingQuery, status: 'cancelled' }),
+      Booking.countDocuments({ ...bookingQuery, status: 'rejected' }),
+      Booking.countDocuments(todayQuery),
     ]);
-
-    const counts = bookingResult[0] || {
-      totalBookings: 0,
-      approvedBookings: 0,
-      pendingBookings: 0,
-      cancelledBookings: 0,
-      rejectedBookings: 0,
-      todaysBookings: 0
-    };
-
-    const { totalBookings, approvedBookings, pendingBookings, cancelledBookings, rejectedBookings, todaysBookings } = counts;
 
     const occupancyRate =
       totalBookings > 0 ? ((approvedBookings / totalBookings) * 100).toFixed(2) : 0;
@@ -309,8 +288,8 @@ export const getMe = async (req, res) => {
 export const listUsers = async (req, res) => {
   try {
     const { User, GuestHouse } = req.tenantModels;
-    const page = parseInt(req.body.page) || 1;
-    const limit = parseInt(req.body.limit) || 10;
+    const page = Math.max(parseInt(req.body.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.body.limit, 10) || 10, 1), 1000);
     const skip = (page - 1) * limit;
 
     const isHotelAdmin = req.user?.role === 'HOTEL_ADMIN';
@@ -326,17 +305,24 @@ export const listUsers = async (req, res) => {
       };
     }
 
-    let users = await User.find(
-      queryFilter,
-      "firstName lastName email phone address role isActive createdAt assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl"
-    )
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    let [users, totalUsers] = await Promise.all([
+      User.find(
+        queryFilter,
+        "firstName lastName email phone address role isActive createdAt assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl"
+      )
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(queryFilter),
+    ]);
 
     const guestHouseIds = [...new Set(users.map(u => u.assignedGuestHouseId).filter(Boolean))];
-    const guestHouses = await GuestHouse.find({ guestHouseId: { $in: guestHouseIds } }).lean();
+    const guestHouses = guestHouseIds.length > 0
+      ? await GuestHouse.find({ guestHouseId: { $in: guestHouseIds } })
+        .select('_id guestHouseId guestHouseName location maintenance')
+        .lean()
+      : [];
     const guestHouseMap = {};
     guestHouses.forEach(gh => guestHouseMap[gh.guestHouseId] = gh);
 
@@ -345,7 +331,6 @@ export const listUsers = async (req, res) => {
       assignedGuestHouseId: guestHouseMap[user.assignedGuestHouseId] || user.assignedGuestHouseId
     }));
 
-    const totalUsers = await User.countDocuments(queryFilter);
     const totalPages = Math.ceil(totalUsers / limit);
 
     return res.json({
@@ -521,9 +506,9 @@ export const updateUserWidgets = async (req, res) => {
 
 export const listRegularUsers = async (req, res) => {
   try {
-    const { User, GuestHouse } = req.tenantModels;
-    const page = parseInt(req.body.page, 10) || 1;
-    const limit = parseInt(req.body.limit, 10) || 10;
+    const { User } = req.tenantModels;
+    const page = Math.max(parseInt(req.body.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.body.limit, 10) || 10, 1), 1000);
     const skip = (page - 1) * limit;
     const search = req.body.search ? String(req.body.search).trim() : '';
 
@@ -540,13 +525,14 @@ export const listRegularUsers = async (req, res) => {
       ];
     }
 
-    let users = await User.find(queryFilter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    const totalUsers = await User.countDocuments(queryFilter);
+    const [users, totalUsers] = await Promise.all([
+      User.find(queryFilter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(queryFilter),
+    ]);
     const totalPages = Math.ceil(totalUsers / limit) || 1;
 
     return res.json({

@@ -34,7 +34,7 @@ export default function Calendar({ assignedGhId = null }) {
       setLoading(true);
       setError(null);
       const response = await api.post('/api/bookings/calendar', assignedGhId ? { guestHouseId: assignedGhId } : {});
-      
+
       // Transform bookings into FullCalendar events
       const rawBookings = Array.isArray(response.data?.bookings) ? response.data.bookings : [];
       const calendarEvents = rawBookings.map((booking) => {
@@ -44,7 +44,7 @@ export default function Calendar({ assignedGhId = null }) {
 
         const userEmail = booking.userId?.email || 'N/A';
         const isCancelled = booking.status === 'cancelled';
-        
+
         const now = new Date();
         const checkOutDateObj = new Date(booking.checkOut);
         const isCheckedOut = booking.isCheckedOut || booking.status === 'checked_out' || booking.status === 'completed' || (!isCancelled && checkOutDateObj <= now);
@@ -101,7 +101,7 @@ export default function Calendar({ assignedGhId = null }) {
 
   const handleEventClick = (clickInfo) => {
     const { extendedProps, title, id } = clickInfo.event;
-    
+
     setSelectedBooking({
       id,
       guest: title,
@@ -154,7 +154,7 @@ export default function Calendar({ assignedGhId = null }) {
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return "—";
+    if (!dateStr) return "-";
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return "Invalid Date";
     return date.toLocaleDateString("en-IN", {

@@ -154,5 +154,7 @@ userSchema.pre('save', async function(next) {
 });
 
 userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ role: 1, assignedGuestHouseId: 1, createdAt: -1 });
 
 export default userSchema;

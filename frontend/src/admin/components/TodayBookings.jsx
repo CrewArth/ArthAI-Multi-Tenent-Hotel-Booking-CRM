@@ -22,7 +22,7 @@ const getTwoDaysAgo = () => {
 
 const formatDate = (value) => {
   if (!value) {
-    return '—';
+    return '-';
   }
 
   return new Intl.DateTimeFormat('en-IN', {
@@ -196,7 +196,7 @@ export default function TodayBookings() {
       )}
       <div className="today-bookings-header">
         <div>
-          <h2 id="today-bookings-title" style={{fontWeight: "bold", marginBottom: "30px"}}>
+          <h2 id="today-bookings-title" style={{ fontWeight: "bold", marginBottom: "30px" }}>
             Today&apos;s Bookings <span style={{ color: '#6c757d', fontSize: '0.8em', fontWeight: 'normal', marginLeft: '8px' }}>({formatDate(today)})</span>
           </h2>
         </div>
@@ -244,7 +244,7 @@ export default function TodayBookings() {
 
                   return (
                     <tr key={booking._id}>
-                      <td>{`${booking.userId?.firstName || ''} ${booking.userId?.lastName || ''}`.trim() || '—'}</td>
+                      <td>{`${booking.userId?.firstName || ''} ${booking.userId?.lastName || ''}`.trim() || '-'}</td>
                       <td>{booking.guestHouseId?.guestHouseName || '—'}</td>
                       <td>{formatDate(booking.checkIn)}</td>
                       <td>{formatDate(booking.checkOut)}</td>
