@@ -32,4 +32,9 @@ export const saTenantApi = {
   getPlatformStats: () => saApi.get('/sa/tenants/stats'),
 };
 
+export const saPackageApi = {
+  list: () => saApi.get('/sa/packages'),
+  create: (data) => saApi.post('/sa/packages', data),
+};
+
 export default saApi;

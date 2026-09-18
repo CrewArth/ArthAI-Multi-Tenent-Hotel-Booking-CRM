@@ -7,7 +7,7 @@ import { getSubscriptionLimits } from '../config/subscriptionLimits.js';
 export const getSubscriptionUsage = async (req, res) => {
   try {
     const { GuestHouse, Room, User } = req.tenantModels;
-    const { plan, limits } = req.subscription || { plan: 'basic', limits: getSubscriptionLimits('basic') };
+    const { plan, planName, limits } = req.subscription || { plan: 'basic', limits: getSubscriptionLimits('basic') };
 
     const [guestHouses, adminCount, rooms] = await Promise.all([
       GuestHouse.find().lean(),
@@ -35,7 +35,8 @@ export const getSubscriptionUsage = async (req, res) => {
     });
 
     return res.json({
-      plan: plan.toUpperCase(),
+      plan: planName || limits.name || plan.toUpperCase(),
+      planSlug: plan,
       limits,
       usage: {
         hotels: {

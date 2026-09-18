@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { saTenantApi } from '../api/saApi';
+import { saPackageApi, saTenantApi } from '../api/saApi';
 import { CredentialsModal } from '../components/CredentialsModal';
 import { FileUploadZone } from '../components/FileUploadZone';
 
@@ -23,6 +23,11 @@ export const ProvisionHotelPage = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [newCredentials, setNewCredentials] = useState(null);
   const [newTenantName, setNewTenantName] = useState('');
+  const [packages, setPackages] = useState([
+    { slug: 'basic', planName: 'Basic' },
+    { slug: 'pro', planName: 'Pro' },
+    { slug: 'enterprise', planName: 'Enterprise' },
+  ]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -55,6 +60,23 @@ export const ProvisionHotelPage = () => {
       fireSafetyNoc: null,
     },
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    saPackageApi.list()
+      .then((response) => {
+        if (isMounted && response.data?.packages?.length) {
+          setPackages(response.data.packages);
+        }
+      })
+      .catch((requestError) => {
+        console.error('Unable to load subscription packages:', requestError);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Fetch Existing Tenant details for Edit Mode
   useEffect(() => {
@@ -653,9 +675,16 @@ export const ProvisionHotelPage = () => {
                       border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', background: '#ffffff'
                     }}
                   >
-                    <option value="basic">Basic Plan (Standard management)</option>
-                    <option value="pro">Pro Plan (Advanced telemetry & S3)</option>
-                    <option value="enterprise">Enterprise Plan (Dedicated features & support)</option>
+                    {!packages.some((pkg) => pkg.slug === formData.hotelDetails.plan) && (
+                      <option value={formData.hotelDetails.plan}>
+                        {formData.hotelDetails.plan}
+                      </option>
+                    )}
+                    {packages.map((pkg) => (
+                      <option key={pkg._id || pkg.slug} value={pkg.slug}>
+                        {pkg.planName}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -834,7 +863,7 @@ export const ProvisionHotelPage = () => {
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Subscription Plan</span>
                     <span style={{ color: '#7c3aed', fontWeight: '700', textTransform: 'uppercase' }}>
-                      {formData.hotelDetails.plan}
+                      {packages.find((pkg) => pkg.slug === formData.hotelDetails.plan)?.planName || formData.hotelDetails.plan}
                     </span>
                   </div>
                   <div>

@@ -25,8 +25,9 @@ const tenantSchema = new mongoose.Schema({
   },
   plan: {
     type: String,
-    enum: ['basic', 'pro', 'enterprise'],
     default: 'pro',
+    lowercase: true,
+    trim: true,
   },
   expiryDate: {
     type: Date,

@@ -2,8 +2,10 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SaAuthProvider, useSaAuth } from './context/SaAuthContext';
 import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { SaLogin } from './pages/SaLogin';
 import { SaDashboard } from './pages/SaDashboard';
+import { Packages } from './pages/Packages';
 import { ProvisionHotelPage } from './pages/ProvisionHotelPage';
 
 const ProtectedRoute = ({ children }) => {
@@ -13,18 +15,30 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function AppContent() {
+  const { user } = useSaAuth();
+
   return (
     <Router>
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <Navbar />
-        <main style={{ flex: 1 }}>
-          <Routes>
+        <div className={`sa-app-body${user ? ' authenticated' : ''}`}>
+          {user && <Sidebar />}
+          <main className="sa-main-content">
+            <Routes>
             <Route path="/login" element={<SaLogin />} />
             <Route
               path="/"
               element={
                 <ProtectedRoute>
                   <SaDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/packages"
+              element={
+                <ProtectedRoute>
+                  <Packages />
                 </ProtectedRoute>
               }
             />
@@ -45,8 +59,9 @@ function AppContent() {
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+            </Routes>
+          </main>
+        </div>
       </div>
     </Router>
   );

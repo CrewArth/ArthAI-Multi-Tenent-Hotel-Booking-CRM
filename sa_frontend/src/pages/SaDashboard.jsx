@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { saTenantApi } from '../api/saApi';
+import { saPackageApi, saTenantApi } from '../api/saApi';
 import { 
   Building2, Plus, Database, CheckCircle2, XCircle, Search, 
   RefreshCw, ShieldCheck, Zap, Crown, Edit2, ChevronLeft, ChevronRight, Calendar, AlertTriangle
@@ -11,6 +11,11 @@ import { CredentialsModal } from '../components/CredentialsModal';
 export const SaDashboard = () => {
   const navigate = useNavigate();
   const [tenants, setTenants] = useState([]);
+  const [packages, setPackages] = useState([
+    { slug: 'basic', planName: 'Basic' },
+    { slug: 'pro', planName: 'Pro' },
+    { slug: 'enterprise', planName: 'Enterprise' },
+  ]);
   const [summary, setSummary] = useState({
     totalTenants: 0,
     activeTenants: 0,
@@ -34,9 +39,15 @@ export const SaDashboard = () => {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const res = await saTenantApi.getDashboardSummary();
+      const [res, packageResult] = await Promise.all([
+        saTenantApi.getDashboardSummary(),
+        saPackageApi.list().catch(() => null),
+      ]);
       setSummary(res.data.summary || {});
       setTenants(res.data.tenants || []);
+      if (packageResult?.data?.packages?.length) {
+        setPackages(packageResult.data.packages);
+      }
     } catch (err) {
       console.error('Error fetching dashboard summary:', err);
     } finally {
@@ -376,9 +387,14 @@ export const SaDashboard = () => {
                               cursor: 'pointer',
                             }}
                           >
-                            <option value="basic">BASIC</option>
-                            <option value="pro">PRO</option>
-                            <option value="enterprise">ENTERPRISE</option>
+                            {!packages.some((pkg) => pkg.slug === t.plan) && (
+                              <option value={t.plan}>{String(t.plan || '').toUpperCase()}</option>
+                            )}
+                            {packages.map((pkg) => (
+                              <option key={pkg._id || pkg.slug} value={pkg.slug}>
+                                {pkg.planName}
+                              </option>
+                            ))}
                           </select>
                         </td>
 

@@ -11,10 +11,21 @@ import { sendWelcomeCredentialsEmail } from '../utils/emailService.js';
 import { uploadBase64Document } from '../utils/s3UploadService.js';
 import { encrypt, decrypt, encryptTenantData, decryptTenantData } from '../utils/encryption.js';
 import centralUserSchema from '../../backend/models/centralModels/CentralUser.js';
+import packageSchema from '../../backend/models/centralModels/Package.js';
+import { SUBSCRIPTION_PLANS } from '../../backend/config/subscriptionLimits.js';
 
 const getCentralTenantModel = async () => {
   const master = await connectCentralDb();
   return master.models.Tenant || master.model('Tenant', tenantSchema);
+};
+
+const isValidPlanSlug = async (plan) => {
+  const slug = String(plan || '').toLowerCase().trim();
+  if (!slug) return false;
+  if (SUBSCRIPTION_PLANS[slug]) return true;
+  const master = await connectCentralDb();
+  const Package = master.models.Package || master.model('Package', packageSchema);
+  return Boolean(await Package.exists({ slug }));
 };
 
 const syncProvisionedUsersToDirectory = async ({ users, tenantId, dbName }) => {
@@ -124,6 +135,10 @@ export const provisionTenant = async (req, res) => {
 
     if (!resolvedName || !resolvedTenantId || !resolvedOwnerEmail || !resolvedOwnerName) {
       return res.status(400).json({ message: "Tenant name, tenantId (slug), ownerName, and ownerEmail are required" });
+    }
+
+    if (plan && !await isValidPlanSlug(plan)) {
+      return res.status(400).json({ message: 'Invalid subscription package' });
     }
 
     const slug = resolvedTenantId.toLowerCase().trim();
@@ -335,17 +350,18 @@ export const updateTenantPlan = async (req, res) => {
     const Tenant = await getCentralTenantModel();
     const { tenantId } = req.params;
     const { plan } = req.body;
+    const planSlug = String(plan || '').toLowerCase().trim();
 
-    const validPlans = ['basic', 'pro', 'enterprise'];
-    if (!plan || !validPlans.includes(plan.toLowerCase().trim())) {
-      return res.status(400).json({ message: "Invalid plan. Valid options: basic, pro, enterprise" });
+    if (!await isValidPlanSlug(planSlug)) {
+      return res.status(400).json({ message: 'Invalid subscription package' });
     }
 
-    const tenant = await Tenant.findOne({ tenantId: tenantId.toLowerCase().trim() });
+    const tenant = await Tenant.findOneAndUpdate(
+      { tenantId: tenantId.toLowerCase().trim() },
+      { $set: { plan: planSlug } },
+      { new: true, runValidators: true }
+    );
     if (!tenant) return res.status(404).json({ message: "Tenant not found" });
-
-    tenant.plan = plan.toLowerCase().trim();
-    await tenant.save();
 
     return res.json({
       message: `Tenant subscription updated to ${tenant.plan.toUpperCase()}`,
@@ -417,6 +433,10 @@ export const updateTenant = async (req, res) => {
       name, plan, expiryDate, personalDetails, hotelDetails, legalCompliance,
       s3BucketName, s3Region 
     } = req.body;
+
+    if (plan && !await isValidPlanSlug(plan)) {
+      return res.status(400).json({ message: 'Invalid subscription package' });
+    }
 
     const s3Config = {
       bucketName: s3BucketName || decrypt(tenant.config?.s3BucketName) || process.env.AWS_S3_BUCKET,
