@@ -10,6 +10,7 @@ const UserProfileManagement = () => {
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,6 +22,11 @@ const UserProfileManagement = () => {
   const [bookingsModalUser, setBookingsModalUser] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+
+  const handleOpenProfile = (user) => {
+    setSelectedUser(user);
+    setIsProfileModalOpen(true);
+  };
 
   const fetchUsers = async (page = 1, search = appliedSearch) => {
     try {
@@ -156,92 +162,6 @@ const UserProfileManagement = () => {
         )}
       </form>
 
-      {/* Selected User Inline Profile Display */}
-      {selectedUser && (
-        <div className="card-surface" style={{ marginBottom: '2rem', border: '1px solid #bfdbfe', background: '#f8fafc' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  background: '#2563eb',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: '700',
-                  fontSize: '1.2rem',
-                }}
-              >
-                {(selectedUser.firstName?.[0] || 'U').toUpperCase()}
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', fontWeight: 700 }}>
-                  {selectedUser.firstName || ''} {selectedUser.lastName || ''}
-                </h3>
-                <span className={`badge ${selectedUser.isActive ? 'active' : 'inactive'}`} style={{ marginTop: '4px' }}>
-                  {selectedUser.isActive ? 'Active User' : 'Inactive User'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button
-                type="button"
-                className="btn-primary-cta"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '7px 14px' }}
-                onClick={() => handleShowBookings(selectedUser)}
-              >
-                <BookOpen size={16} /> Show Bookings
-              </button>
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="btn-action view"
-                style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#cbd5e1' }}
-              >
-                <X size={16} /> Close Profile
-              </button>
-            </div>
-          </div>
-
-          {/* Profile Details Grid */}
-          <div className="modal-detail-grid">
-            <div style={{ padding: '0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <UserIcon size={16} color="#2563eb" /> Personal Information
-              </h4>
-              <p><strong>First Name:</strong> {selectedUser.firstName || '—'}</p>
-              <p><strong>Last Name:</strong> {selectedUser.lastName || '—'}</p>
-              <p><strong>Email:</strong> {selectedUser.email || '—'}</p>
-              <p><strong>Phone:</strong> {selectedUser.phone || '—'}</p>
-              <p><strong>Gender:</strong> {selectedUser.gender ? selectedUser.gender.toUpperCase() : '—'}</p>
-              <p><strong>Date of Birth:</strong> {formatDate(selectedUser.dateOfBirth)}</p>
-              <p><strong>Nationality:</strong> {selectedUser.nationality || '—'}</p>
-              <p><strong>Address:</strong> {selectedUser.address || '—'}</p>
-            </div>
-
-            <div style={{ padding: '0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Shield size={16} color="#2563eb" /> Identity & Emergency Contacts
-              </h4>
-              <p><strong>Identity Type:</strong> {selectedUser.identityType || '—'}</p>
-              <p><strong>Identity Number:</strong> {selectedUser.identityNumber || '—'}</p>
-              <p><strong>Emergency Name:</strong> {selectedUser.emergencyContactName || '—'}</p>
-              <p><strong>Emergency Phone:</strong> {selectedUser.emergencyContactPhone || '—'}</p>
-              
-              <h4 style={{ margin: '1rem 0 0.75rem', fontSize: '0.95rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Calendar size={16} color="#2563eb" /> Booking & Account Activity
-              </h4>
-              <p><strong>Total Bookings:</strong> {selectedUser.totalBookings ?? selectedUser.bookingIds?.length ?? 0}</p>
-              <p><strong>Last Booking At:</strong> {formatDate(selectedUser.lastBookingAt)}</p>
-              <p><strong>Account Created:</strong> {formatDate(selectedUser.createdAt)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Users Table */}
       <div className="table-scroll">
         <table className="data-table">
@@ -274,16 +194,8 @@ const UserProfileManagement = () => {
               </tr>
             ) : (
               users.map((u, index) => {
-                const isSelected = selectedUser?._id === u._id;
                 return (
-                  <tr
-                    key={u._id}
-                    onClick={() => setSelectedUser(u)}
-                    style={{
-                      cursor: 'pointer',
-                      background: isSelected ? '#eff6ff' : undefined,
-                    }}
-                  >
+                  <tr key={u._id}>
                     <td className="center">{(currentPage - 1) * 10 + index + 1}</td>
                     <td style={{ fontWeight: 600, color: '#0f172a' }}>
                       {u.firstName || ''} {u.lastName || ''}
@@ -302,20 +214,14 @@ const UserProfileManagement = () => {
                         <button
                           type="button"
                           className="btn-action view"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUser(u);
-                          }}
+                          onClick={() => handleOpenProfile(u)}
                         >
-                          {isSelected ? 'Viewing Profile' : 'View Profile'}
+                          View Profile
                         </button>
                         <button
                           type="button"
                           className="btn-action primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShowBookings(u);
-                          }}
+                          onClick={() => handleShowBookings(u)}
                         >
                           Bookings
                         </button>
@@ -347,6 +253,108 @@ const UserProfileManagement = () => {
           Next →
         </button>
       </div>
+
+      {/* User Profile Modal Popup */}
+      {isProfileModalOpen && selectedUser && (
+        <div className="page-modal-backdrop" onClick={() => setIsProfileModalOpen(false)}>
+          <div
+            className="page-modal-card"
+            style={{ maxWidth: '850px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="page-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '700',
+                    fontSize: '1.1rem',
+                  }}
+                >
+                  {(selectedUser.firstName?.[0] || 'U').toUpperCase()}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: 700 }}>
+                    {selectedUser.firstName || ''} {selectedUser.lastName || ''}
+                  </h3>
+                  <span className={`badge ${selectedUser.isActive ? 'active' : 'inactive'}`} style={{ marginTop: '2px' }}>
+                    {selectedUser.isActive ? 'Active User' : 'Inactive User'}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="page-modal-close"
+                onClick={() => setIsProfileModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="page-modal-body">
+              <div className="modal-detail-grid">
+                <div style={{ padding: '0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <UserIcon size={16} color="#2563eb" /> Personal Information
+                  </h4>
+                  <p><strong>First Name:</strong> {selectedUser.firstName || '—'}</p>
+                  <p><strong>Last Name:</strong> {selectedUser.lastName || '—'}</p>
+                  <p><strong>Email:</strong> {selectedUser.email || '—'}</p>
+                  <p><strong>Phone:</strong> {selectedUser.phone || '—'}</p>
+                  <p><strong>Gender:</strong> {selectedUser.gender ? selectedUser.gender.toUpperCase() : '—'}</p>
+                  <p><strong>Date of Birth:</strong> {formatDate(selectedUser.dateOfBirth)}</p>
+                  <p><strong>Nationality:</strong> {selectedUser.nationality || '—'}</p>
+                  <p><strong>Address:</strong> {selectedUser.address || '—'}</p>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Shield size={16} color="#2563eb" /> Identity & Emergency Contacts
+                  </h4>
+                  <p><strong>Identity Type:</strong> {selectedUser.identityType || '—'}</p>
+                  <p><strong>Identity Number:</strong> {selectedUser.identityNumber || '—'}</p>
+                  <p><strong>Emergency Name:</strong> {selectedUser.emergencyContactName || '—'}</p>
+                  <p><strong>Emergency Phone:</strong> {selectedUser.emergencyContactPhone || '—'}</p>
+                  
+                  <h4 style={{ margin: '1rem 0 0.75rem', fontSize: '0.95rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Calendar size={16} color="#2563eb" /> Booking & Account Activity
+                  </h4>
+                  <p><strong>Total Bookings:</strong> {selectedUser.totalBookings ?? selectedUser.bookingIds?.length ?? 0}</p>
+                  <p><strong>Last Booking At:</strong> {formatDate(selectedUser.lastBookingAt)}</p>
+                  <p><strong>Account Created:</strong> {formatDate(selectedUser.createdAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="page-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn-primary-cta"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '7px 14px' }}
+                onClick={() => {
+                  setIsProfileModalOpen(false);
+                  handleShowBookings(selectedUser);
+                }}
+              >
+                <BookOpen size={16} /> Show Bookings
+              </button>
+              <button
+                type="button"
+                className="btn-action view"
+                onClick={() => setIsProfileModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bookings Modal Popup */}
       {isBookingsModalOpen && (

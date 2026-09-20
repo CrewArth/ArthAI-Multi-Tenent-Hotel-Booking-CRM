@@ -196,7 +196,7 @@ export default function TodayBookings() {
       )}
       <div className="today-bookings-header">
         <div>
-          <h2 id="today-bookings-title" style={{ fontWeight: "bold", marginBottom: "30px" }}>
+          <h2 id="today-bookings-title" style={{  fontWeight: "bold"  }}>
             Today&apos;s Bookings <span style={{ color: '#6c757d', fontSize: '0.8em', fontWeight: 'normal', marginLeft: '8px' }}>({formatDate(today)})</span>
           </h2>
         </div>
