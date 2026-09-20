@@ -134,7 +134,7 @@ export default function LoginPage() {
             </div>
 
             <button type="submit" className="login-button" disabled={!isValid || isSubmitting}>
-              {isSubmitting ? <span className="spinner"></span> : "Sign In"}
+              Sign In
             </button>
           </form>
 

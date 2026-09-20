@@ -351,3 +351,19 @@
   background: #94a3b8;
   cursor: not-allowed;
 }
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-toggle-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}

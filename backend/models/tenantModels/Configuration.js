@@ -18,6 +18,10 @@ const configurationSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  allowHotelPriceChange: {
+    type: Boolean,
+    default: true,
+  },
   extraSettings: {
     type: mongoose.Schema.Types.Mixed,
     default: {},

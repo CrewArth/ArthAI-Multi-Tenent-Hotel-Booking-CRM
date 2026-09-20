@@ -11,6 +11,10 @@ import counterSchema from './Counter.js';
 import configurationSchema from './Configuration.js';
 import dynamicPricingSchema from './DynamicPricing.js';
 import bedConfigSchema from './BedConfig.js';
+import itemSchema from './Item.js';
+import inventorySchema from './Inventory.js';
+import itemRequestSchema from './ItemRequest.js';
+import itemIssueSchema from './ItemIssue.js';
 
 export default function initTenantModels(conn) {
   if (!conn.models.GuestHouse)     conn.model('GuestHouse', guestHouseSchema);
@@ -26,4 +30,8 @@ export default function initTenantModels(conn) {
   if (!conn.models.Configuration)  conn.model('Configuration', configurationSchema);
   if (!conn.models.DynamicPricing) conn.model('DynamicPricing', dynamicPricingSchema);
   if (!conn.models.BedConfig)      conn.model('BedConfig', bedConfigSchema);
+  if (!conn.models.Item)           conn.model('Item', itemSchema);
+  if (!conn.models.Inventory)      conn.model('Inventory', inventorySchema);
+  if (!conn.models.ItemRequest)    conn.model('ItemRequest', itemRequestSchema);
+  if (!conn.models.ItemIssue)      conn.model('ItemIssue', itemIssueSchema);
 }

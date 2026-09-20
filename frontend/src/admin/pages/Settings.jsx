@@ -29,6 +29,7 @@ export default function Settings() {
   const [logoFile, setLogoFile] = useState(null);
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [allowHotelPriceChange, setAllowHotelPriceChange] = useState(true);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -49,6 +50,12 @@ export default function Settings() {
       });
     return () => { isMounted = false; };
   }, [dispatch]);
+
+  useEffect(() => {
+    api.post('/api/inventory/config')
+      .then((res) => setAllowHotelPriceChange(res.data?.allowHotelPriceChange !== false))
+      .catch((err) => console.warn('Failed to load inventory configuration:', err));
+  }, []);
 
   /* ── Logo file selection ── */
   const handleFileChange = (e) => {
@@ -94,6 +101,7 @@ export default function Settings() {
         siteName: nameInput.trim(),
         logoUrl: previewUrl,
       });
+      await api.post('/api/inventory/config/update', { allowHotelPriceChange });
 
       const updatedSiteName = res.data.siteName;
       const updatedLogoUrl = sanitizeClientLogo(res.data.logoUrl);
@@ -160,6 +168,18 @@ export default function Settings() {
           />
           <span className="settings-preview-name">{nameInput.trim() || 'Site Name'}</span>
         </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-card-title">Inventory Permissions</h2>
+        <label className="settings-toggle-row">
+          <input
+            type="checkbox"
+            checked={allowHotelPriceChange}
+            onChange={(e) => { setAllowHotelPriceChange(e.target.checked); setSaved(false); }}
+          />
+          <span>Allow Hotel Admin to change item price</span>
+        </label>
       </section>
 
       {/* ── Logo upload ── */}

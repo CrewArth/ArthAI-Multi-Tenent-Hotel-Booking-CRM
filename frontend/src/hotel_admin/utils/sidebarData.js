@@ -7,6 +7,7 @@ import {
   FileText,
   FileBarChart,
   Settings,
+  Package,
 } from 'lucide-react';
 
 export const hotelAdminNavItems = [
@@ -65,6 +66,14 @@ export const hotelAdminNavItems = [
     navigate: '/hotel-admin/reports',
     path: '/hotel-admin/reports',
     icon: FileBarChart,
+  },
+  {
+    id: 'HA_INVENTORY',
+    name: 'Inventory Management',
+    label: 'Inventory Management',
+    navigate: '/hotel-admin/inventory',
+    path: '/hotel-admin/inventory',
+    icon: Package,
   },
   {
     id: 'HA_CONFIGURATION',

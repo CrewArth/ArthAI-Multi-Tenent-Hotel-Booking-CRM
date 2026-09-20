@@ -40,6 +40,8 @@ const TermsAndPolicy = lazyLoad(() => import('./commonPages/TermsAndPolicy'));
 const FAQ = lazyLoad(() => import('./commonPages/FAQ'));
 const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage'));
 const DynamicPricingPage = lazyLoad(() => import('./admin/pages/DynamicPricingPage').then(m => ({ default: m.DynamicPricingPage })));
+const SuperAdminInventoryPage = lazyLoad(() => import('./features/inventory/SuperAdminInventoryPage'));
+const HotelAdminInventoryPage = lazyLoad(() => import('./features/inventory/HotelAdminInventoryPage'));
 
 // Hotel Admin Dedicated Module Imports
 import HotelAdminLayout from './hotel_admin/components/HotelAdminLayout';
@@ -144,6 +146,7 @@ function App() {
           <Route path="/super-admin/reports" element={<Reports />} />
           <Route path="/super-admin/settings" element={<Settings />} />
           <Route path="/super-admin/taxes" element={<TaxesManagement />} />
+          <Route path="/super-admin/inventory" element={<SuperAdminInventoryPage />} />
         </Route>  
 
         {/* ------------------ HOTEL ADMIN DEDICATED ROUTES ------------------ */}
@@ -162,6 +165,7 @@ function App() {
           <Route path="/hotel-admin/receipts" element={<Receipts />} />
           <Route path="/hotel-admin/reports" element={<Reports />} />
           <Route path="/hotel-admin/configuration" element={<HotelAdminConfiguration />} />
+          <Route path="/hotel-admin/inventory" element={<HotelAdminInventoryPage />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
