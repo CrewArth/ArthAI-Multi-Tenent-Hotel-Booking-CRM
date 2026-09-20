@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import { useNavigate } from 'react-router-dom';
@@ -9,18 +9,16 @@ import api from '../../utils/api';
 
 export default function Calendar({ assignedGhId = null }) {
   const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const calendarRef = useRef(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   useEffect(() => {
-    fetchApprovedBookings();
-
     const handleStatusChange = () => {
-      fetchApprovedBookings();
+      calendarRef.current?.getApi().refetchEvents();
     };
 
     window.addEventListener('bookingStatusChanged', handleStatusChange);
@@ -29,11 +27,14 @@ export default function Calendar({ assignedGhId = null }) {
     };
   }, [assignedGhId]);
 
-  const fetchApprovedBookings = async () => {
+  const fetchApprovedBookings = useCallback(async (fetchInfo, successCallback, failureCallback) => {
     try {
-      setLoading(true);
       setError(null);
-      const response = await api.post('/api/bookings/calendar', assignedGhId ? { guestHouseId: assignedGhId } : {});
+      const response = await api.post('/api/bookings/calendar', {
+        startDate: fetchInfo.startStr,
+        endDate: fetchInfo.endStr,
+        ...(assignedGhId ? { guestHouseId: assignedGhId } : {}),
+      });
 
       // Transform bookings into FullCalendar events
       const rawBookings = Array.isArray(response.data?.bookings) ? response.data.bookings : [];
@@ -90,14 +91,13 @@ export default function Calendar({ assignedGhId = null }) {
         };
       });
 
-      setEvents(calendarEvents);
+      successCallback(calendarEvents);
     } catch (err) {
       console.error('Error fetching calendar bookings:', err);
       setError('Failed to load calendar bookings');
-    } finally {
-      setLoading(false);
+      failureCallback(err);
     }
-  };
+  }, [assignedGhId]);
 
   const handleEventClick = (clickInfo) => {
     const { extendedProps, title, id } = clickInfo.event;
@@ -144,7 +144,6 @@ export default function Calendar({ assignedGhId = null }) {
       await api.patch(`/api/bookings/${selectedBooking.id}/cancel`);
       setSelectedBooking(null);
       setConfirmCancel(false);
-      fetchApprovedBookings(); // refresh calendar
       window.dispatchEvent(new CustomEvent('bookingStatusChanged'));
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -164,30 +163,16 @@ export default function Calendar({ assignedGhId = null }) {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="calendar-container">
-        <div className="calendar-loading">Loading calendar...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="calendar-container">
-        <div className="calendar-error">{error}</div>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="calendar-container">
         <div className="calendar-wrapper">
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin]}
             initialView="dayGridMonth"
-            events={events}
+            events={fetchApprovedBookings}
+            loading={setLoading}
             eventClick={handleEventClick}
             headerToolbar={{
               left: 'prev,next today',
@@ -197,6 +182,8 @@ export default function Calendar({ assignedGhId = null }) {
             height="auto"
             eventContent={renderEventContent}
           />
+          {loading && <div className="calendar-loading">Loading calendar...</div>}
+          {error && <div className="calendar-error">{error}</div>}
         </div>
       </div>
 

@@ -97,6 +97,8 @@ bookingSchema.index({ userId: 1, createdAt: -1 });
 bookingSchema.index({ guestHouseId: 1, createdAt: -1 });
 // Index for status-based queries (approve/reject/calendar)
 bookingSchema.index({ status: 1, checkIn: 1 });
+// Scoped calendar queries filter by guest house, status, and visible check-in range.
+bookingSchema.index({ guestHouseId: 1, status: 1, checkIn: 1 });
 // Index for date range queries used in dashboard metrics
 bookingSchema.index({ createdAt: -1 });
 

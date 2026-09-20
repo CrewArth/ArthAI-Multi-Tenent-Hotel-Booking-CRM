@@ -882,8 +882,20 @@ export const cancelBooking = async (req, res) => {
 export const getApprovedBookingsForCalendar = async (req, res) => {
   try {
     const { Booking, GuestHouse } = req.tenantModels;
+    const { startDate, endDate, guestHouseId } = req.body || {};
     const query = { status: { $in: ["approved", "cancelled"] } };
     const user = req.user;
+
+    // A calendar only needs bookings that overlap its visible dates. Returning
+    // the complete booking history made this endpoint grow linearly over time.
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) {
+      return res.status(400).json({ message: "A valid calendar startDate and endDate are required" });
+    }
+
+    query.checkIn = { $lt: end };
+    query.checkOut = { $gt: start };
 
     if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
       const ghId = typeof user.assignedGuestHouseId === 'object'
@@ -891,16 +903,25 @@ export const getApprovedBookingsForCalendar = async (req, res) => {
         : user.assignedGuestHouseId;
       if (ghId) {
         const isObjId = isObjectId(ghId) && /^[a-f\d]{24}$/i.test(ghId);
-        const gh = await GuestHouse.findOne({
-          $or: [{ guestHouseId: ghId }, ...(isObjId ? [{ _id: ghId }] : [])],
-        }).lean();
-        if (gh) query.guestHouseId = gh._id;
+        if (isObjId) {
+          query.guestHouseId = new mongoose.Types.ObjectId(ghId);
+        } else {
+          const gh = await GuestHouse.findOne({ guestHouseId: ghId }).select('_id').lean();
+          if (gh) query.guestHouseId = gh._id;
+        }
       }
+    } else if (guestHouseId) {
+      const isObjId = isObjectId(guestHouseId);
+      const gh = isObjId
+        ? { _id: new mongoose.Types.ObjectId(guestHouseId) }
+        : await GuestHouse.findOne({ guestHouseId }).select('_id').lean();
+      if (gh) query.guestHouseId = gh._id;
     }
 
     const bookings = await Booking.find(query)
+      .select('_id userId guestHouseId roomIds bedId checkIn checkOut status isCheckedOut')
       .populate("userId", "firstName lastName email")
-      .populate({ path: "guestHouseId", select: "guestHouseId guestHouseName location", options: { strictPopulate: false } })
+      .populate({ path: "guestHouseId", select: "guestHouseName", options: { strictPopulate: false } })
       .populate("roomIds", "roomNumber roomType")
       .populate("bedId", "bedNumber bedType")
       .sort({ checkIn: 1 })
