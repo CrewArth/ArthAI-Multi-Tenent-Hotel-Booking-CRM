@@ -32,3 +32,10 @@ h1, .page-title {
 button, input, select, textarea, label {
   font-family: var(--font-main);
 }
+
+table,
+table th,
+table td,
+table caption {
+  font-family: 'Google Sans', 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
