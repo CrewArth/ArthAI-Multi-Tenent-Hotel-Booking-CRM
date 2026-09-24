@@ -20,12 +20,13 @@ const saveToStorage = (settings) => {
 };
 
 const defaults = {
-  siteName: 'Neuvera',
+  siteName: 'Neuvera Hotel Systems',
   logoUrl: null, // null → use the bundled logo.png fallback
 };
 
 const storedSettings = loadFromStorage();
-const initialSiteName = (!storedSettings?.siteName || storedSettings?.siteName === 'Arth Hotel')
+const legacyDefaultNames = ['AV Hotel', 'AV Hotels', 'Arth Hotel', 'Arth.AI', 'Neuvera'];
+const initialSiteName = (!storedSettings?.siteName || legacyDefaultNames.includes(storedSettings.siteName))
   ? defaults.siteName
   : storedSettings.siteName;
 

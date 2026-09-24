@@ -20,17 +20,19 @@ export default function SuperAdminInventoryPage() {
   const [requestPages, setRequestPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
 
-  const loadInventory = useCallback(async (page = inventoryPage) => {
+  const loadInventory = useCallback(async (page = inventoryPage, searchValue = activeSearch) => {
     setLoading(true);
     try {
-      const response = await api.post('/api/inventory/list', { page });
+      const response = await api.post('/api/inventory/list', { page, search: searchValue });
       setInventory(response.data?.inventory || []);
       setInventoryPage(response.data?.currentPage || page);
       setInventoryPages(response.data?.totalPages || 1);
     } catch (error) { toast.error(error.response?.data?.message || 'Failed to load inventory'); }
     finally { setLoading(false); }
-  }, [inventoryPage]);
+  }, [inventoryPage, activeSearch]);
 
   const loadRequests = useCallback(async (page = requestPage) => {
     setLoading(true);
@@ -72,9 +74,17 @@ export default function SuperAdminInventoryPage() {
     } catch (error) { toast.error(error.response?.data?.message || `Failed to ${action} request`); }
   };
 
+  const submitSearch = (event) => {
+    event.preventDefault();
+    const nextSearch = search.trim();
+    setActiveSearch(nextSearch);
+    loadInventory(1, nextSearch);
+  };
+
   return <section className="inventory-page">
     <div className="inventory-heading"><h1>Inventory Management</h1>{tab === 'inventory' && <button className="inventory-primary" onClick={() => setShowForm(true)}>Add Item</button>}</div>
     <div className="inventory-tabs"><button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button><button className={tab === 'requests' ? 'active' : ''} onClick={() => setTab('requests')}>Item Requests</button></div>
+    {tab === 'inventory' && <form className="inventory-search" role="search" onSubmit={submitSearch}><input type="search" aria-label="Search inventory" placeholder="Search by item name or description" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Search</button></form>}
     {tab === 'inventory' && <InventoryTable inventory={inventory} loading={loading} page={inventoryPage} pages={inventoryPages} onPage={loadInventory} showHotel showCostPrice />}
     {tab === 'requests' && <RequestTable requests={requests} loading={loading} page={requestPage} pages={requestPages} onPage={loadRequests} onReview={(requestId, action) => setReviewAction({ requestId, action })} />}
     {showForm && <div className="inventory-modal-backdrop" onClick={() => setShowForm(false)}><form className="inventory-modal" onSubmit={submitItem} onClick={(event) => event.stopPropagation()}>

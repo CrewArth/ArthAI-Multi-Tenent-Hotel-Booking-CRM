@@ -60,7 +60,7 @@ export const getSettings = async (req, res) => {
       $or: [{ dbName }, { tenantId: dbName }]
     }).lean();
 
-    const siteName = tenant?.config?.siteName || tenant?.hotelDetails?.hotelName || tenant?.name || 'Neuvera';
+    const siteName = tenant?.config?.siteName || tenant?.hotelDetails?.hotelName || tenant?.name || 'Neuvera Hotel Systems';
     const rawLogo = tenant?.config?.logoUrl || tenant?.hotelDetails?.hotelLogo || null;
     const logoUrl = sanitizeLogoUrl(rawLogo);
 

@@ -5,6 +5,19 @@ const PAGE_SIZE = 10;
 
 const getPage = (value) => Math.max(1, Number.parseInt(value, 10) || 1);
 
+const addItemSearch = async (query, Item, value) => {
+  const search = String(value || '').trim();
+  if (!search) return;
+  const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const itemIds = await Item.find({
+    $or: [
+      { name: { $regex: escapedSearch, $options: 'i' } },
+      { description: { $regex: escapedSearch, $options: 'i' } },
+    ],
+  }).distinct('_id');
+  query.itemId = { $in: itemIds };
+};
+
 const getAssignedGuestHouseId = (user) => {
   const assigned = user?.assignedGuestHouseId;
   if (assigned && typeof assigned === 'object') return assigned._id || assigned.guestHouseId || null;
@@ -114,7 +127,7 @@ export const addItem = async (req, res) => {
 
 export const listInventory = async (req, res) => {
   try {
-    const { Inventory, GuestHouse } = req.tenantModels;
+    const { Inventory, GuestHouse, Item } = req.tenantModels;
     const page = getPage(req.body?.page);
     const query = {};
     const guestHouseId = req.body?.guestHouseId;
@@ -126,6 +139,8 @@ export const listInventory = async (req, res) => {
       if (!hotel) return res.status(404).json({ message: 'Hotel not found.' });
       query.guestHouseId = hotel._id;
     }
+
+    await addItemSearch(query, Item, req.body?.search);
 
     const [totalCount, inventory] = await Promise.all([
       Inventory.countDocuments(query),
@@ -147,12 +162,13 @@ export const listInventory = async (req, res) => {
 
 export const listHotelInventory = async (req, res) => {
   try {
-    const { Inventory } = req.tenantModels;
+    const { Inventory, Item } = req.tenantModels;
     const hotel = await getHotelForUser(req);
     if (!hotel) return res.status(403).json({ message: 'No hotel assigned to your account.' });
 
     const page = getPage(req.body?.page);
     const query = { guestHouseId: hotel._id };
+    await addItemSearch(query, Item, req.body?.search);
     const [totalCount, inventory] = await Promise.all([
       Inventory.countDocuments(query),
       Inventory.find(query)
@@ -173,9 +189,10 @@ export const listHotelInventory = async (req, res) => {
 
 export const listAvailableItems = async (req, res) => {
   try {
-    const { Inventory } = req.tenantModels;
+    const { Inventory, Item } = req.tenantModels;
     const page = getPage(req.body?.page);
     const query = { guestHouseId: null, quantity: { $gt: 0 } };
+    await addItemSearch(query, Item, req.body?.search);
     const [totalCount, inventory] = await Promise.all([
       Inventory.countDocuments(query),
       Inventory.find(query)

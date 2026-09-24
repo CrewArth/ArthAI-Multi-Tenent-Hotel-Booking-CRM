@@ -21,6 +21,8 @@ export default function HotelAdminInventoryPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [allowPriceChange, setAllowPriceChange] = useState(true);
+  const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
 
   useEffect(() => {
     api.post('/api/inventory/hotel/config')
@@ -28,27 +30,27 @@ export default function HotelAdminInventoryPage() {
       .catch((error) => console.error('Failed to load inventory permissions:', error));
   }, []);
 
-  const loadHotelInventory = useCallback(async (page = directPage) => {
+  const loadHotelInventory = useCallback(async (page = directPage, searchValue = activeSearch) => {
     setLoading(true);
     try {
-      const response = await api.post('/api/inventory/hotel/list', { page });
+      const response = await api.post('/api/inventory/hotel/list', { page, search: searchValue });
       setHotelInventory(response.data?.inventory || []);
       setDirectPage(response.data?.currentPage || page);
       setDirectPages(response.data?.totalPages || 1);
     } catch (error) { toast.error(error.response?.data?.message || 'Failed to load hotel inventory'); }
     finally { setLoading(false); }
-  }, [directPage]);
+  }, [directPage, activeSearch]);
 
-  const loadAvailableItems = useCallback(async (page = availablePage) => {
+  const loadAvailableItems = useCallback(async (page = availablePage, searchValue = activeSearch) => {
     setLoading(true);
     try {
-      const response = await api.post('/api/inventory/hotel/available-items', { page });
+      const response = await api.post('/api/inventory/hotel/available-items', { page, search: searchValue });
       setAvailableItems(response.data?.inventory || []);
       setAvailablePage(response.data?.currentPage || page);
       setAvailablePages(response.data?.totalPages || 1);
     } catch (error) { toast.error(error.response?.data?.message || 'Failed to load available items'); }
     finally { setLoading(false); }
-  }, [availablePage]);
+  }, [availablePage, activeSearch]);
 
   useEffect(() => { if (tab === 'direct') loadHotelInventory(1); else loadAvailableItems(1); }, [tab]);
 
@@ -91,9 +93,17 @@ export default function HotelAdminInventoryPage() {
   const pages = tab === 'direct' ? directPages : availablePages;
   const onPage = tab === 'direct' ? loadHotelInventory : loadAvailableItems;
 
+  const submitSearch = (event) => {
+    event.preventDefault();
+    const nextSearch = search.trim();
+    setActiveSearch(nextSearch);
+    onPage(1, nextSearch);
+  };
+
   return <section className="inventory-page">
     <div className="inventory-heading"><h1>Inventory Management</h1></div>
     <div className="inventory-tabs"><button className={tab === 'direct' ? 'active' : ''} onClick={() => setTab('direct')}>Direct Issue</button><button className={tab === 'request' ? 'active' : ''} onClick={() => setTab('request')}>Item Request</button></div>
+    <form className="inventory-search" role="search" onSubmit={submitSearch}><input type="search" aria-label="Search inventory" placeholder="Search by item name or description" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Search</button></form>
     <InventoryTable inventory={sourceInventory} loading={loading} page={page} pages={pages} onPage={onPage} selectable selection={selectedItems} onSelect={(entry, checked) => selectItem(setSelectedItems, selectedItems, entry, checked)} />
     <SelectedItemsTable selection={selectedItems} note={note} allowPriceChange={allowPriceChange} onNoteChange={setNote} onUpdate={(itemId, field, value) => updateSelected(setSelectedItems, selectedItems, itemId, field, value)} />
     <div className="inventory-actions"><button className="inventory-primary" disabled={submitting || Object.keys(selectedItems).length === 0} onClick={() => submit(tab)}>{submitting ? 'Saving...' : tab === 'direct' ? 'Directly Issue Items' : 'Send Item Request'}</button></div>

@@ -60,6 +60,9 @@ function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Preserve hotel branding saved by the previous successful login.
+    if (localStorage.getItem('siteSettings')) return undefined;
+
     let isMounted = true;
     api.get('/api/settings')
       .then((res) => {

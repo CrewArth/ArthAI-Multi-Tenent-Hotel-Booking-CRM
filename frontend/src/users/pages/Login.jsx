@@ -65,7 +65,13 @@ export default function LoginPage() {
       const res = await api.post("/api/auth/signin", { ...data, logoUrl });
       dispatch(setCredentials({ user: res.data.user, token: res.data.token }));
       if (res.data.siteSettings) {
-        dispatch(updateSiteSettings(res.data.siteSettings));
+        const assignedHotelName = typeof res.data.user?.assignedGuestHouseId === 'object'
+          ? res.data.user.assignedGuestHouseId?.guestHouseName
+          : null;
+        dispatch(updateSiteSettings({
+          ...res.data.siteSettings,
+          siteName: assignedHotelName || res.data.siteSettings.siteName,
+        }));
       }
 
       toast.success("Login Successful!", { autoClose: 1000 });

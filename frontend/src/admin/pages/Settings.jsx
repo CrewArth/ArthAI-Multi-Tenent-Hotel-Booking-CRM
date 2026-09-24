@@ -124,7 +124,7 @@ export default function Settings() {
     try {
       setError('');
       setIsSaving(true);
-      const defaultName = 'Neuvera';
+      const defaultName = 'Neuvera Hotel Systems';
       const res = await api.put('/api/settings', {
         siteName: defaultName,
         logoUrl: null,

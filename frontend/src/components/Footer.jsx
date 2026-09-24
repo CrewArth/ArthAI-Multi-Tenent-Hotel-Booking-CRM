@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Footer = () => {
   const navigate = useNavigate();
-  const siteName = useSelector((state) => state.siteSettings?.siteName) || 'Arth.AI';
+  const siteName = useSelector((state) => state.siteSettings?.siteName) || 'Neuvera Hotel Systems';
 
   return (
     <footer className="footer-container">

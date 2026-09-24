@@ -4,6 +4,10 @@
 .inventory-tabs button, .inventory-pagination button, .inventory-approve, .inventory-decline { border: 0; cursor: pointer; font-weight: 600; }
 .inventory-tabs button { background: transparent; padding: 10px 14px; color: #64748b; }
 .inventory-tabs button.active { color: #2563eb; border-bottom: 2px solid #2563eb; }
+.inventory-search { display: flex; width: min(480px, 100%); }
+.inventory-search input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid #cbd5e1; border-right: 0; border-radius: 8px 0 0 8px; color: #0f172a; font: inherit; }
+.inventory-search input:focus { position: relative; outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+.inventory-search button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 0 8px 8px 0; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; }
 .inventory-form, .inventory-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
 .inventory-form { display: flex; flex-wrap: wrap; gap: 10px; }
 .inventory-form input, .inventory-form select, .inventory-table-wrap input { min-height: 36px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 10px; box-sizing: border-box; }
