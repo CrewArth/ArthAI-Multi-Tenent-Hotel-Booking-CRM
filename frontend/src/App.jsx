@@ -146,6 +146,7 @@ function App() {
           <Route path="/super-admin/beds" element={<AddBeds />} />
           <Route path="/super-admin/audits" element={<AuditLogs />} />
           <Route path="/super-admin/bookings" element={<Bookings />}/>
+          <Route path="/super-admin/book-room" element={<AdminRoomBooking />} />
           <Route path="/super-admin/reports" element={<Reports />} />
           <Route path="/super-admin/settings" element={<Settings />} />
           <Route path="/super-admin/taxes" element={<TaxesManagement />} />

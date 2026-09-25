@@ -29,10 +29,6 @@ export const normalizeRole = (role) => {
     return "SUPER_ADMIN";
   }
 
-  if (trimmedRole === "user") {
-    return "ADMIN";
-  }
-
   const normalizedRole = trimmedRole.toUpperCase();
 
   if (normalizedRole === "SUPER_ADMIN" || normalizedRole === "SUPER-ADMIN") {
@@ -48,28 +44,32 @@ export const normalizeRole = (role) => {
   }
 
   if (normalizedRole === "USER") {
-    return "ADMIN";
+    return "USER";
   }
 
   return normalizedRole;
 };
 
+const ROLE_BASE_PATHS = Object.freeze({
+  SUPER_ADMIN: '/super-admin',
+  ADMIN: '/admin',
+  HOTEL_ADMIN: '/hotel-admin',
+});
+
+export const getRoleBasePath = (role) => ROLE_BASE_PATHS[normalizeRole(role)] || null;
+
+export const getRouteRoleForPath = (pathname) => Object.entries(ROLE_BASE_PATHS)
+  .find(([, basePath]) => pathname === basePath || pathname.startsWith(`${basePath}/`))?.[0] || null;
+
+export const canAccessRolePath = (role, pathname) => {
+  const requiredRole = getRouteRoleForPath(pathname);
+  return requiredRole !== null && normalizeRole(role) === requiredRole;
+};
+
 export const getRedirectPathForRole = (role) => {
-  const normalizedRole = normalizeRole(role);
-
-  if (normalizedRole === "SUPER_ADMIN") {
-    return "/super-admin/dashboard";
-  }
-
-  if (normalizedRole === "HOTEL_ADMIN") {
-    return "/hotel-admin/dashboard";
-  }
-
-  if (normalizedRole === "ADMIN") {
-    return "/admin/dashboard";
-  }
-
-  return "/signin";
+  if (normalizeRole(role) === 'USER') return '/profile';
+  const basePath = getRoleBasePath(role);
+  return basePath ? `${basePath}/dashboard` : '/signin';
 };
 
 export const getAuthenticatedRedirectPath = () => {

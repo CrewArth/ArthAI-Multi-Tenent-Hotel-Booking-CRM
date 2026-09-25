@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { getStoredToken, getStoredUser, normalizeRole } from "../../utils/auth";
+import { canAccessRolePath, getRedirectPathForRole, getStoredToken, getStoredUser, normalizeRole } from "../../utils/auth";
 
 export default function ProtectedAdminRoute({ children }) {
   const reduxToken = useSelector((state) => state.auth?.token);
@@ -16,9 +16,9 @@ export default function ProtectedAdminRoute({ children }) {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  if (role === "SUPER_ADMIN" || role === "ADMIN" || role === "HOTEL_ADMIN") {
+  if (canAccessRolePath(role, location.pathname)) {
     return children;
   }
 
-  return <Navigate to="/signin" replace />;
+  return <Navigate to={getRedirectPathForRole(role)} replace />;
 }

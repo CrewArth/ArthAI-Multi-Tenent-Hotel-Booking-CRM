@@ -6,6 +6,7 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
+import { getRedirectPathForRole } from '../../utils/auth';
 import CaptureSessionModal from '../components/CaptureSessionModal';
 import '../styles/adminRoomBooking.css';
 
@@ -240,11 +241,9 @@ const AdminRoomBooking = () => {
     g.guestHouseId === selectedGuestHouseId || g._id === selectedGuestHouseId
   );
 
-  const displayHotelName = currentHotel
-    ? currentHotel.guestHouseName
-    : (typeof assignedGuestHouse === 'object' && assignedGuestHouse.guestHouseName
-      ? assignedGuestHouse.guestHouseName
-      : 'Loading hotel...');
+  const displayHotelName = currentHotel?.guestHouseName
+    || assignedGuestHouse?.guestHouseName
+    || (selectedGuestHouseId ? 'Loading hotel...' : 'Select hotel');
 
   // ── Fetch Rooms when selectedGuestHouseId changes ─────────────
   useEffect(() => {
@@ -391,7 +390,7 @@ const AdminRoomBooking = () => {
         toast.success('Room booked successfully!');
       }
 
-      navigate('/admin/dashboard');
+      navigate(getRedirectPathForRole(currentUser?.role));
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.message || err.response?.data?.error || (isEditMode ? 'Failed to update booking.' : 'Failed to create booking.');

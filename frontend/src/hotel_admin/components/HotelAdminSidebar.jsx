@@ -6,14 +6,14 @@ import { useSidebar } from '../../admin/context/SidebarContext';
 import '../../admin/styles/sidebar.css';
 
 export const HotelAdminSidebar = () => {
-  const { mobileOpen, close } = useSidebar();
+  const { open, close } = useSidebar();
   const sidebarRef = useRef(null);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (
-        mobileOpen &&
+        open && window.matchMedia('(max-width: 768px)').matches &&
         sidebarRef.current &&
         !sidebarRef.current.contains(e.target) &&
         !e.target.closest('.sidebar-burger-nav')
@@ -23,14 +23,16 @@ export const HotelAdminSidebar = () => {
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [mobileOpen, close]);
+  }, [open, close]);
 
   const renderLink = (item) => (
     <li key={item.id} className="nav-item">
       <NavLink
         to={item.path || item.navigate}
         className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-        onClick={close}
+        onClick={() => { if (window.matchMedia('(max-width: 768px)').matches) close(); }}
+        title={item.label || item.name}
+        aria-label={item.label || item.name}
       >
         <item.icon size={20} />
         <span>{item.label || item.name}</span>
@@ -42,7 +44,7 @@ export const HotelAdminSidebar = () => {
   return (
     <>
       {/* Overlay backdrop for mobile */}
-      {mobileOpen && (
+      {open && (
         <div
           className="sidebar-overlay"
           onClick={close}
@@ -51,8 +53,9 @@ export const HotelAdminSidebar = () => {
       )}
 
       <aside
+        id="app-sidebar"
         ref={sidebarRef}
-        className={`sidebar${mobileOpen ? ' sidebar--open' : ''}`}
+        className={`sidebar${open ? ' sidebar--open' : ''}`}
       >
         <nav className="sidebar-nav">
           <ul className="nav-list">

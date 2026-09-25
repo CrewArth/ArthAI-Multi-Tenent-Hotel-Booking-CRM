@@ -6,12 +6,15 @@
   --sidebar-text: #1e293b;
   --sidebar-muted: #64748b;
   --sidebar-width: 260px;
+  --sidebar-collapsed-width: 68px;
   --navbar-height: 70px;
 }
 
 /* Sidebar container */
 .sidebar {
-  width: var(--sidebar-width);
+  width: var(--sidebar-collapsed-width);
+  flex: 0 0 var(--sidebar-collapsed-width);
+  box-sizing: border-box;
   height: calc(100vh - var(--navbar-height));
   position: sticky;
   top: var(--navbar-height);
@@ -22,8 +25,15 @@
   flex-direction: column;
   padding: 1rem 0;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 1px 0 4px rgba(0, 0, 0, 0.05);
   align-self: flex-start;
+  transition: width 0.2s ease, flex-basis 0.2s ease;
+}
+
+.sidebar--open {
+  width: var(--sidebar-width);
+  flex-basis: var(--sidebar-width);
 }
 
 /* Navigation items */
@@ -73,6 +83,13 @@
   opacity: 1;
 }
 
+@media (min-width: 769px) {
+  .sidebar:not(.sidebar--open) .nav-item { margin-inline: 0.5rem; }
+  .sidebar:not(.sidebar--open) .nav-link { justify-content: center; gap: 0; padding-inline: 0; }
+  .sidebar:not(.sidebar--open) .nav-link span,
+  .sidebar:not(.sidebar--open) .arrow-icon { display: none; }
+}
+
 /* Ensure admin content area adjusts to sidebar */
 .admin-content {
   margin-left: var(--sidebar-width);
@@ -110,6 +127,8 @@
   /* Slide the sidebar off-screen by default */
   .sidebar {
     position: fixed;
+    width: var(--sidebar-width);
+    flex-basis: var(--sidebar-width);
     top: 0;
     left: 0;
     height: 100vh;

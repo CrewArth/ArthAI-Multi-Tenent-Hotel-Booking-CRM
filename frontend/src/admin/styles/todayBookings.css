@@ -74,17 +74,20 @@
 
 .today-bookings table {
   width: 100%;
-  min-width: 720px;
   border-collapse: collapse;
 }
 
 .today-bookings th,
 .today-bookings td {
-  padding: 8px 10px;
+  padding: var(--table-cell-block) var(--table-cell-inline);
   border-bottom: 1px solid #eef2f7;
   text-align: left;
   color: #374151;
   font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .today-bookings table { min-width: 600px; }
 }
 
 .today-bookings th {

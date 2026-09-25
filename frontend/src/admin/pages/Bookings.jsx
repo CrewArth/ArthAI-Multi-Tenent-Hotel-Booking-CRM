@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import api from "../../utils/api";
 import { getCurrentMonthDateRange } from "../utils/dateUtils";
 import CaptureSessionModal from "../components/CaptureSessionModal";
-import { getStoredUser, normalizeRole } from "../../utils/auth";
+import { getRoleBasePath, getStoredUser, normalizeRole } from "../../utils/auth";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -199,7 +199,7 @@ const Bookings = () => {
 
       {/* ── Table — fixed height so pagination never goes off-screen ── */}
       <div className="table-scroll bookings-table-scroll">
-        <table className="data-table" style={{ minWidth: 900 }}>
+        <table className="data-table">
           <thead>
             <tr>
               <th className="center">#</th>
@@ -263,7 +263,7 @@ const Bookings = () => {
                           disabled={isEditDisabled}
                           onClick={() => {
                             if (isEditDisabled) return;
-                            navigate("/admin/book-room", { state: { bookingId: b._id } });
+                            navigate(`${getRoleBasePath(normalizedRole)}/book-room`, { state: { bookingId: b._id } });
                           }}
                           title={b.isCheckedOut ? "Cannot edit a checked-out booking" : b.status === "cancelled" ? "Cannot edit a cancelled booking" : "Edit booking"}
                         />

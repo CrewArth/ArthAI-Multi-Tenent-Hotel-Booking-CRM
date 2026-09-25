@@ -9,6 +9,7 @@ export default function TaxesManagement() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', percentage: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchTaxes = async () => {
     try {
@@ -42,14 +43,17 @@ export default function TaxesManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Disable this tax?')) return;
+    if (!confirm('Delete this tax?')) return;
     try {
+      setDeletingId(id);
       await api.delete(`/api/taxes/${id}`);
-      setTaxes((t) => t.map((x) => x._id === id ? { ...x, isActive: false } : x));
-      toast.success('Tax disabled');
+      setTaxes((t) => t.filter((tax) => tax._id !== id));
+      toast.success('Tax deleted');
     } catch (err) {
       console.error(err);
-      toast.error('Unable to disable tax');
+      toast.error(err.response?.data?.message || 'Unable to delete tax');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -118,7 +122,14 @@ export default function TaxesManagement() {
                   <input type="checkbox" checked={tax.isActive} onChange={() => handleToggleActive(tax)} />
                 </td>
                 <td style={{ padding: 8, textAlign: 'center' }}>
-                  <button className="disable" onClick={() => handleDelete(tax._id)} style={{ marginLeft: 8 }}>Disable</button>
+                  <button
+                    type="button"
+                    className="tax-delete-action"
+                    onClick={() => handleDelete(tax._id)}
+                    disabled={deletingId === tax._id}
+                    aria-label={`Delete ${tax.name} tax`}
+                    title={`Delete ${tax.name} tax`}
+                  />
                 </td>
               </tr>
             ))}

@@ -59,33 +59,16 @@
 
 .taxes-table thead th {
   text-align: left;
-  padding: 12px 16px;
+  padding: var(--table-cell-block) var(--table-cell-inline);
   background: #f8fafc;
   color: #475569;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
 }
 
 .taxes-table tbody td {
-  padding: 12px 16px;
+  padding: var(--table-cell-block) var(--table-cell-inline);
   border-top: 1px solid #f1f5f9;
   color: #0f172a;
-}
-
-/* Add visible borders around cells */
-.taxes-table thead th,
-.taxes-table tbody td {
-  border-left: 1px solid #eef2f6;
-  border-right: 1px solid #eef2f6;
-}
-
-.taxes-table thead th:first-child,
-.taxes-table tbody td:first-child {
-  border-left: none;
-}
-
-.taxes-table thead th:last-child,
-.taxes-table tbody td:last-child {
-  border-right: none;
 }
 
 .taxes-table tbody tr.empty td {
@@ -101,13 +84,29 @@
   cursor: pointer;
 }
 
-.taxes-table button.disable {
-  background: #fee2e2;
+.taxes-table .tax-delete-action {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: #fef2f2;
   color: #b91c1c;
   border-color: #fecaca;
-  padding: 6px 10px;
-  border-radius: 6px;
 }
+
+.tax-delete-action::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: url('../../icons/delete.svg') center / contain no-repeat;
+  mask: url('../../icons/delete.svg') center / contain no-repeat;
+}
+
+.taxes-table .tax-delete-action:hover:not(:disabled) { background: #fee2e2; }
+.taxes-table .tax-delete-action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.taxes-table .tax-delete-action:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .taxes-table input[type="checkbox"] {
   transform: scale(1.05);
@@ -195,9 +194,4 @@
   background: #2563eb;
   color: #fff;
   cursor: pointer;
-}
-
-.taxes-table button.disable {
-  background: #fee2e2;
-  color: #b91c1c;
 }

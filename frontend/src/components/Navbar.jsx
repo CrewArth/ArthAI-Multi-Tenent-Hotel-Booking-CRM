@@ -78,15 +78,16 @@ const Navbar = () => {
   return (
     <nav className="navbar-container">
       <div className="navbar-left">
-        {/* Sidebar burger — only on admin pages on mobile */}
+        {/* Shared sidebar toggle for every admin layout */}
         {sidebarCtx && (
           <button
             className="sidebar-burger-nav"
             onClick={sidebarCtx.toggle}
-            aria-label={sidebarCtx.mobileOpen ? 'Close sidebar' : 'Open sidebar'}
-            aria-expanded={sidebarCtx.mobileOpen}
+            aria-label={sidebarCtx.open ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-expanded={sidebarCtx.open}
+            aria-controls="app-sidebar"
           >
-            {sidebarCtx.mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            {sidebarCtx.open ? <X size={22} /> : <Menu size={22} />}
           </button>
         )}
         <Logo />

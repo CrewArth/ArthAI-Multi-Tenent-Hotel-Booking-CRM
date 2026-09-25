@@ -29,10 +29,10 @@
 
 .my-bookings-table th,
 .my-bookings-table td {
-  padding: 14px 16px;
+  padding: var(--table-cell-block) var(--table-cell-inline);
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
-  font-size: 0.95rem;
+  font-size: var(--table-font-size);
 }
 
 .my-bookings-table th {
@@ -104,8 +104,8 @@
 
   .my-bookings-table th,
   .my-bookings-table td {
-    padding: 10px 12px;
-    font-size: 0.9rem;
+    padding: var(--table-cell-block) var(--table-cell-inline);
+    font-size: var(--table-font-size);
   }
 
   .my-bookings-container h2 {
@@ -121,8 +121,8 @@
 
   .my-bookings-table th,
   .my-bookings-table td {
-    padding: 8px 10px;
-    font-size: 0.85rem;
+    padding: var(--table-cell-block) var(--table-cell-inline);
+    font-size: var(--table-font-size);
   }
 
   .status {

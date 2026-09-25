@@ -80,9 +80,9 @@
   color: #000000;
 }
 
-/* Sidebar burger button (admin pages only, mobile) */
+/* Sidebar toggle for all admin layouts */
 .sidebar-burger-nav {
-  display: none;
+  display: flex;
   background: transparent;
   border: none;
   padding: 6px;
@@ -96,12 +96,6 @@
 
 .sidebar-burger-nav:hover {
   background: #f1f5f9;
-}
-
-@media (max-width: 768px) {
-  .sidebar-burger-nav {
-    display: flex;
-  }
 }
 
 /* Mobile Menu Icon */

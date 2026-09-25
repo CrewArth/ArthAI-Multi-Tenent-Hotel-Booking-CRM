@@ -172,7 +172,7 @@ const Receipts = () => {
 
       {!loading && !error && (
         <div className="table-scroll">
-          <table className="data-table" style={{ minWidth: 780 }}>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>#</th>

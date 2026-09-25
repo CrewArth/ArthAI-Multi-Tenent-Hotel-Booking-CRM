@@ -11,7 +11,7 @@ const SETTINGS_ID = 'MC_SETTINGS';
 const Sidebar = () => {
   const user = useSelector((state) => state.auth.user);
   const role = String(user?.role || '').toUpperCase();
-  const { mobileOpen, close } = useSidebar();
+  const { open, close } = useSidebar();
   const sidebarRef = useRef(null);
 
   const isHotelAdmin = role === 'HOTEL_ADMIN' || role === 'HOTEL-ADMIN';
@@ -24,7 +24,7 @@ const Sidebar = () => {
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (
-        mobileOpen &&
+        open && window.matchMedia('(max-width: 768px)').matches &&
         sidebarRef.current &&
         !sidebarRef.current.contains(e.target) &&
         !e.target.closest('.sidebar-burger-nav')
@@ -34,14 +34,16 @@ const Sidebar = () => {
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [mobileOpen, close]);
+  }, [open, close]);
 
   const renderLink = (item) => (
     <li key={item.id} className="nav-item">
       <NavLink
         to={item.navigate}
         className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-        onClick={close}
+        onClick={() => { if (window.matchMedia('(max-width: 768px)').matches) close(); }}
+        title={item.name}
+        aria-label={item.name}
       >
         <item.icon size={20} />
         <span>{item.name}</span>
@@ -53,7 +55,7 @@ const Sidebar = () => {
   return (
     <>
       {/* Overlay backdrop for mobile */}
-      {mobileOpen && (
+      {open && (
         <div
           className="sidebar-overlay"
           onClick={close}
@@ -62,8 +64,9 @@ const Sidebar = () => {
       )}
 
       <aside
+        id="app-sidebar"
         ref={sidebarRef}
-        className={`sidebar${mobileOpen ? ' sidebar--open' : ''}`}
+        className={`sidebar${open ? ' sidebar--open' : ''}`}
       >
         <nav className="sidebar-nav">
           {/* Main navigation items */}

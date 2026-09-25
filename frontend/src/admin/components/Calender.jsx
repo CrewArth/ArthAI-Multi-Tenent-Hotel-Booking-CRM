@@ -1,20 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import '../styles/calendar.css';
 import '../styles/adminBooking.css';
 import '../styles/dashboard.css';
 import api from '../../utils/api';
+import { getRoleBasePath, getRouteRoleForPath } from '../../utils/auth';
 
 export default function Calendar({ assignedGhId = null }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const calendarRef = useRef(null);
+  const calendarWrapperRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+
+  useEffect(() => {
+    const wrapper = calendarWrapperRef.current;
+    if (!wrapper || typeof ResizeObserver === 'undefined') return undefined;
+
+    let frameId;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => calendarRef.current?.getApi().updateSize());
+    });
+    observer.observe(wrapper);
+
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frameId);
+    };
+  }, []);
 
   useEffect(() => {
     const handleStatusChange = () => {
@@ -166,7 +186,7 @@ export default function Calendar({ assignedGhId = null }) {
   return (
     <>
       <div className="calendar-container">
-        <div className="calendar-wrapper">
+        <div className="calendar-wrapper" ref={calendarWrapperRef}>
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin]}
@@ -258,7 +278,7 @@ export default function Calendar({ assignedGhId = null }) {
                 onClick={() => {
                   if (isEditDisabled) return;
                   setSelectedBooking(null);
-                  navigate('/admin/book-room', { state: { bookingId: selectedBooking.id } });
+                  navigate(`${getRoleBasePath(getRouteRoleForPath(location.pathname))}/book-room`, { state: { bookingId: selectedBooking.id } });
                 }}
                 disabled={isEditDisabled}
                 title={isEditDisabled ? 'Cannot edit a cancelled or checked-out booking' : 'Edit booking'}

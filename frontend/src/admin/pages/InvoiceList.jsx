@@ -303,7 +303,7 @@ const InvoiceList = () => {
       {!loading && !error && (
         <>
           <div className="table-scroll">
-            <table className="data-table" style={{ minWidth: 900 }}>
+            <table className="data-table">
               <thead>
                 <tr>
                   <th className="center">#</th>

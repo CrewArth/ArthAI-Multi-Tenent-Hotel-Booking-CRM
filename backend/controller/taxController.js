@@ -55,11 +55,9 @@ export const deleteTax = async (req, res) => {
   try {
     const { Tax } = req.tenantModels;
     const { id } = req.params;
-    const tax = await Tax.findById(id);
+    const tax = await Tax.findByIdAndDelete(id);
     if (!tax) return res.status(404).json({ message: 'Tax not found' });
-    tax.isActive = false;
-    await tax.save();
-    return res.json({ message: 'Tax disabled' });
+    return res.json({ message: 'Tax deleted' });
   } catch (err) {
     console.error('Error deleting tax:', err);
     return res.status(500).json({ message: 'Unable to delete tax' });
