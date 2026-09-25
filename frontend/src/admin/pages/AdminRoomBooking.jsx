@@ -451,7 +451,7 @@ const AdminRoomBooking = () => {
               </label>
               <label>
                 Check In <span>*</span>
-                <input type="date" name="checkIn" value={form.checkIn} min={todayStr()} onChange={updateForm} required />
+                <input type="date" name="checkIn" value={form.checkIn} min={isEditMode ? undefined : todayStr()} onChange={updateForm} required />
               </label>
               <label>
                 Check Out <span>*</span>
