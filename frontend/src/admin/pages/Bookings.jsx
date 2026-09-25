@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { FaFileExcel } from "react-icons/fa";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
-import editIcon from "../../assets/edit.svg";
 import { getCurrentMonthDateRange } from "../utils/dateUtils";
 import CaptureSessionModal from "../components/CaptureSessionModal";
 import { getStoredUser, normalizeRole } from "../../utils/auth";
@@ -244,58 +243,37 @@ const Bookings = () => {
                           <>
                             <button
                               className="btn-action approve"
+                              aria-label="Approve booking"
+                              title="Approve booking"
                               disabled={actionLoadingId === b._id}
                               onClick={() => handleAction(b._id, "approve", b.status)}
-                            >
-                              {actionLoadingId === b._id ? "…" : "Approve"}
-                            </button>
+                            />
                             <button
                               className="btn-action reject"
+                              aria-label="Reject booking"
+                              title="Reject booking"
                               disabled={actionLoadingId === b._id}
                               onClick={() => handleAction(b._id, "reject", b.status)}
-                            >
-                              {actionLoadingId === b._id ? "…" : "Reject"}
-                            </button>
+                            />
                           </>
                         )}
                         <button
                           className="btn-action edit"
+                          aria-label="Edit booking"
                           disabled={isEditDisabled}
                           onClick={() => {
                             if (isEditDisabled) return;
                             navigate("/admin/book-room", { state: { bookingId: b._id } });
                           }}
                           title={b.isCheckedOut ? "Cannot edit a checked-out booking" : b.status === "cancelled" ? "Cannot edit a cancelled booking" : "Edit booking"}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            boxShadow: 'none',
-                            padding: '4px',
-                            opacity: isEditDisabled ? 0.35 : 1,
-                            cursor: isEditDisabled ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          <img src={editIcon} alt="Edit" style={{ width: 16, height: 16 }} />
-                        </button>
+                        />
                         <button
-                          className="btn-action"
-                          style={{
-                            background: '#f0f9ff',
-                            color: '#0284c7',
-                            border: '1px solid #bae6fd',
-                            padding: '3px 7px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.2rem',
-                          }}
+                          className="btn-action qr"
+                          aria-label="Capture verification documents via phone QR"
                           onClick={() => setCaptureBookingId(b._id)}
                           title="Capture verification documents via phone QR"
-                        >
-                          <span>📱</span> QR
-                        </button>
-                        <button className="btn-action view" onClick={() => setSelected(b)}>View</button>
+                        />
+                        <button className="btn-action view" aria-label="View booking" title="View booking" onClick={() => setSelected(b)} />
                       </div>
                     </td>
                   </tr>
@@ -348,16 +326,6 @@ const Bookings = () => {
               </div>
             </div>
             <div className="page-modal-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button
-                className="btn-action"
-                style={{ background: '#0284c7', color: '#fff', padding: '6px 12px', fontSize: '0.85rem' }}
-                onClick={() => {
-                  setCaptureBookingId(selected._id);
-                  setSelected(null);
-                }}
-              >
-                📱 Capture Documents via Phone
-              </button>
               <button className="btn-action view" onClick={() => setSelected(null)}>Close</button>
             </div>
           </div>

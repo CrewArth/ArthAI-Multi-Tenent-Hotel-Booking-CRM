@@ -224,3 +224,50 @@
 .PhoneInputInput:focus {
   border-color: #2563eb;
 }
+
+/* Admin account create/edit dialogs */
+.admin-account-modal {
+  box-sizing: border-box;
+  width: min(680px, 100%);
+  max-width: 680px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .22);
+}
+.admin-account-modal .modal-header {
+  align-items: center;
+  padding: 22px 28px 18px;
+}
+.admin-account-modal .modal-header h2 { font-size: 1.25rem; letter-spacing: -.02em; }
+.admin-account-modal .subtitle { margin-top: 5px; line-height: 1.4; }
+.admin-account-modal .btn-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; font-size: 1.4rem; }
+.admin-account-modal .modal-form { gap: 20px; padding: 20px 28px 0; overflow-y: auto; }
+.admin-modal-section { display: grid; gap: 12px; }
+.admin-modal-section-heading h3 { margin: 0; color: #0f172a; font-size: .9rem; font-weight: 700; }
+.admin-modal-section-heading p { margin: 3px 0 0; color: #64748b; font-size: .78rem; line-height: 1.4; }
+.admin-account-modal .form-label { font-size: .8rem; gap: 6px; }
+.admin-account-modal .form-input,
+.admin-account-modal .PhoneInputInput { box-sizing: border-box; min-height: 40px; border-radius: 8px; }
+.admin-account-modal .form-input:focus,
+.admin-account-modal .PhoneInputInput:focus { box-shadow: 0 0 0 3px rgba(37, 99, 235, .11); }
+.admin-credential-preview { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 12px; border: 1px solid #dbeafe; border-radius: 8px; background: #f8fbff; }
+.admin-credential-preview span { color: #64748b; font-size: .75rem; font-weight: 600; }
+.admin-credential-preview strong { overflow-wrap: anywhere; color: #1d4ed8; font-size: .83rem; font-weight: 700; }
+.admin-modal-hint { margin: -14px 0 0; color: #64748b; font-size: .75rem; }
+.admin-modal-optional { border-top: 1px solid #e2e8f0; padding-top: 14px; }
+.admin-modal-optional summary { color: #475569; font-size: .83rem; font-weight: 600; cursor: pointer; }
+.admin-modal-optional-body { display: grid; gap: 14px; padding-top: 14px; }
+.admin-account-modal .textarea-input { min-height: 64px; }
+.admin-account-modal .modal-actions { position: sticky; bottom: 0; margin-top: 2px; padding: 16px 0 18px; background: #fff; }
+.admin-account-modal .btn { min-height: 38px; padding: 8px 16px; border-radius: 8px; }
+.admin-account-modal .btn:focus-visible,
+.admin-account-modal .btn-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.admin-account-modal .btn:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 560px) {
+  .admin-account-modal .modal-header { padding: 18px 18px 14px; }
+  .admin-account-modal .modal-form { padding: 18px 18px 0; }
+  .admin-credential-preview { align-items: flex-start; flex-direction: column; gap: 4px; }
+}

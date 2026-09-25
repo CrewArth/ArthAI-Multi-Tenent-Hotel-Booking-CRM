@@ -12,6 +12,7 @@ const addItemSearch = async (query, Item, value) => {
   const itemIds = await Item.find({
     $or: [
       { name: { $regex: escapedSearch, $options: 'i' } },
+      { initials: { $regex: escapedSearch, $options: 'i' } },
       { description: { $regex: escapedSearch, $options: 'i' } },
     ],
   }).distinct('_id');
@@ -56,6 +57,20 @@ const allowHotelPriceChange = async (Configuration) => {
   return configuration?.allowHotelPriceChange !== false;
 };
 
+const itemPayload = (body) => {
+  const name = String(body?.name || '').trim();
+  const initials = String(body?.initials || '').trim().toUpperCase();
+  const unit = String(body?.unit || 'piece').trim();
+  const quantity = Number(body?.quantity);
+  const price = Number(body?.price);
+  const costPrice = Number(body?.costPrice);
+  const isChargeable = body?.isChargeable === undefined ? true : body.isChargeable;
+  if (!name || !/^[A-Z]{1,2}$/.test(initials) || !unit || typeof isChargeable !== 'boolean' || body?.quantity === '' || body?.price === '' || body?.costPrice === '' || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(costPrice) || costPrice < 0) return null;
+  return { name, initials, description: String(body?.description || '').trim(), unit, quantity, price: isChargeable ? price : 0, costPrice, isChargeable };
+};
+
+const chargeablePrice = (item, price) => item?.isChargeable === false ? 0 : price;
+
 export const getInventoryConfiguration = async (req, res) => {
   try {
     const { Configuration } = req.tenantModels;
@@ -85,43 +100,89 @@ export const updateInventoryConfiguration = async (req, res) => {
 export const addItem = async (req, res) => {
   try {
     const { Item, Inventory, GuestHouse } = req.tenantModels;
-    const { name, description, unit, quantity, price, costPrice, guestHouseId } = req.body || {};
-    const stockQuantity = Number(quantity);
-    const sellingPrice = Number(price);
-    const itemCostPrice = Number(costPrice);
+    const details = itemPayload(req.body);
+    if (!details) return res.status(400).json({ message: 'Enter a name, one or two letter initials, quantity, price, and cost price.' });
 
-    if (!String(name || '').trim() || !Number.isInteger(stockQuantity) || stockQuantity < 0 || !Number.isFinite(sellingPrice) || sellingPrice < 0 || !Number.isFinite(itemCostPrice) || itemCostPrice < 0) {
-      return res.status(400).json({ message: 'Name, quantity, price, and cost price are required.' });
+    const hotel = req.body?.guestHouseId ? await resolveGuestHouse(GuestHouse, req.body.guestHouseId) : null;
+    if (req.body?.guestHouseId && !hotel) return res.status(404).json({ message: 'Hotel not found.' });
+
+    let item = await Item.findOne({ name: details.name });
+    if (item && ((item.initials && item.initials !== details.initials) || item.isChargeable !== details.isChargeable)) {
+      return res.status(409).json({ message: 'This item already exists with different initials or chargeability. Edit the item first.' });
     }
-
-    const hotel = guestHouseId ? await resolveGuestHouse(GuestHouse, guestHouseId) : null;
-    if (guestHouseId && !hotel) return res.status(404).json({ message: 'Hotel not found.' });
-
-    let item = await Item.findOne({ name: String(name).trim() });
     if (!item) {
       item = await Item.create({
-        name: String(name).trim(),
-        description: String(description || '').trim(),
-        unit: String(unit || 'piece').trim(),
+        name: details.name,
+        initials: details.initials,
+        description: details.description,
+        unit: details.unit,
+        isChargeable: details.isChargeable,
         createdBy: req.user._id,
       });
+    } else if (!item.initials) {
+      item.initials = details.initials;
+      await item.save();
     }
 
     const inventory = await Inventory.findOneAndUpdate(
       { itemId: item._id, guestHouseId: hotel?._id || null },
       {
-        $inc: { quantity: stockQuantity },
-        $set: { price: sellingPrice, costPrice: itemCostPrice, updatedBy: req.user._id },
+        $inc: { quantity: details.quantity },
+        $set: { price: details.price, costPrice: details.costPrice, updatedBy: req.user._id },
         $setOnInsert: { itemId: item._id, guestHouseId: hotel?._id || null, createdBy: req.user._id },
       },
       { new: true, upsert: true, runValidators: true }
-    ).populate('itemId', 'name description unit').populate('guestHouseId', 'guestHouseName');
+    ).populate('itemId', 'name initials description unit isChargeable').populate('guestHouseId', 'guestHouseName');
 
     return res.status(201).json({ message: 'Inventory added successfully.', inventory });
   } catch (error) {
     if (error?.code === 11000) return res.status(409).json({ message: 'An item with this name already exists.' });
     console.error('Error adding inventory item:', error);
     return res.status(500).json({ message: 'Failed to add inventory item.' });
+  }
+};
+
+export const updateItem = async (req, res) => {
+  if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid inventory item.' });
+  const details = itemPayload(req.body);
+  if (!details) return res.status(400).json({ message: 'Enter a name, one or two letter initials, quantity, price, and cost price.' });
+  const { Inventory, Item } = req.tenantModels;
+  const session = await req.tenantDb.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const inventory = await Inventory.findById(req.params.id).session(session);
+      if (!inventory) throw new Error('INVENTORY_NOT_FOUND');
+      const item = await Item.findById(inventory.itemId).session(session);
+      if (!item) throw new Error('ITEM_NOT_FOUND');
+      const duplicate = await Item.findOne({ name: details.name, _id: { $ne: item._id } }).session(session);
+      if (duplicate) throw new Error('DUPLICATE_ITEM');
+      item.set({ name: details.name, initials: details.initials, description: details.description, unit: details.unit, isChargeable: details.isChargeable });
+      await item.save({ session });
+      inventory.set({ quantity: details.quantity, price: details.price, costPrice: details.costPrice, updatedBy: req.user._id });
+      await inventory.save({ session });
+      if (!details.isChargeable) await Inventory.updateMany({ itemId: item._id }, { $set: { price: 0, updatedBy: req.user._id } }, { session });
+    });
+    const inventory = await Inventory.findById(req.params.id).populate('itemId', 'name initials description unit isChargeable').populate('guestHouseId', 'guestHouseName');
+    return res.json({ message: 'Inventory item updated.', inventory });
+  } catch (error) {
+    if (error.message === 'INVENTORY_NOT_FOUND' || error.message === 'ITEM_NOT_FOUND') return res.status(404).json({ message: 'Inventory item not found.' });
+    if (error.message === 'DUPLICATE_ITEM' || error?.code === 11000) return res.status(409).json({ message: 'An item with this name already exists.' });
+    console.error('Error updating inventory item:', error);
+    return res.status(500).json({ message: 'Failed to update inventory item.' });
+  } finally {
+    await session.endSession();
+  }
+};
+
+export const deleteItem = async (req, res) => {
+  if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid inventory item.' });
+  try {
+    const inventory = await req.tenantModels.Inventory.findByIdAndDelete(req.params.id);
+    if (!inventory) return res.status(404).json({ message: 'Inventory item not found.' });
+    return res.json({ message: 'Inventory item deleted.' });
+  } catch (error) {
+    console.error('Error deleting inventory item:', error);
+    return res.status(500).json({ message: 'Failed to delete inventory item.' });
   }
 };
 
@@ -145,7 +206,7 @@ export const listInventory = async (req, res) => {
     const [totalCount, inventory] = await Promise.all([
       Inventory.countDocuments(query),
       Inventory.find(query)
-        .populate('itemId', 'name description unit')
+        .populate('itemId', 'name initials description unit isChargeable')
         .populate('guestHouseId', 'guestHouseName guestHouseId')
         .sort({ updatedAt: -1 })
         .skip((page - 1) * PAGE_SIZE)
@@ -173,14 +234,14 @@ export const listHotelInventory = async (req, res) => {
       Inventory.countDocuments(query),
       Inventory.find(query)
         .select('-costPrice')
-        .populate('itemId', 'name description unit')
+        .populate('itemId', 'name initials description unit isChargeable')
         .sort({ updatedAt: -1 })
         .skip((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .lean(),
     ]);
 
-    return res.json({ inventory, currentPage: page, totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)), totalCount });
+    return res.json({ inventory: inventory.map((entry) => ({ ...entry, price: chargeablePrice(entry.itemId, entry.price) })), currentPage: page, totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)), totalCount });
   } catch (error) {
     console.error('Error listing hotel inventory:', error);
     return res.status(500).json({ message: 'Failed to load hotel inventory.' });
@@ -197,14 +258,14 @@ export const listAvailableItems = async (req, res) => {
       Inventory.countDocuments(query),
       Inventory.find(query)
         .select('-costPrice')
-        .populate('itemId', 'name description unit')
+        .populate('itemId', 'name initials description unit isChargeable')
         .sort({ updatedAt: -1 })
         .skip((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .lean(),
     ]);
 
-    return res.json({ inventory, currentPage: page, totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)), totalCount });
+    return res.json({ inventory: inventory.map((entry) => ({ ...entry, price: chargeablePrice(entry.itemId, entry.price) })), currentPage: page, totalPages: Math.max(1, Math.ceil(totalCount / PAGE_SIZE)), totalCount });
   } catch (error) {
     console.error('Error listing available inventory:', error);
     return res.status(500).json({ message: 'Failed to load available items.' });
@@ -213,7 +274,7 @@ export const listAvailableItems = async (req, res) => {
 
 export const createItemRequest = async (req, res) => {
   try {
-    const { Inventory, ItemRequest, Configuration } = req.tenantModels;
+    const { Inventory, Item, ItemRequest, Configuration } = req.tenantModels;
     const hotel = await getHotelForUser(req);
     const items = normalizeItems(req.body?.items);
     if (!hotel) return res.status(403).json({ message: 'No hotel assigned to your account.' });
@@ -224,9 +285,11 @@ export const createItemRequest = async (req, res) => {
     const unavailable = items.some((item) => (availableByItem.get(String(item.itemId))?.quantity || 0) < item.quantity);
     if (unavailable) return res.status(400).json({ message: 'One or more requested quantities exceed central stock.' });
     const priceChangesAllowed = await allowHotelPriceChange(Configuration);
+    const itemDefinitions = await Item.find({ _id: { $in: items.map((item) => item.itemId) } }).select('_id isChargeable').lean();
+    const definitionsById = new Map(itemDefinitions.map((item) => [String(item._id), item]));
     const requestedItems = items.map((item) => ({
       ...item,
-      price: priceChangesAllowed ? item.price : availableByItem.get(String(item.itemId)).price,
+      price: chargeablePrice(definitionsById.get(String(item.itemId)), priceChangesAllowed ? item.price : availableByItem.get(String(item.itemId)).price),
     }));
 
     const request = await ItemRequest.create({
@@ -270,7 +333,7 @@ export const listItemRequests = async (req, res) => {
 export const approveItemRequest = async (req, res) => {
   const session = await req.tenantDb.startSession();
   try {
-    const { Inventory, ItemRequest, ItemIssue } = req.tenantModels;
+    const { Inventory, Item, ItemRequest, ItemIssue } = req.tenantModels;
     let approvedRequest;
 
     await session.withTransaction(async () => {
@@ -278,6 +341,8 @@ export const approveItemRequest = async (req, res) => {
       if (!request) throw new Error('REQUEST_NOT_PENDING');
 
       for (const requestedItem of request.items) {
+        const item = await Item.findById(requestedItem.itemId).select('isChargeable').session(session).lean();
+        requestedItem.price = chargeablePrice(item, requestedItem.price);
         const centralInventory = await Inventory.findOneAndUpdate(
           { itemId: requestedItem.itemId, guestHouseId: null, quantity: { $gte: requestedItem.quantity } },
           { $inc: { quantity: -requestedItem.quantity }, $set: { updatedBy: req.user._id } },
@@ -341,7 +406,7 @@ export const cancelItemRequest = async (req, res) => {
 export const directIssueItems = async (req, res) => {
   const session = await req.tenantDb.startSession();
   try {
-    const { Inventory, ItemIssue, Configuration } = req.tenantModels;
+    const { Inventory, Item, ItemIssue, Configuration } = req.tenantModels;
     const hotel = await getHotelForUser(req);
     const items = normalizeItems(req.body?.items);
     if (!hotel) return res.status(403).json({ message: 'No hotel assigned to your account.' });
@@ -351,13 +416,14 @@ export const directIssueItems = async (req, res) => {
     const issuedItems = [];
     await session.withTransaction(async () => {
       for (const item of items) {
+        const definition = await Item.findById(item.itemId).select('isChargeable').session(session).lean();
         const hotelInventory = await Inventory.findOneAndUpdate(
           { itemId: item.itemId, guestHouseId: hotel._id, quantity: { $gte: item.quantity } },
           { $inc: { quantity: -item.quantity }, $set: { updatedBy: req.user._id } },
           { new: true, session }
         );
         if (!hotelInventory) throw new Error('INSUFFICIENT_STOCK');
-        issuedItems.push({ ...item, price: priceChangesAllowed ? item.price : hotelInventory.price });
+        issuedItems.push({ ...item, price: chargeablePrice(definition, priceChangesAllowed ? item.price : hotelInventory.price) });
       }
       await ItemIssue.create([{
         guestHouseId: hotel._id,

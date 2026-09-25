@@ -6,6 +6,7 @@ import {
   getBookingsPerDay,
   getTopGuestHouses,
   createUserByAdmin,
+  prepareAdminCreation,
   assignGuestHouse,
   updateUserWidgets,
   getMe,
@@ -27,6 +28,7 @@ router.post(
   resolveSubscriptionPlan,
   checkAdminLimit,
   uploadESignature,
+  prepareAdminCreation,
   processAndUploadESignature,
   createUserByAdmin
 );

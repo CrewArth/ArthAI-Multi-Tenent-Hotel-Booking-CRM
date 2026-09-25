@@ -70,12 +70,13 @@ export default function AssignGuestHouseModal({ user, onClose, onSuccess }) {
               onChange={(e) => setSelected(e.target.value)}
               style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 7, font: 'inherit' }}
             >
-              <option value="">None (unassign)</option>
+              {!user.credentialUsername && <option value="">None (unassign)</option>}
               {guestHouses.map((gh) => (
                 <option key={gh._id} value={gh.guestHouseId || gh._id}>{gh.guestHouseName}</option>
               ))}
             </select>
           </label>
+          {user.credentialUsername && <p style={{ margin: '10px 0 0', fontSize: '0.78rem', color: '#64748b' }}>Changing the hotel also updates this admin’s credential email.</p>}
         </div>
 
         <div className="page-modal-footer">

@@ -3,7 +3,6 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../utils/api";
-import editIcon from "../../assets/edit.svg";
 import { getCurrentMonthDateRange } from "../utils/dateUtils";
 import CaptureSessionModal from "../components/CaptureSessionModal";
 
@@ -253,41 +252,20 @@ const GuestHouseBookings = () => {
                       <div className="actions-cell">
                         <button
                           className="btn-action edit"
+                          aria-label="Edit booking"
                           disabled={isEditDisabled}
                           onClick={() => {
                             if (isEditDisabled) return;
                             navigate("/admin/book-room", { state: { bookingId: b._id } });
                           }}
                           title={b.isCheckedOut ? "Cannot edit a checked-out booking" : b.status === "cancelled" ? "Cannot edit a cancelled booking" : "Edit booking"}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            boxShadow: 'none',
-                            padding: '4px',
-                            opacity: isEditDisabled ? 0.35 : 1,
-                            cursor: isEditDisabled ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          <img src={editIcon} alt="Edit" style={{ width: 16, height: 16 }} />
-                        </button>
+                        />
                         <button
-                          className="btn-action"
-                          style={{
-                            background: '#f0f9ff',
-                            color: '#0284c7',
-                            border: '1px solid #bae6fd',
-                            padding: '3px 7px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.2rem',
-                          }}
+                          className="btn-action qr"
+                          aria-label="Capture verification documents via phone QR"
                           onClick={() => setCaptureBookingId(b._id)}
                           title="Capture verification documents via phone QR"
-                        >
-                          <span>📱</span> QR
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>

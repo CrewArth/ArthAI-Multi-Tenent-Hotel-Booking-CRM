@@ -137,22 +137,19 @@ const GuestHouseManagement = () => {
                     <div className="actions-cell" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap', gap: '6px' }}>
                       <button 
                         className="btn-action edit" 
+                        aria-label="Edit hotel"
+                        title="Edit hotel"
                         onClick={() => navigate('/super-admin/add-hotel', { state: { hotel: gh } })}
-                      >
-                        Edit
-                      </button>
+                      />
                       <button
                         className="btn-action dynamic"
+                        aria-label="Manage dynamic pricing"
                         onClick={() => navigate(`/super-admin/dynamic-pricing/${gh.guestHouseId || gh._id}`, { state: { hotel: gh } })}
                         title="Manage Dynamic Pricing"
-                      >
-                        Dynamic Price
-                      </button>
-                      <button className="btn-action toggle" onClick={() => toggleMaintenance(gh.guestHouseId)}>
-                        {gh.maintenance ? "Activate" : "Maintenance"}
-                      </button>
+                      />
+                      <button className={`btn-action toggle ${gh.maintenance ? 'activate' : 'maintenance'}`} aria-label={gh.maintenance ? 'Activate hotel' : 'Set hotel to maintenance'} title={gh.maintenance ? 'Activate hotel' : 'Set hotel to maintenance'} onClick={() => toggleMaintenance(gh.guestHouseId)} />
                       {!isHotelAdmin && (
-                        <button className="btn-action delete" onClick={() => setGhToDelete(gh.guestHouseId)}>Delete</button>
+                        <button className="btn-action delete" aria-label="Delete hotel" title="Delete hotel" onClick={() => setGhToDelete(gh.guestHouseId)} />
                       )}
                     </div>
                   </td>

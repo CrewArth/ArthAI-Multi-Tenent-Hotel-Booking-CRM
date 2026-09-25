@@ -2,6 +2,8 @@ import express from 'express';
 import { authenticate, authorize } from '../middlewares/auth.js';
 import {
   addItem,
+  updateItem,
+  deleteItem,
   approveItemRequest,
   createItemRequest,
   cancelItemRequest,
@@ -19,6 +21,8 @@ const router = express.Router();
 router.use(authenticate);
 
 router.post('/items/add', authorize('SUPER_ADMIN'), addItem);
+router.post('/items/:id/update', authorize('SUPER_ADMIN'), updateItem);
+router.post('/items/:id/delete', authorize('SUPER_ADMIN'), deleteItem);
 router.post('/config', authorize('SUPER_ADMIN'), getInventoryConfiguration);
 router.post('/config/update', authorize('SUPER_ADMIN'), updateInventoryConfiguration);
 router.post('/list', authorize('SUPER_ADMIN'), listInventory);

@@ -387,25 +387,25 @@ export const DynamicPricingPage = () => {
                       <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
                         <button
                           className="btn-action edit"
+                          aria-label="Edit pricing rule"
+                          title="Edit pricing rule"
                           onClick={() => {
                             setSelectedRule(rule);
                             setIsModalOpen(true);
                           }}
-                        >
-                          Edit
-                        </button>
+                        />
                         <button
-                          className="btn-action toggle"
+                          className={`btn-action toggle ${rule.isActive ? '' : 'activate'}`}
+                          aria-label={rule.isActive ? 'Deactivate pricing rule' : 'Activate pricing rule'}
+                          title={rule.isActive ? 'Deactivate pricing rule' : 'Activate pricing rule'}
                           onClick={() => handleToggleRule(rule._id)}
-                        >
-                          {rule.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
+                        />
                         <button
                           className="btn-action delete"
+                          aria-label="Delete pricing rule"
+                          title="Delete pricing rule"
                           onClick={() => handleDeleteRule(rule._id)}
-                        >
-                          Delete
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>

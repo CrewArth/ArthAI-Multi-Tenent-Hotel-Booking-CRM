@@ -208,30 +208,50 @@
 .btn-action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.1s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   white-space: nowrap;
 }
 
-.btn-action:hover  { filter: brightness(0.9); }
-.btn-action:active { transform: scale(0.97); }
+.btn-action:hover:not(:disabled) { filter: brightness(0.96); }
+.btn-action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-action::before {
+  content: '';
+  display: none;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  background-color: currentColor;
+  -webkit-mask: var(--action-icon) center / contain no-repeat;
+  mask: var(--action-icon) center / contain no-repeat;
+}
+.btn-action:is(.edit, .toggle, .delete, .approve, .reject, .view, .create, .export, .primary, .dynamic, .qr)::before { display: inline-block; }
+.btn-action:has(svg, img)::before { display: none; }
 
-.btn-action.edit    { background: #3b82f6; color: #fff; }
-.btn-action.toggle  { background: #f59e0b; color: #fff; }
-.btn-action.delete  { background: #ef4444; color: #fff; }
-.btn-action.approve { background: #10b981; color: #fff; }
-.btn-action.reject  { background: #ef4444; color: #fff; }
-.btn-action.view    { background: #e2e8f0; color: #1e293b; }
-.btn-action.create  { background: #10b981; color: #fff; }
-.btn-action.export  { background: #16a34a; color: #fff; }
-.btn-action.primary { background: #2563eb; color: #fff; }
-.btn-action.dynamic { background: #0284c7; color: #fff; }
+.btn-action.edit    { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; --action-icon: url('../../icons/edit.svg'); }
+.btn-action.toggle  { background: #fffbeb; border-color: #fde68a; color: #92400e; --action-icon: url('../../icons/toggle.svg'); }
+.btn-action.toggle.maintenance { --action-icon: url('../../icons/maintenance.svg'); }
+.btn-action.toggle.activate { --action-icon: url('../../icons/activate.svg'); }
+.btn-action.delete  { background: #fef2f2; border-color: #fecaca; color: #b91c1c; --action-icon: url('../../icons/delete.svg'); }
+.btn-action.approve { background: #ecfdf5; border-color: #a7f3d0; color: #047857; --action-icon: url('../../icons/check.svg'); }
+.btn-action.reject  { background: #fef2f2; border-color: #fecaca; color: #b91c1c; --action-icon: url('../../icons/close.svg'); }
+.btn-action.view    { background: #f8fafc; border-color: #cbd5e1; color: #334155; --action-icon: url('../../icons/view.svg'); }
+.btn-action.create  { background: #ecfdf5; border-color: #a7f3d0; color: #047857; --action-icon: url('../../icons/plus.svg'); }
+.btn-action.export  { background: #ecfdf5; border-color: #a7f3d0; color: #047857; --action-icon: url('../../icons/download.svg'); }
+.btn-action.primary { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; --action-icon: url('../../icons/users.svg'); }
+.btn-action.dynamic { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; --action-icon: url('../../icons/pricing.svg'); }
+.btn-action.qr      { background: #f0f9ff; border-color: #bae6fd; color: #0369a1; --action-icon: url('../../icons/qr.svg'); }
+.btn-action.password { --action-icon: url('../../icons/lock.svg'); }
+.btn-action.assign { --action-icon: url('../../icons/users.svg'); }
 
 /* ── Primary CTA button ── */
 .btn-primary-cta {
@@ -300,6 +320,15 @@
   align-items: center;
   flex-wrap: wrap;
 }
+.actions-cell .btn-action {
+  position: relative;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  gap: 0;
+}
+.actions-cell .btn-action::before { width: 16px; height: 16px; flex-basis: 16px; }
 
 /* ── Pagination ── */
 .pagination-row {

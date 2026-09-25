@@ -24,6 +24,13 @@ const userSchema = new mongoose.Schema({
         unique: true,
     },
 
+    credentialUsername: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        match: /^[a-z][a-z0-9]{2,31}$/,
+    },
+
     phone: {
         type: String,
         trim: true,
@@ -156,5 +163,6 @@ userSchema.pre('save', async function(next) {
 userSchema.index({ role: 1, isActive: 1 });
 userSchema.index({ role: 1, createdAt: -1 });
 userSchema.index({ role: 1, assignedGuestHouseId: 1, createdAt: -1 });
+userSchema.index({ credentialUsername: 1 }, { unique: true, partialFilterExpression: { credentialUsername: { $type: 'string' } } });
 
 export default userSchema;

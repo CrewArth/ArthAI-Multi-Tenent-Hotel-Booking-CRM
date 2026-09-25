@@ -2,14 +2,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
 import { inventoryUnits } from '../../utils/svgutils';
+import EditInventoryItemModal from './EditInventoryItemModal';
 import './inventory.css';
 
-const INITIAL_FORM = { name: '', description: '', unit: 'piece', quantity: '', price: '', costPrice: '', scope: 'central', guestHouseId: '' };
+const INITIAL_FORM = { name: '', initials: '', description: '', unit: 'piece', quantity: '', price: '0', costPrice: '', isChargeable: false, scope: 'central', guestHouseId: '' };
+const PAGE_SIZE = 10;
 
 export default function SuperAdminInventoryPage() {
   const [tab, setTab] = useState('inventory');
   const [showForm, setShowForm] = useState(false);
   const [reviewAction, setReviewAction] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [requests, setRequests] = useState([]);
   const [hotels, setHotels] = useState([]);
@@ -51,9 +55,10 @@ export default function SuperAdminInventoryPage() {
   const submitItem = async (event) => {
     event.preventDefault();
     if (form.scope === 'hotel' && !form.guestHouseId) return toast.warn('Select a hotel');
+    if (!/^[A-Z]{1,2}$/.test(form.initials)) return toast.warn('Initials must be one or two capital letters');
     try {
       setSubmitting(true);
-      await api.post('/api/inventory/items/add', { ...form, quantity: Number(form.quantity), price: Number(form.price), costPrice: Number(form.costPrice), guestHouseId: form.scope === 'hotel' ? form.guestHouseId : undefined });
+      await api.post('/api/inventory/items/add', { ...form, quantity: Number(form.quantity), price: form.isChargeable ? Number(form.price) : 0, costPrice: Number(form.costPrice), guestHouseId: form.scope === 'hotel' ? form.guestHouseId : undefined });
       setForm(INITIAL_FORM);
       setShowForm(false);
       toast.success('Inventory added');
@@ -74,6 +79,18 @@ export default function SuperAdminInventoryPage() {
     } catch (error) { toast.error(error.response?.data?.message || `Failed to ${action} request`); }
   };
 
+  const deleteInventoryItem = async () => {
+    if (!deletingItem) return;
+    try {
+      setSubmitting(true);
+      await api.post(`/api/inventory/items/${deletingItem._id}/delete`);
+      setDeletingItem(null);
+      toast.success('Inventory item deleted');
+      loadInventory(inventory.length === 1 && inventoryPage > 1 ? inventoryPage - 1 : inventoryPage);
+    } catch (error) { toast.error(error.response?.data?.message || 'Failed to delete inventory item'); }
+    finally { setSubmitting(false); }
+  };
+
   const submitSearch = (event) => {
     event.preventDefault();
     const nextSearch = search.trim();
@@ -83,24 +100,32 @@ export default function SuperAdminInventoryPage() {
 
   return <section className="inventory-page">
     <div className="inventory-heading"><h1>Inventory Management</h1>{tab === 'inventory' && <button className="inventory-primary" onClick={() => setShowForm(true)}>Add Item</button>}</div>
-    <div className="inventory-tabs"><button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button><button className={tab === 'requests' ? 'active' : ''} onClick={() => setTab('requests')}>Item Requests</button></div>
-    {tab === 'inventory' && <form className="inventory-search" role="search" onSubmit={submitSearch}><input type="search" aria-label="Search inventory" placeholder="Search by item name or description" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Search</button></form>}
-    {tab === 'inventory' && <InventoryTable inventory={inventory} loading={loading} page={inventoryPage} pages={inventoryPages} onPage={loadInventory} showHotel showCostPrice />}
+    <div className="inventory-tabs"><button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button><button className={tab === 'requests' ? 'active' : ''} onClick={() => setTab('requests')}>Item Requests</button>{tab === 'inventory' && <form className="inventory-search" role="search" onSubmit={submitSearch}><input type="search" aria-label="Search inventory" placeholder="Search by item name or description" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Search</button></form>}</div>
+    {tab === 'inventory' && <InventoryTable inventory={inventory} loading={loading} page={inventoryPage} pages={inventoryPages} onPage={loadInventory} showHotel showCostPrice onEdit={setEditingItem} onDelete={setDeletingItem} />}
     {tab === 'requests' && <RequestTable requests={requests} loading={loading} page={requestPage} pages={requestPages} onPage={loadRequests} onReview={(requestId, action) => setReviewAction({ requestId, action })} />}
     {showForm && <div className="inventory-modal-backdrop" onClick={() => setShowForm(false)}><form className="inventory-modal" onSubmit={submitItem} onClick={(event) => event.stopPropagation()}>
       <div className="inventory-modal-header"><h2>Add Item</h2><button type="button" onClick={() => setShowForm(false)}>×</button></div>
       <div className="inventory-modal-form">
         <label className="inventory-field inventory-field--wide"><span>Item Name</span><input required placeholder="e.g. Bath Towel" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="inventory-field"><span>Item Initials</span><input required maxLength="2" pattern="[A-Z]{1,2}" placeholder="BT" value={form.initials} onChange={(e) => setForm({ ...form, initials: e.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 2) })} /></label>
+        <label className="inventory-field inventory-checkbox"><input type="checkbox" checked={form.isChargeable} onChange={(e) => setForm({ ...form, isChargeable: e.target.checked, price: e.target.checked ? '' : '0' })} /><span>Chargeable to hotel</span></label>
         <label className="inventory-field inventory-field--wide"><span>Description <em>Optional</em></span><input placeholder="Add a short item description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
         <label className="inventory-field"><span>Unit</span><select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>{inventoryUnits.map((unit) => <option key={unit.value} value={unit.value}>{unit.label}</option>)}</select></label>
         <label className="inventory-field"><span>Quantity</span><input required min="0" step="1" type="number" placeholder="0" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></label>
-        <label className="inventory-field"><span>Price</span><div className="inventory-currency-input"><span>₹</span><input required min="0" step="0.01" type="number" placeholder="0.00" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div></label>
+        <label className="inventory-field"><span>Price charged to hotel</span><div className="inventory-currency-input"><span>₹</span><input required min="0" step="0.01" type="number" placeholder="0.00" disabled={!form.isChargeable} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div></label>
         <label className="inventory-field"><span>Cost Price</span><div className="inventory-currency-input"><span>₹</span><input required min="0" step="0.01" type="number" placeholder="0.00" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} /></div></label>
         <label className="inventory-field inventory-field--wide"><span>Inventory Location</span><select value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value, guestHouseId: '' })}><option value="central">Central stock</option><option value="hotel">Specific hotel</option></select></label>
         {form.scope === 'hotel' && <label className="inventory-field inventory-field--wide"><span>Hotel</span><select required value={form.guestHouseId} onChange={(e) => setForm({ ...form, guestHouseId: e.target.value })}><option value="">Select hotel</option>{hotels.map((hotel) => <option key={hotel._id} value={hotel._id}>{hotel.guestHouseName}</option>)}</select></label>}
       </div>
       <div className="inventory-actions"><button type="button" className="inventory-secondary" onClick={() => setShowForm(false)}>Cancel</button><button className="inventory-primary" disabled={submitting}>{submitting ? 'Saving...' : 'Save Item'}</button></div>
     </form></div>}
+    {editingItem && <EditInventoryItemModal entry={editingItem} onClose={() => setEditingItem(null)} onSaved={() => { setEditingItem(null); loadInventory(inventoryPage); }} />}
+    {deletingItem && <div className="inventory-modal-backdrop" onClick={() => setDeletingItem(null)}><div className="inventory-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-inventory-title" onClick={(event) => event.stopPropagation()}>
+      <div className="inventory-confirm-icon cancel">!</div>
+      <h2 id="delete-inventory-title">Delete inventory item?</h2>
+      <div className="inventory-confirm-copy">Remove {deletingItem.itemId?.name || 'this item'} from {deletingItem.guestHouseId?.guestHouseName || 'central stock'}? Past requests and issues will remain.</div>
+      <div className="inventory-confirm-actions"><button className="inventory-secondary" type="button" onClick={() => setDeletingItem(null)}>Go Back</button><button className="inventory-danger" type="button" disabled={submitting} onClick={deleteInventoryItem}>{submitting ? 'Deleting...' : 'Delete Item'}</button></div>
+    </div></div>}
     {reviewAction && <div className="inventory-modal-backdrop" onClick={() => setReviewAction(null)}><div className="inventory-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-confirm-title" onClick={(event) => event.stopPropagation()}>
       <div className={`inventory-confirm-icon ${reviewAction.action}`}>{reviewAction.action === 'approve' ? '✓' : '!'}</div>
       <h2 id="inventory-confirm-title">{reviewAction.action === 'approve' ? 'Approve Item Request?' : 'Cancel Item Request?'}</h2>
@@ -110,10 +135,21 @@ export default function SuperAdminInventoryPage() {
   </section>;
 }
 
-export function InventoryTable({ inventory, loading, page, pages, onPage, showHotel = false, showCostPrice = false, selectable = false, selection = {}, onSelect }) {
-  const columns = 4 + Number(showHotel) + Number(showCostPrice) + Number(selectable);
-  return <div className="inventory-card"><div className="inventory-table-wrap"><table><thead><tr>{selectable && <th>Select</th>}<th>Item</th><th>Available</th><th>Unit</th>{showHotel && <th>Location</th>}<th>Price</th>{showCostPrice && <th>Cost Price</th>}</tr></thead><tbody>
-    {loading ? <tr><td colSpan={columns}>Loading...</td></tr> : inventory.length === 0 ? <tr><td colSpan={columns}>No inventory found.</td></tr> : inventory.map((entry) => <tr key={entry._id}>{selectable && <td><input type="checkbox" checked={Boolean(selection[entry.itemId?._id])} onChange={(event) => onSelect(entry, event.target.checked)} /></td>}<td>{entry.itemId?.name || 'Deleted item'}</td><td>{entry.quantity}</td><td>{entry.itemId?.unit || '-'}</td>{showHotel && <td>{entry.guestHouseId?.guestHouseName || 'Central'}</td>}<td>{Number(entry.price || 0).toFixed(2)}</td>{showCostPrice && <td>{Number(entry.costPrice || 0).toFixed(2)}</td>}</tr>)}</tbody></table></div><Pagination page={page} pages={pages} onPage={onPage} /></div>;
+export function InventoryTable({ inventory, loading, page, pages, onPage, showHotel = false, showCostPrice = false, selectable = false, selection = {}, onSelect, onEdit, onDelete }) {
+  const showActions = Boolean(onEdit && onDelete);
+  const columns = 7 + Number(showHotel) + Number(showCostPrice) + Number(selectable) + Number(showActions);
+  return <div className="inventory-card"><div className="inventory-table-wrap"><table><thead><tr><th>Sr No.</th>{selectable && <th>Select</th>}<th>Initials</th><th>Item</th><th>Available</th><th>Unit</th>{showHotel && <th>Location</th>}<th>Charge</th><th>Price</th>{showCostPrice && <th>Cost Price</th>}{showActions && <th>Actions</th>}</tr></thead><tbody>
+    {loading ? <tr><td colSpan={columns}>Loading...</td></tr> : inventory.length === 0 ? <tr><td colSpan={columns}>No inventory found.</td></tr> : inventory.map((entry, index) => <tr key={entry._id}>
+      <td>{(page - 1) * PAGE_SIZE + index + 1}</td>
+      {selectable && <td><input type="checkbox" checked={Boolean(selection[entry.itemId?._id])} onChange={(event) => onSelect(entry, event.target.checked)} /></td>}
+      <td><span className="inventory-initials">{entry.itemId?.initials || '—'}</span></td>
+      <td>{entry.itemId?.name || 'Deleted item'}</td><td>{entry.quantity}</td><td>{entry.itemId?.unit || '-'}</td>
+      {showHotel && <td>{entry.guestHouseId?.guestHouseName || 'Central'}</td>}
+      <td><span className={`inventory-charge ${entry.itemId?.isChargeable === false ? 'free' : 'paid'}`}>{entry.itemId?.isChargeable === false ? 'Free' : 'Chargeable'}</span></td>
+      <td>{entry.itemId?.isChargeable === false ? 'Free' : Number(entry.price || 0).toFixed(2)}</td>
+      {showCostPrice && <td>{Number(entry.costPrice || 0).toFixed(2)}</td>}
+      {showActions && <td><div className="inventory-row-actions"><button type="button" className="inventory-icon-action edit" aria-label={`Edit ${entry.itemId?.name || 'item'}`} title="Edit item" disabled={!entry.itemId} onClick={() => onEdit(entry)} /><button type="button" className="inventory-icon-action delete" aria-label={`Delete ${entry.itemId?.name || 'item'} from inventory`} title="Delete item" onClick={() => onDelete(entry)} /></div></td>}
+    </tr>)}</tbody></table></div><Pagination page={page} pages={pages} onPage={onPage} /></div>;
 }
 
 function RequestTable({ requests, loading, page, pages, onPage, onReview }) {

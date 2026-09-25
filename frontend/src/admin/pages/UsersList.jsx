@@ -86,6 +86,7 @@ const UsersList = () => {
     } catch (error) {
       console.error("Update admin error:", error);
       const errorMessage =
+        error.response?.data?.message ||
         error.response?.data?.error ||
         "Failed to update admin. Please try again.";
       toast.error(errorMessage);
@@ -186,26 +187,26 @@ const UsersList = () => {
                     <div className="actions-cell">
                       <button
                         className="btn-action edit"
+                        aria-label="Edit user"
+                        title="Edit user"
                         onClick={() => { setSelectedUser(u); setIsEditOpen(true); }}
-                      >
-                        Edit
-                      </button>
+                      />
 
                       {!isHotelAdmin && (
                         <button
-                          className="btn-action view"
+                          className="btn-action view assign"
+                          aria-label="Assign user"
+                          title="Assign user"
                           onClick={() => { setSelectedUser(u); setIsAssignOpen(true); }}
-                        >
-                          Assign
-                        </button>
+                        />
                       )}
 
                       <button
-                        className="btn-action toggle"
+                        className="btn-action toggle password"
+                        aria-label="Change password"
+                        title="Change password"
                         onClick={() => { setSelectedUser(u); setIsPasswordOpen(true); }}
-                      >
-                        Password
-                      </button>
+                      />
                     </div>
                   </td>
                 </tr>

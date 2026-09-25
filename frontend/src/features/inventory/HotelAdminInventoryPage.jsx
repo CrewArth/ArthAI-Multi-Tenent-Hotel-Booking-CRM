@@ -65,7 +65,7 @@ export default function HotelAdminInventoryPage() {
     const selected = selection[itemId];
     if (!selected) return;
     const maximum = selected.item.quantity;
-    if (field === 'price' && !allowPriceChange) return;
+    if (field === 'price' && (!allowPriceChange || selected.item.itemId?.isChargeable === false)) return;
     const nextValue = field === 'quantity' ? Math.min(maximum, Math.max(1, Number(value) || 1)) : Math.max(0, Number(value) || 0);
     setSelection({ ...selection, [itemId]: { ...selected, [field]: nextValue } });
   };
@@ -102,8 +102,7 @@ export default function HotelAdminInventoryPage() {
 
   return <section className="inventory-page">
     <div className="inventory-heading"><h1>Inventory Management</h1></div>
-    <div className="inventory-tabs"><button className={tab === 'direct' ? 'active' : ''} onClick={() => setTab('direct')}>Direct Issue</button><button className={tab === 'request' ? 'active' : ''} onClick={() => setTab('request')}>Item Request</button></div>
-    <form className="inventory-search" role="search" onSubmit={submitSearch}><input type="search" aria-label="Search inventory" placeholder="Search by item name or description" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Search</button></form>
+    <div className="inventory-tabs"><button className={tab === 'direct' ? 'active' : ''} onClick={() => setTab('direct')}>Direct Issue</button><button className={tab === 'request' ? 'active' : ''} onClick={() => setTab('request')}>Item Request</button><form className="inventory-search" role="search" onSubmit={submitSearch}><input type="search" aria-label="Search inventory" placeholder="Search by item name or description" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Search</button></form></div>
     <InventoryTable inventory={sourceInventory} loading={loading} page={page} pages={pages} onPage={onPage} selectable selection={selectedItems} onSelect={(entry, checked) => selectItem(setSelectedItems, selectedItems, entry, checked)} />
     <SelectedItemsTable selection={selectedItems} note={note} allowPriceChange={allowPriceChange} onNoteChange={setNote} onUpdate={(itemId, field, value) => updateSelected(setSelectedItems, selectedItems, itemId, field, value)} />
     <div className="inventory-actions"><button className="inventory-primary" disabled={submitting || Object.keys(selectedItems).length === 0} onClick={() => submit(tab)}>{submitting ? 'Saving...' : tab === 'direct' ? 'Directly Issue Items' : 'Send Item Request'}</button></div>
@@ -113,5 +112,5 @@ export default function HotelAdminInventoryPage() {
 function SelectedItemsTable({ selection, note, allowPriceChange, onNoteChange, onUpdate }) {
   const selectedItems = Object.entries(selection);
   return <div className="inventory-card"><h2 className="inventory-card-title">Selected Items</h2><div className="inventory-table-wrap"><table><thead><tr><th>Item</th><th>Available</th><th>Unit</th><th>Quantity</th><th>Price</th></tr></thead><tbody>
-    {selectedItems.length === 0 ? <tr><td colSpan="5">No items selected.</td></tr> : selectedItems.map(([itemId, selected]) => <tr key={itemId}><td>{selected.item.itemId?.name || 'Item'}</td><td>{selected.item.quantity}</td><td>{selected.item.itemId?.unit || '-'}</td><td><input min="1" max={selected.item.quantity} type="number" value={selected.quantity} onChange={(event) => onUpdate(itemId, 'quantity', event.target.value)} /></td><td><input min="0" step="0.01" type="number" disabled={!allowPriceChange} value={selected.price} onChange={(event) => onUpdate(itemId, 'price', event.target.value)} /></td></tr>)}</tbody></table></div><label className="inventory-notes"><span>Notes</span><textarea value={note} onChange={(event) => onNoteChange(event.target.value)} placeholder="Add notes for this issue or request" rows="3" /></label></div>;
+    {selectedItems.length === 0 ? <tr><td colSpan="5">No items selected.</td></tr> : selectedItems.map(([itemId, selected]) => <tr key={itemId}><td>{selected.item.itemId?.name || 'Item'}</td><td>{selected.item.quantity}</td><td>{selected.item.itemId?.unit || '-'}</td><td><input min="1" max={selected.item.quantity} type="number" value={selected.quantity} onChange={(event) => onUpdate(itemId, 'quantity', event.target.value)} /></td><td><input min="0" step="0.01" type="number" disabled={!allowPriceChange || selected.item.itemId?.isChargeable === false} title={selected.item.itemId?.isChargeable === false ? 'This item is free' : undefined} value={selected.item.itemId?.isChargeable === false ? 0 : selected.price} onChange={(event) => onUpdate(itemId, 'price', event.target.value)} /></td></tr>)}</tbody></table></div><label className="inventory-notes"><span>Notes</span><textarea value={note} onChange={(event) => onNoteChange(event.target.value)} placeholder="Add notes for this issue or request" rows="3" /></label></div>;
 }

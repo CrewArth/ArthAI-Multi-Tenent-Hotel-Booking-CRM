@@ -245,15 +245,15 @@ const RoomManagement = () => {
                     </td>
                     <td>
                       <div className="actions-cell">
-                        <button className="btn-action edit"   onClick={() => { setSelectedRoom(room); setIsModalOpen(true); }}>Edit</button>
+                        <button className="btn-action edit" aria-label="Edit room" title="Edit room" onClick={() => { setSelectedRoom(room); setIsModalOpen(true); }} />
                         <button
-                          className="btn-action toggle"
+                          className={`btn-action toggle ${room.isAvailable ? 'maintenance' : 'activate'}`}
+                          aria-label={room.isAvailable ? 'Set room to maintenance' : 'Activate room'}
+                          title={room.isAvailable ? 'Set room to maintenance' : 'Activate room'}
                           disabled={togglingRoomId === room._id}
                           onClick={() => toggleAvailability(room._id, room.isAvailable)}
-                        >
-                          {togglingRoomId === room._id ? 'Updating…' : 'Toggle'}
-                        </button>
-                        <button className="btn-action delete" onClick={() => deleteRoom(room._id)}>Delete</button>
+                        />
+                        <button className="btn-action delete" aria-label="Delete room" title="Delete room" onClick={() => deleteRoom(room._id)} />
                       </div>
                     </td>
                   </tr>

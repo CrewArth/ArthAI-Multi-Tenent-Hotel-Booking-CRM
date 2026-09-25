@@ -265,15 +265,15 @@ const BedManagement = () => {
                   </td>
                   <td>
                     <div className="actions-cell">
-                      <button className="btn-action edit"   onClick={() => { setSelectedBed(b); setIsModalOpen(true); }}>Edit</button>
+                      <button className="btn-action edit" aria-label="Edit bed" title="Edit bed" onClick={() => { setSelectedBed(b); setIsModalOpen(true); }} />
                       <button
                         className="btn-action toggle"
+                        aria-label={b.isAvailable ? 'Mark bed booked' : 'Mark bed available'}
+                        title={b.isAvailable ? 'Mark bed booked' : 'Mark bed available'}
                         disabled={togglingBedId === b._id}
                         onClick={() => toggleAvailability(b._id, b.isAvailable)}
-                      >
-                        {togglingBedId === b._id ? 'Updating…' : 'Toggle'}
-                      </button>
-                      <button className="btn-action delete" onClick={() => handleDelete(b._id)}>Delete</button>
+                      />
+                      <button className="btn-action delete" aria-label="Delete bed" title="Delete bed" onClick={() => handleDelete(b._id)} />
                     </div>
                   </td>
                 </tr>

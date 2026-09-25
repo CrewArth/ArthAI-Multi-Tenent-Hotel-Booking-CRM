@@ -1,13 +1,15 @@
 import bcrypt from "bcryptjs";
 import { logAction } from "../utils/auditLogger.js";
 import { invalidateUserSession } from "../middlewares/auth.js";
-import { removeCentralUserSafely, syncCentralUserSafely } from "../utils/centralUserDirectory.js";
+import { findCentralUserByEmail, removeCentralUserSafely, syncCentralUser, syncCentralUserSafely } from "../utils/centralUserDirectory.js";
+import { buildAdminCredentialEmail, normalizeCredentialUsername, resolveCredentialHotel } from "../utils/adminCredentials.js";
 
 const getTrackedDetails = (payload = {}) => {
   const allowedFields = [
     "firstName",
     "lastName",
     "email",
+    "credentialUsername",
     "phone",
     "address",
     "role",
@@ -15,6 +17,7 @@ const getTrackedDetails = (payload = {}) => {
     "allowedWidgets",
     "allowedReports",
     "eSignatureUrl",
+    "assignedGuestHouseId",
   ];
 
   return allowedFields.reduce((acc, field) => {
@@ -34,12 +37,21 @@ export const updateUser = async (req, res) => {
     const { id } = req.params;
     const isSuperAdmin = req.user?.role === "SUPER_ADMIN";
     const isSameUser = String(req.user?._id || "") === String(id);
+    const targetUser = await User.findById(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found." });
+    const assignedId = (user) => typeof user?.assignedGuestHouseId === 'object'
+      ? user.assignedGuestHouseId?.guestHouseId || user.assignedGuestHouseId?._id
+      : user?.assignedGuestHouseId;
+    const isScopedHotelAdmin = req.user?.role === 'HOTEL_ADMIN'
+      && targetUser.role === 'ADMIN'
+      && assignedId(req.user)
+      && String(assignedId(req.user)) === String(assignedId(targetUser));
 
-    if (!isSuperAdmin && !isSameUser) {
+    if (!isSuperAdmin && !isSameUser && !isScopedHotelAdmin) {
       return res.status(403).json({ message: "You are not allowed to update this user." });
     }
 
-    if (!isSuperAdmin && !isSameUser && req.eSignatureUrl) {
+    if (!isSuperAdmin && !isSameUser && !isScopedHotelAdmin && req.eSignatureUrl) {
       return res.status(403).json({ message: "Only SUPER_ADMIN or the account owner can upload ESignature." });
     }
 
@@ -52,10 +64,41 @@ export const updateUser = async (req, res) => {
     ];
 
     const updatedData = { ...req.body };
+    delete updatedData.guestHouseId;
     if (!isSuperAdmin) {
       forbiddenForNonSuperAdmin.forEach((field) => {
         delete updatedData[field];
       });
+    }
+
+    if (req.body?.credentialUsername !== undefined) {
+      if (!isSuperAdmin && !isScopedHotelAdmin) return res.status(403).json({ message: 'Only an account manager can change admin credentials.' });
+      const credentialUsername = normalizeCredentialUsername(req.body.credentialUsername);
+      if (!credentialUsername && targetUser.credentialUsername) return res.status(400).json({ message: 'Credential username cannot be empty.' });
+      if (credentialUsername) {
+        if (!['ADMIN', 'HOTEL_ADMIN'].includes(targetUser.role)) return res.status(400).json({ message: 'Credential username is only available for admin accounts.' });
+        const hotel = await resolveCredentialHotel(req.tenantModels.GuestHouse, isSuperAdmin ? req.body.guestHouseId || assignedId(targetUser) : assignedId(req.user));
+        if (!hotel) return res.status(400).json({ message: 'Select a valid hotel for this admin account.' });
+        const email = buildAdminCredentialEmail(credentialUsername, hotel.guestHouseName);
+        if (!email) return res.status(400).json({ message: 'Username must be 3–32 lowercase letters or numbers and start with a letter.' });
+        const usernameConflict = await User.findOne({ credentialUsername, _id: { $ne: id } });
+        if (usernameConflict) return res.status(409).json({ message: 'This credential username is already taken.' });
+        const directoryUser = email === targetUser.email ? null : await findCentralUserByEmail(email);
+        if (directoryUser && (String(directoryUser.userId) !== String(id) || directoryUser.dbName !== req.tenantDb?.name)) return res.status(409).json({ message: 'This credential email is already in use.' });
+        updatedData.credentialUsername = credentialUsername;
+        updatedData.email = email;
+        if (isSuperAdmin) updatedData.assignedGuestHouseId = hotel.guestHouseId;
+      } else {
+        delete updatedData.credentialUsername;
+        delete updatedData.email;
+      }
+    } else if (targetUser.credentialUsername && updatedData.email && String(updatedData.email).trim().toLowerCase() !== targetUser.email) {
+      return res.status(400).json({ message: 'Credential email is generated from username and hotel.' });
+    }
+    if (isSuperAdmin && !targetUser.credentialUsername && !req.body?.credentialUsername && req.body?.guestHouseId && ['ADMIN', 'HOTEL_ADMIN'].includes(targetUser.role)) {
+      const hotel = await resolveCredentialHotel(req.tenantModels.GuestHouse, req.body.guestHouseId);
+      if (!hotel) return res.status(400).json({ message: 'Select a valid hotel for this admin account.' });
+      updatedData.assignedGuestHouseId = hotel.guestHouseId;
     }
 
     if (updatedData.email && String(updatedData.email).trim() !== '') {
@@ -96,7 +139,22 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: "User not Found!" });
     }
 
-    await syncCentralUserSafely({ user: updatedUser, dbName: req.tenantDb?.name }, 'user update');
+    if (updatedUser.email !== targetUser.email) {
+      try {
+        await syncCentralUser({ user: updatedUser, dbName: req.tenantDb?.name });
+      } catch (error) {
+        const previousSet = {};
+        const previousUnset = {};
+        for (const field of Object.keys(updatedData)) {
+          if (targetUser[field] === undefined) previousUnset[field] = 1;
+          else previousSet[field] = targetUser[field];
+        }
+        await User.findByIdAndUpdate(id, { $set: previousSet, $unset: previousUnset });
+        throw error;
+      }
+    } else {
+      await syncCentralUserSafely({ user: updatedUser, dbName: req.tenantDb?.name }, 'user update');
+    }
 
     await invalidateUserSession(req.tenantDb?.name, updatedUser._id);
 

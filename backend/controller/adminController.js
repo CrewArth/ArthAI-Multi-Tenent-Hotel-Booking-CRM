@@ -3,7 +3,9 @@ import { adminCreatedUserEmail } from '../utils/emailTemplates/adminCreatedUser.
 import { logAction } from '../utils/auditLogger.js';
 import { normalizeUser } from '../utils/roles.js';
 import { isObjectId } from '../utils/isObjectId.js';
-import { syncCentralUserSafely } from '../utils/centralUserDirectory.js';
+import { findCentralUserByEmail, syncCentralUser } from '../utils/centralUserDirectory.js';
+import { assignedHotelId, buildAdminCredentialEmail, normalizeCredentialUsername, resolveCredentialHotel } from '../utils/adminCredentials.js';
+import { invalidateUserSession } from '../middlewares/auth.js';
 
 const getGuestHouseFilter = async (user, GuestHouse) => {
   if ((user?.role === 'ADMIN' || user?.role === 'HOTEL_ADMIN') && user.assignedGuestHouseId) {
@@ -224,6 +226,14 @@ export const assignGuestHouse = async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'Admin not found' });
     if (user.role !== 'ADMIN' && user.role !== 'HOTEL_ADMIN') return res.status(400).json({ error: 'Guest house can only be assigned to ADMIN or HOTEL_ADMIN accounts' });
+    if (req.user?.role === 'HOTEL_ADMIN') {
+      const actorHotelId = typeof req.user.assignedGuestHouseId === 'object'
+        ? req.user.assignedGuestHouseId?.guestHouseId
+        : req.user.assignedGuestHouseId;
+      if (user.role !== 'ADMIN' || !actorHotelId || String(user.assignedGuestHouseId) !== String(actorHotelId) || String(guestHouseId) !== String(actorHotelId)) {
+        return res.status(403).json({ error: 'You can only manage admins assigned to your hotel.' });
+      }
+    }
 
     let guestHouse = null;
     if (guestHouseId) {
@@ -238,8 +248,30 @@ export const assignGuestHouse = async (req, res) => {
     }
 
     const assignedId = guestHouse ? guestHouse.guestHouseId : null;
+    if (user.credentialUsername && !guestHouse) return res.status(400).json({ error: 'Credential accounts must remain assigned to a hotel.' });
+    const previousAssignment = user.assignedGuestHouseId;
+    const previousEmail = user.email;
+    if (user.credentialUsername) {
+      const nextEmail = buildAdminCredentialEmail(user.credentialUsername, guestHouse.guestHouseName);
+      if (!nextEmail) return res.status(400).json({ error: 'Unable to generate a credential email for this hotel.' });
+      const tenantConflict = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
+      const centralConflict = await findCentralUserByEmail(nextEmail);
+      if (tenantConflict || (centralConflict && (String(centralConflict.userId) !== String(user._id) || centralConflict.dbName !== req.tenantDb?.name))) return res.status(409).json({ error: 'This credential email is already in use.' });
+      user.email = nextEmail;
+    }
     user.assignedGuestHouseId = assignedId;
     await user.save();
+    if (user.credentialUsername && user.email !== previousEmail) {
+      try {
+        await syncCentralUser({ user, dbName: req.tenantDb?.name });
+      } catch (error) {
+        user.email = previousEmail;
+        user.assignedGuestHouseId = previousAssignment;
+        await user.save();
+        throw error;
+      }
+    }
+    await invalidateUserSession(req.tenantDb?.name, user._id);
 
     await logAction({
       action: assignedId ? 'GUESTHOUSE_ASSIGNED' : 'GUESTHOUSE_UNASSIGNED',
@@ -257,6 +289,7 @@ export const assignGuestHouse = async (req, res) => {
     res.json({ message: assignedId ? 'Guest house assigned' : 'Guest house unassigned', user: userObj });
   } catch (err) {
     console.error('Error assigning guest house:', err);
+    if (err.code === 11000) return res.status(409).json({ error: 'This credential email is already in use.' });
     res.status(500).json({ error: 'Server error while assigning guest house' });
   }
 };
@@ -308,7 +341,7 @@ export const listUsers = async (req, res) => {
     let [users, totalUsers] = await Promise.all([
       User.find(
         queryFilter,
-        "firstName lastName email phone address role isActive createdAt assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl"
+        "firstName lastName email credentialUsername phone address role isActive createdAt assignedGuestHouseId allowedWidgets allowedReports eSignatureUrl"
       )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -345,15 +378,15 @@ export const listUsers = async (req, res) => {
   }
 };
 
-export const createUserByAdmin = async (req, res) => {
+export const prepareAdminCreation = async (req, res, next) => {
   try {
-    const { User } = req.tenantModels;
-    const { firstName, lastName, email, phone, address, password, role } = req.body;
-    const eSignatureUrl = req.eSignatureUrl || null;
+    const { User, GuestHouse } = req.tenantModels;
+    const { firstName, lastName, phone, password, role } = req.body;
+    const credentialUsername = normalizeCredentialUsername(req.body?.credentialUsername);
 
-    if (!firstName || !lastName || !email || !phone || !password) {
+    if (!firstName || !lastName || !credentialUsername || !phone || !password) {
       return res.status(400).json({ 
-        error: "First name, last name, email, phone, and password are required." 
+        error: "First name, last name, credential username, phone, and password are required."
       });
     }
 
@@ -363,60 +396,67 @@ export const createUserByAdmin = async (req, res) => {
       });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        error: "Please provide a valid email address." 
-      });
-    }
+    const isHotelAdmin = req.user?.role === 'HOTEL_ADMIN';
+    const actorHotelId = assignedHotelId(req.user);
+    const hotel = await resolveCredentialHotel(GuestHouse, isHotelAdmin ? actorHotelId : req.body?.guestHouseId);
+    if (!hotel) return res.status(400).json({ error: 'Select a valid hotel for the admin account.' });
+    const generatedEmail = buildAdminCredentialEmail(credentialUsername, hotel.guestHouseName);
+    if (!generatedEmail) return res.status(400).json({ error: 'Username must be 3–32 lowercase letters or numbers and start with a letter.' });
 
     const existingUser = await User.findOne({ 
-      $or: [{ email }, { phone: String(phone).trim() }] 
+      $or: [{ credentialUsername }, { email: generatedEmail }, { phone: String(phone).trim() }]
     });
 
     if (existingUser) {
-      if (existingUser.email === email) {
-        return res.status(400).json({ 
-          error: "User with this email already exists." 
-        });
-      }
+      if (existingUser.credentialUsername === credentialUsername) return res.status(409).json({ error: 'This credential username is already taken.' });
+      if (existingUser.email === generatedEmail) return res.status(409).json({ error: 'This credential email is already in use.' });
       if (existingUser.phone === String(phone).trim()) {
-        return res.status(400).json({ 
+        return res.status(409).json({
           error: "User with this phone number already exists." 
         });
       }
     }
+    if (await findCentralUserByEmail(generatedEmail)) return res.status(409).json({ error: 'This credential email is already in use.' });
 
-    const isHotelAdmin = req.user?.role === 'HOTEL_ADMIN';
     let targetRole = role === "HOTEL_ADMIN" ? "HOTEL_ADMIN" : "ADMIN";
-    let assignedGuestHouseId = undefined;
+    if (isHotelAdmin) targetRole = "ADMIN";
 
-    if (isHotelAdmin) {
-      targetRole = "ADMIN";
-      assignedGuestHouseId = typeof req.user.assignedGuestHouseId === 'object'
-        ? req.user.assignedGuestHouseId.guestHouseId
-        : req.user.assignedGuestHouseId;
-    }
+    req.adminCreation = { hotel, credentialUsername, generatedEmail, targetRole };
+    next();
+  } catch (error) {
+    console.error('Error validating admin creation:', error);
+    return res.status(500).json({ error: 'Server error while validating admin account.' });
+  }
+};
+
+export const createUserByAdmin = async (req, res) => {
+  try {
+    const { User } = req.tenantModels;
+    const { firstName, lastName, phone, address, password } = req.body;
+    const { hotel, credentialUsername, generatedEmail, targetRole } = req.adminCreation;
+    const eSignatureUrl = req.eSignatureUrl || null;
 
     const newUser = new User({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim().toLowerCase(),
+      email: generatedEmail,
+      credentialUsername,
       phone: String(phone).trim(),
       address: address ? address.trim() : "",
       password,
       role: targetRole,
-      assignedGuestHouseId,
+      assignedGuestHouseId: hotel.guestHouseId,
       isActive: true,
       eSignatureUrl,
     });
 
     await newUser.save();
-    await syncCentralUserSafely({
-      user: newUser,
-      dbName: req.tenantDb?.name,
-      tenantId: req.tenantDb?.name,
-    }, 'admin user creation');
+    try {
+      await syncCentralUser({ user: newUser, dbName: req.tenantDb?.name, tenantId: req.tenantDb?.name });
+    } catch (error) {
+      await User.deleteOne({ _id: newUser._id });
+      throw error;
+    }
 
     const performerEmail = req.user?.email || "Admin";
 
@@ -432,7 +472,7 @@ export const createUserByAdmin = async (req, res) => {
       subject: "Your Rishabh Guest House Account Has Been Created",
       html: adminCreatedUserEmail(newUser),
     }).catch(err => {
-      console.error("❌ Email send error for admin-created user:", err);
+      console.error("Email send error for admin-created user:", err);
     });
 
     logAction({

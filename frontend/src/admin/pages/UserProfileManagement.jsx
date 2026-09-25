@@ -214,17 +214,17 @@ const UserProfileManagement = () => {
                         <button
                           type="button"
                           className="btn-action view"
+                          aria-label="View profile"
+                          title="View profile"
                           onClick={() => handleOpenProfile(u)}
-                        >
-                          View Profile
-                        </button>
+                        />
                         <button
                           type="button"
                           className="btn-action primary"
+                          aria-label="View bookings"
+                          title="View bookings"
                           onClick={() => handleShowBookings(u)}
-                        >
-                          Bookings
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>
