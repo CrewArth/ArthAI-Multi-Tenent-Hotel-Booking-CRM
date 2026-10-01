@@ -1,0 +1,30 @@
+import express from 'express';
+import { authenticate, authorize } from '../middlewares/auth.js';
+import { createHall, listHalls, setHallStatus, updateHall } from '../controller/banquetHallController.js';
+import { loadBanquetAccess, requireBanquetAccess } from '../middlewares/banquetAccess.js';
+import { checkAvailability, createOccupancy, getCalendar, releaseOccupancy, updateOccupancy } from '../controller/banquetCalendarController.js';
+import { convertEnquiryToQuotation, createEnquiry, getEnquiryOptions, listEnquiries, listEnquiryAssignees, updateEnquiry, updateEnquiryStatus } from '../controller/banquetEnquiryController.js';
+
+const router = express.Router();
+router.use(authenticate, loadBanquetAccess);
+router.get('/access', (req, res) => res.json({ enabled: req.banquetEnabled }));
+router.use(requireBanquetAccess);
+router.get('/halls', authorize('SUPER_ADMIN'), listHalls);
+router.post('/availability/check', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), checkAvailability);
+router.get('/calendar', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), getCalendar);
+router.get('/enquiries', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), listEnquiries);
+router.get('/enquiries/options', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), getEnquiryOptions);
+router.get('/enquiries/assignees', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), listEnquiryAssignees);
+router.post('/enquiries', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), createEnquiry);
+router.put('/enquiries/:id', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), updateEnquiry);
+router.patch('/enquiries/:id/status', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), updateEnquiryStatus);
+router.post('/enquiries/:id/quotation', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), convertEnquiryToQuotation);
+router.post('/occupancies', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), createOccupancy);
+router.put('/occupancies/:id', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), updateOccupancy);
+router.patch('/occupancies/:id/release', authorize('SUPER_ADMIN', 'HOTEL_ADMIN'), releaseOccupancy);
+router.use(authorize('SUPER_ADMIN'));
+router.post('/halls', createHall);
+router.put('/halls/:id', updateHall);
+router.patch('/halls/:id/status', setHallStatus);
+
+export default router;

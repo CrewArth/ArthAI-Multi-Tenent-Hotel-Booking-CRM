@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { useEffect, useRef } from 'react';
 import { superAdminSidebarData, adminSidebarData } from '../utils/sidebarData';
 import { useSidebar } from '../context/SidebarContext';
+import { useBanquetAccess } from '../../features/banquet/banquetAccessContext';
 
 const SETTINGS_ID = 'MC_SETTINGS';
 
@@ -12,12 +13,13 @@ const Sidebar = () => {
   const user = useSelector((state) => state.auth.user);
   const role = String(user?.role || '').toUpperCase();
   const { open, close } = useSidebar();
+  const { enabled: banquetEnabled } = useBanquetAccess();
   const sidebarRef = useRef(null);
 
   const isHotelAdmin = role === 'HOTEL_ADMIN' || role === 'HOTEL-ADMIN';
   const sidebarDataset = role === 'ADMIN' ? adminSidebarData : superAdminSidebarData;
 
-  const navItems = sidebarDataset.filter((item) => item.id !== SETTINGS_ID);
+  const navItems = sidebarDataset.filter((item) => item.id !== SETTINGS_ID && (!item.id.startsWith('MC_BANQUET_') || banquetEnabled));
   const settingsItem = isHotelAdmin ? null : sidebarDataset.find((item) => item.id === SETTINGS_ID);
 
   // Close sidebar when clicking outside on mobile

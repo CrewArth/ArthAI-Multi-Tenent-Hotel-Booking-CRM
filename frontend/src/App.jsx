@@ -9,6 +9,7 @@ import ProtectedRoute from './users/routes/ProtectedRoute';
 import PublicRoute from './users/routes/PublicRoute';
 import Dashboard from './users/pages/Dashboard';
 import ProtectedAdminRoute from './admin/routes/ProtectedAdminRoute';
+import { BanquetAccessGuard } from './features/banquet/BanquetAccess';
 import LoginPage from './users/pages/Login';
 import AdminDashboard from './admin/pages/AdminDashboard';
 const AdminUserDashboard = lazyLoad(() => import('./admin/pages/AdminUserDashboard'));
@@ -42,6 +43,10 @@ const MobileCapturePage = lazyLoad(() => import('./commonPages/MobileCapturePage
 const DynamicPricingPage = lazyLoad(() => import('./admin/pages/DynamicPricingPage').then(m => ({ default: m.DynamicPricingPage })));
 const SuperAdminInventoryPage = lazyLoad(() => import('./features/inventory/SuperAdminInventoryPage'));
 const HotelAdminInventoryPage = lazyLoad(() => import('./features/inventory/HotelAdminInventoryPage'));
+const BanquetHalls = lazyLoad(() => import('./features/banquet/BanquetHalls'));
+const BanquetCalendar = lazyLoad(() => import('./features/banquet/BanquetCalendar'));
+const BanquetEnquiries = lazyLoad(() => import('./features/banquet/BanquetEnquiries'));
+const BanquetManagement = lazyLoad(() => import('./features/banquet/BanquetManagement'));
 
 // Hotel Admin Dedicated Module Imports
 import HotelAdminLayout from './hotel_admin/components/HotelAdminLayout';
@@ -50,7 +55,6 @@ const HotelAdminBookings = lazyLoad(() => import('./hotel_admin/pages/HotelAdmin
 const HotelAdminConfiguration = lazyLoad(() => import('./hotel_admin/pages/HotelAdminConfiguration').then(m => ({ default: m.HotelAdminConfiguration })));
 
 import ScrollToTop from './components/ScrollToTop';
-import { getAuthenticatedRedirectPath } from './utils/auth';
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -151,6 +155,12 @@ function App() {
           <Route path="/super-admin/settings" element={<Settings />} />
           <Route path="/super-admin/taxes" element={<TaxesManagement />} />
           <Route path="/super-admin/inventory" element={<SuperAdminInventoryPage />} />
+          <Route path="/super-admin/banquet" element={<BanquetAccessGuard><BanquetManagement /></BanquetAccessGuard>}>
+            <Route index element={<Navigate to="enquiries" replace />} />
+            <Route path="enquiries" element={<BanquetEnquiries embedded />} />
+            <Route path="calendar" element={<BanquetCalendar embedded />} />
+            <Route path="halls" element={<BanquetHalls embedded />} />
+          </Route>
         </Route>  
 
         {/* ------------------ HOTEL ADMIN DEDICATED ROUTES ------------------ */}
@@ -170,6 +180,12 @@ function App() {
           <Route path="/hotel-admin/reports" element={<Reports />} />
           <Route path="/hotel-admin/configuration" element={<HotelAdminConfiguration />} />
           <Route path="/hotel-admin/inventory" element={<HotelAdminInventoryPage />} />
+          <Route path="/hotel-admin/banquet" element={<BanquetAccessGuard><BanquetManagement /></BanquetAccessGuard>}>
+            <Route index element={<Navigate to="enquiries" replace />} />
+            <Route path="enquiries" element={<BanquetEnquiries embedded />} />
+            <Route path="calendar" element={<BanquetCalendar embedded />} />
+            <Route path="halls" element={<Navigate to="/hotel-admin/banquet/calendar" replace />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />

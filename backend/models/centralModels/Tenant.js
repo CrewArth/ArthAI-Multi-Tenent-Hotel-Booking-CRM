@@ -34,6 +34,7 @@ const tenantSchema = new mongoose.Schema({
     default: null,
   },
   config: {
+    banquetHallEnabled: { type: Boolean, default: false },
     s3: {
       key: { type: String, default: null },
       secretKey: { type: String, default: null },

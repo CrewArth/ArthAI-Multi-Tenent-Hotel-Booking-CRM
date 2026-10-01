@@ -8,6 +8,7 @@ import {
   FileBarChart,
   Settings,
   Package,
+  ClipboardList,
 } from 'lucide-react';
 
 export const hotelAdminNavItems = [
@@ -74,6 +75,14 @@ export const hotelAdminNavItems = [
     navigate: '/hotel-admin/inventory',
     path: '/hotel-admin/inventory',
     icon: Package,
+  },
+  {
+    id: 'HA_BANQUET_MANAGEMENT',
+    name: 'Banquet Hall Management',
+    label: 'Banquet Hall Management',
+    navigate: '/hotel-admin/banquet',
+    path: '/hotel-admin/banquet',
+    icon: ClipboardList,
   },
   {
     id: 'HA_CONFIGURATION',

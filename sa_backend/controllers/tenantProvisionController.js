@@ -140,6 +140,9 @@ export const provisionTenant = async (req, res) => {
     if (plan && !await isValidPlanSlug(plan)) {
       return res.status(400).json({ message: 'Invalid subscription package' });
     }
+    if (req.body.config?.banquetHallEnabled !== undefined && typeof req.body.config.banquetHallEnabled !== 'boolean') {
+      return res.status(400).json({ message: 'Banquet Hall flag must be true or false' });
+    }
 
     const slug = resolvedTenantId.toLowerCase().trim();
     const dbName = customDbName ? customDbName.trim() : slug;
@@ -181,6 +184,7 @@ export const provisionTenant = async (req, res) => {
         phone: resolvedOwnerPhone,
       },
       config: {
+        banquetHallEnabled: req.body.config?.banquetHallEnabled === true,
         siteName: resolvedName,
         s3BucketName: s3BucketName || null,
         s3Region: s3Region || null,
@@ -473,8 +477,15 @@ export const updateTenant = async (req, res) => {
       tenant.owner.phone = personalDetails.phone1.trim();
     }
 
+    if (!tenant.config) tenant.config = {};
     if (logoUrl) tenant.config.logoUrl = logoUrl;
     tenant.config.siteName = resolvedName;
+    if (req.body.config?.banquetHallEnabled !== undefined) {
+      if (typeof req.body.config.banquetHallEnabled !== 'boolean') {
+        return res.status(400).json({ message: 'Banquet Hall flag must be true or false' });
+      }
+      tenant.config.banquetHallEnabled = req.body.config.banquetHallEnabled;
+    }
     if (s3BucketName !== undefined) tenant.config.s3BucketName = encrypt(s3BucketName);
     if (s3Region !== undefined) tenant.config.s3Region = encrypt(s3Region);
     if (req.body.config?.s3) {

@@ -39,6 +39,7 @@ const tenantSchema = new mongoose.Schema({
     phone: { type: String, required: true },
   },
   config: {
+    banquetHallEnabled: { type: Boolean, default: false },
     s3BucketName: { type: String, default: null },
     s3Region: { type: String, default: null },
     siteName: { type: String, default: null },

@@ -1,0 +1,50 @@
+.banquet-availability-fields label { display: flex; flex-direction: column; gap: 5px; color: #64748b; font-size: .72rem; font-weight: 700; }
+.banquet-availability-fields input, .banquet-availability-fields select { height: 36px; min-width: 110px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #1e293b; font: inherit; font-size: .84rem; }
+.banquet-availability { margin-bottom: 16px; padding: 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; }
+.banquet-availability-title { display: flex; align-items: center; gap: 8px; color: #0f172a; font-size: .9rem; cursor: pointer; list-style: none; }
+.banquet-availability-title::-webkit-details-marker { display: none; }
+.banquet-availability-title::after { content: 'Show'; margin-left: auto; color: #008e75; font-size: .78rem; font-weight: 700; }
+.banquet-availability[open] .banquet-availability-title { margin-bottom: 16px; }
+.banquet-availability[open] .banquet-availability-title::after { content: 'Hide'; }
+.banquet-availability-title svg { color: #009e80; }
+.banquet-availability-title span { margin-left: 6px; color: #94a3b8; font-size: .8rem; font-weight: 400; }
+.banquet-availability-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 12px; }
+.banquet-availability-fields input, .banquet-availability-fields select { width: 100%; min-width: 0; }
+.banquet-availability-fields .banquet-primary { justify-content: center; height: 36px; }
+.banquet-availability-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 9px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+.banquet-availability-results > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 64px; padding: 9px 11px; border: 1px solid #e2e8f0; border-radius: 8px; }
+.banquet-availability-results > div.available { border-color: #a7f3d0; background: #f0fdf4; }
+.banquet-availability-results > div.unavailable { background: #f8fafc; }
+.banquet-availability-results > div.has-conflicts { display: block; }
+.banquet-availability-results strong, .banquet-availability-results small { display: block; }
+.banquet-availability-results strong { font-size: .82rem; }
+.banquet-availability-results small { margin-top: 2px; color: #64748b; font-size: .72rem; }
+.banquet-availability-results button { border: 0; background: #008e75; color: #fff; border-radius: 6px; padding: 6px 9px; font-size: .72rem; font-weight: 700; cursor: pointer; }
+.banquet-calendar-surface { overflow-x: auto; overflow-y: hidden; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.banquet-calendar-heading { display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+.banquet-calendar-heading svg { color: #009e80; }
+.banquet-calendar-heading span { margin-left: auto; color: #94a3b8; font-size: .78rem; }
+.banquet-calendar-month-nav { display: flex; align-items: center; gap: 6px; }
+.banquet-calendar-month-nav button { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #e2e8f0; border-radius: 7px; background: #fff; cursor: pointer; }
+.banquet-calendar-month-nav button:hover { background: #f0fdfa; border-color: #99f6e4; }
+.banquet-calendar-month-nav button svg { color: #475569; }
+.banquet-days { display: grid; gap: 0; }
+.banquet-days--month { grid-template-columns: repeat(7, minmax(100px, 1fr)); overflow-x: auto; }
+.banquet-day-card { min-height: 140px; padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+.banquet-days--month .banquet-day-card { min-height: 105px; }
+.banquet-day-card.outside { background: #f8fafc; opacity: .55; }
+.banquet-day-card.today { box-shadow: inset 0 3px #00aa8a; }
+.banquet-day-label { display: flex; gap: 4px; align-items: baseline; margin-bottom: 8px; font-size: .76rem; }
+.banquet-day-label span { color: #94a3b8; }
+.banquet-day-empty { color: #cbd5e1; font-size: .72rem; }
+.banquet-event-chip { display: flex; align-items: center; gap: 5px; width: 100%; margin-bottom: 5px; padding: 6px; border: 0; border-radius: 5px; background: #fef3c7; color: #92400e; text-align: left; font: inherit; font-size: .72rem; cursor: pointer; }
+.banquet-event-chip--confirmed { background: #ccfbf1; color: #115e59; }
+.banquet-event-chip--blocked { background: #fee2e2; color: #991b1b; }
+.banquet-event-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.banquet-event-chip small { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.banquet-days--month .banquet-event-chip small { display: none; }
+.banquet-reservation-dialog textarea { border: 1px solid #cbd5e1; border-radius: 7px; padding: 9px 11px; resize: vertical; font: inherit; font-weight: 400; }
+.banquet-buffer-note { margin: 12px 0 0; color: #64748b; font-size: .76rem; }
+.banquet-release { margin-right: auto; padding: 9px 12px; border: 1px solid #fecaca; border-radius: 7px; background: #fef2f2; color: #b91c1c; font-weight: 700; cursor: pointer; }
+@media (max-width: 650px) { .banquet-availability-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .banquet-availability-title span { display: none; } .banquet-calendar-heading { flex-wrap: wrap; } .banquet-calendar-heading span { margin-left: 0; } .banquet-calendar-month-nav { margin-left: auto; } }
+@media (max-width: 420px) { .banquet-availability-fields { grid-template-columns: 1fr; } }

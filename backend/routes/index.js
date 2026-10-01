@@ -19,6 +19,7 @@ import settingsRoutes from './settingsRoutes.js';
 import hotelAdminRoutes from './hotelAdminRoutes.js';
 import dynamicPricingRoutes from './dynamicPricingRoutes.js';
 import inventoryRoutes from './inventoryRoutes.js';
+import banquetHallRoutes from './banquetHallRoutes.js';
 
 const router = express.Router();
 
@@ -30,6 +31,7 @@ router.use('/rooms', roomRoutes);
 router.use('/beds', bedRoutes);
 router.use('/dynamic-pricing', dynamicPricingRoutes);
 router.use('/inventory', inventoryRoutes);
+router.use('/banquet', banquetHallRoutes);
 router.use('/audit-logs', auditLogRoutes);
 router.use('/admin', adminSummary);
 router.use('/users', userRoutes);

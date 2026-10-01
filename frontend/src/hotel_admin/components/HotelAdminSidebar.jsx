@@ -3,10 +3,12 @@ import { NavLink } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { hotelAdminNavItems } from '../utils/sidebarData';
 import { useSidebar } from '../../admin/context/SidebarContext';
+import { useBanquetAccess } from '../../features/banquet/banquetAccessContext';
 import '../../admin/styles/sidebar.css';
 
 export const HotelAdminSidebar = () => {
   const { open, close } = useSidebar();
+  const { enabled: banquetEnabled } = useBanquetAccess();
   const sidebarRef = useRef(null);
 
   // Close sidebar when clicking outside on mobile
@@ -59,7 +61,7 @@ export const HotelAdminSidebar = () => {
       >
         <nav className="sidebar-nav">
           <ul className="nav-list">
-            {hotelAdminNavItems.map(renderLink)}
+            {hotelAdminNavItems.filter((item) => !item.id.startsWith('HA_BANQUET_') || banquetEnabled).map(renderLink)}
           </ul>
         </nav>
       </aside>

@@ -1,4 +1,4 @@
-import { Home, Building2, DoorOpen, BookOpen, Bed, FileText, PersonStanding, Settings, FileBarChart, PlusCircle, List, Receipt, User, Package } from 'lucide-react';
+import { Home, Building2, DoorOpen, BookOpen, Bed, FileText, PersonStanding, Settings, FileBarChart, PlusCircle, List, Receipt, User, Package, PanelsTopLeft } from 'lucide-react';
 
 export const superAdminSidebarData = [
   {
@@ -36,6 +36,12 @@ export const superAdminSidebarData = [
     name: 'Inventory Management',
     icon: Package,
     navigate: '/super-admin/inventory',
+  },
+  {
+    id: 'MC_BANQUET_MANAGEMENT',
+    name: 'Banquet Hall Management',
+    icon: PanelsTopLeft,
+    navigate: '/super-admin/banquet',
   },
   {
     id: 'MC_REPORTS',

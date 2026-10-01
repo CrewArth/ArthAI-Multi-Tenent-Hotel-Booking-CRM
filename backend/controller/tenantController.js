@@ -26,12 +26,15 @@ export const createTenant = async (req, res) => {
       return res.status(409).json({ message: "Tenant ID or Database Name already registered" });
     }
 
+    const tenantConfig = { ...(config || {}) };
+    delete tenantConfig.banquetHallEnabled;
+
     const tenantData = {
       tenantId: slug,
       name: name.trim(),
       dbName,
       plan: plan || 'pro',
-      config: config || {},
+      config: tenantConfig,
     };
 
     const encryptedTenant = encryptTenantData(tenantData);

@@ -1,0 +1,381 @@
+.banquet-page {
+    padding: 12px;
+    margin: 0;
+    color: #1e293b
+}
+
+.banquet-header,
+.banquet-toolbar,
+.banquet-dialog-header,
+.banquet-dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px
+}
+
+.banquet-header {
+    margin-bottom: 24px
+}
+
+.banquet-header h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 3px 0
+}
+
+.banquet-header p:last-child {
+    color: #64748b;
+    margin: 0
+}
+
+.banquet-eyebrow {
+    color: #009e80 !important;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin: 0
+}
+
+.banquet-primary,
+.banquet-secondary {
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.banquet-primary {
+    background: #00aa8a;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px
+}
+
+.banquet-primary:hover {
+    background: #008e75
+}
+
+.banquet-primary:disabled {
+    opacity: .5;
+    cursor: not-allowed
+}
+
+.banquet-secondary {
+    background: #f1f5f9;
+    color: #334155
+}
+
+.banquet-toolbar {
+    justify-content: flex-start;
+    padding: 16px 18px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px 10px 0 0
+}
+
+.banquet-toolbar label {
+    font-weight: 600;
+    font-size: .84rem
+}
+
+.banquet-toolbar select {
+    min-width: 220px
+}
+
+.banquet-toolbar span {
+    color: #64748b;
+    font-size: .82rem;
+    margin-left: auto
+}
+
+.banquet-toolbar select,
+.banquet-field input,
+.banquet-field select,
+.banquet-actions select {
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #1e293b;
+    padding: 9px 11px;
+    font: inherit;
+    font-size: .86rem
+}
+
+.banquet-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: #fff
+}
+
+.banquet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .84rem
+}
+
+.banquet-table th {
+    text-align: left;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em
+}
+
+.banquet-table th,
+.banquet-table td {
+    padding: 13px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle
+}
+
+.banquet-table tr:last-child td {
+    border-bottom: 0
+}
+
+.banquet-table td strong,
+.banquet-table td small {
+    display: block
+}
+
+.banquet-table td small {
+    color: #94a3b8;
+    margin-top: 2px
+}
+
+.banquet-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 42px !important
+}
+
+.banquet-status {
+    display: inline-block;
+    border-radius: 99px;
+    padding: 5px 9px;
+    font-weight: 600;
+    font-size: .72rem;
+    white-space: nowrap
+}
+
+.banquet-status--active {
+    background: #dcfce7;
+    color: #166534
+}
+
+.banquet-status--inactive {
+    background: #f1f5f9;
+    color: #475569
+}
+
+.banquet-status--under_maintenance {
+    background: #fef3c7;
+    color: #92400e
+}
+
+.banquet-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px
+}
+
+.banquet-actions button,
+.banquet-dialog-header button,
+.banquet-capacity>button {
+    display: grid;
+    place-items: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #fff;
+    color: #475569;
+    width: 36px;
+    height: 36px;
+    cursor: pointer
+}
+
+.banquet-actions button:hover,
+.banquet-dialog-header button:hover {
+    background: #f1f5f9
+}
+
+.banquet-actions select {
+    max-width: 150px;
+    padding: 8px
+}
+
+.banquet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(15, 23, 42, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px
+}
+
+.banquet-dialog {
+    width: min(800px, 100%);
+    max-height: min(900px, 94vh);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 22px 60px rgba(15, 23, 42, .2);
+    overflow: hidden
+}
+
+.banquet-dialog-header,
+.banquet-dialog-footer {
+    padding: 20px 26px;
+    flex-shrink: 0
+}
+
+.banquet-dialog-header {
+    border-bottom: 1px solid #e2e8f0
+}
+
+.banquet-dialog-header h2 {
+    font-size: 1.25rem;
+    margin: 4px 0 0
+}
+
+.banquet-dialog-body {
+    overflow: auto;
+    padding: 22px 26px
+}
+
+.banquet-dialog-body h3 {
+    font-size: .9rem;
+    margin: 24px 0 12px;
+    padding-top: 18px;
+    border-top: 1px solid #e2e8f0
+}
+
+.banquet-dialog-footer {
+    border-top: 1px solid #e2e8f0;
+    justify-content: flex-end
+}
+
+.banquet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 14px
+}
+
+.banquet-grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+}
+
+.banquet-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: .79rem;
+    font-weight: 600;
+    color: #475569
+}
+
+.banquet-field input,
+.banquet-field select {
+    width: 100%;
+    min-width: 0;
+    font-weight: 400
+}
+
+.banquet-field input:focus,
+.banquet-field select:focus {
+    outline: 2px solid #a7f3d0;
+    border-color: #00aa8a
+}
+
+.banquet-capacities {
+    display: grid;
+    gap: 9px
+}
+
+.banquet-capacity {
+    display: grid;
+    grid-template-columns: 1fr 130px 36px;
+    align-items: end;
+    gap: 10px
+}
+
+.banquet-capacity>button:disabled {
+    opacity: .35;
+    cursor: not-allowed
+}
+
+.banquet-link {
+    border: 0;
+    background: transparent;
+    color: #008e75;
+    font-weight: 700;
+    font-size: .8rem;
+    padding: 10px 0;
+    cursor: pointer
+}
+
+.banquet-conflicts {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.banquet-conflicts li {
+    display: grid;
+    gap: 3px;
+    border-left: 3px solid #f59e0b;
+    padding: 4px 0 4px 10px;
+    color: #475569;
+    font-size: .76rem;
+}
+
+.banquet-conflicts li strong { color: #1e293b; font-size: .8rem; }
+.banquet-conflicts li small { color: #64748b; font-size: .73rem; }
+
+@media(max-width:700px) {
+    .banquet-page {
+        padding: 8px
+    }
+
+    .banquet-header {
+        align-items: flex-start
+    }
+
+    .banquet-grid,
+    .banquet-grid--three {
+        grid-template-columns: 1fr
+    }
+
+    .banquet-capacity {
+        grid-template-columns: 1fr 90px 36px
+    }
+
+    .banquet-dialog-header,
+    .banquet-dialog-body,
+    .banquet-dialog-footer {
+        padding: 16px
+    }
+
+    .banquet-toolbar {
+        flex-wrap: wrap
+    }
+
+    .banquet-toolbar select {
+        min-width: 0;
+        max-width: 100%
+    }
+}

@@ -10,6 +10,7 @@ export const ProvisionTenantModal = ({ onClose, onSuccess }) => {
     ownerEmail: '',
     ownerPhone: '',
     plan: 'pro',
+    config: { banquetHallEnabled: false },
     s3BucketName: '',
     s3Region: 'us-east-1',
   });
@@ -79,6 +80,10 @@ export const ProvisionTenantModal = ({ onClose, onSuccess }) => {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={formData.config.banquetHallEnabled} onChange={(event) => setFormData((previous) => ({ ...previous, config: { ...previous.config, banquetHallEnabled: event.target.checked } }))} />
+            <span><strong style={{ display: 'block', fontSize: '13px' }}>Banquet Hall</strong><small style={{ color: '#64748b' }}>Enable this module for the hotel’s admins.</small></span>
+          </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div>
               <label style={{ fontSize: '12px', color: '#475569', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Hotel Name *</label>

@@ -15,6 +15,10 @@ import itemSchema from './Item.js';
 import inventorySchema from './Inventory.js';
 import itemRequestSchema from './ItemRequest.js';
 import itemIssueSchema from './ItemIssue.js';
+import banquetHallSchema from './BanquetHall.js';
+import banquetOccupancySchema from './BanquetOccupancy.js';
+import banquetEnquirySchema from './BanquetEnquiry.js';
+import banquetQuotationSchema from './BanquetQuotation.js';
 
 export default function initTenantModels(conn) {
   if (!conn.models.GuestHouse)     conn.model('GuestHouse', guestHouseSchema);
@@ -34,4 +38,8 @@ export default function initTenantModels(conn) {
   if (!conn.models.Inventory)      conn.model('Inventory', inventorySchema);
   if (!conn.models.ItemRequest)    conn.model('ItemRequest', itemRequestSchema);
   if (!conn.models.ItemIssue)      conn.model('ItemIssue', itemIssueSchema);
+  if (!conn.models.BanquetHall)     conn.model('BanquetHall', banquetHallSchema);
+  if (!conn.models.BanquetOccupancy) conn.model('BanquetOccupancy', banquetOccupancySchema);
+  if (!conn.models.BanquetEnquiry) conn.model('BanquetEnquiry', banquetEnquirySchema);
+  if (!conn.models.BanquetQuotation) conn.model('BanquetQuotation', banquetQuotationSchema);
 }

@@ -1,0 +1,100 @@
+.banquet-management {
+  color: #1e293b;
+  padding: 20px 24px 32px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.banquet-management__top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.banquet-management__top h1 {
+  font-size: clamp(1.5rem, 2vw, 1.9rem);
+  line-height: 1.2;
+  margin: 5px 0 7px;
+}
+
+.banquet-management__top p:last-child {
+  color: #64748b;
+  font-size: .9rem;
+  margin: 0;
+}
+
+.banquet-management__hotel {
+  display: grid;
+  gap: 6px;
+  min-width: 210px;
+  color: #475569;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.banquet-management__hotel select,
+.banquet-management__hotel strong {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  padding: 10px 12px;
+  font-size: .88rem;
+  font-weight: 500;
+}
+
+.banquet-management__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  border-bottom: 1px solid #dbe4e9;
+  margin-bottom: 24px;
+}
+
+.banquet-management__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+  font-size: .88rem;
+  font-weight: 600;
+}
+
+.banquet-management__tab:hover,
+.banquet-management__tab:focus-visible {
+  color: #008e75;
+  background: #f0fdfa;
+}
+
+.banquet-management__tab.is-active {
+  color: #008e75;
+  border-bottom-color: #00aa8a;
+}
+
+.banquet-management__content .banquet-page {
+  padding: 0;
+}
+
+.banquet-management__content .banquet-header h1 {
+  font-size: 1.25rem;
+}
+
+.banquet-management__content .banquet-header {
+  margin-bottom: 18px;
+}
+
+.banquet-management__content .banquet-header .banquet-eyebrow {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .banquet-management { padding: 16px 12px 24px; }
+  .banquet-management__top { align-items: stretch; flex-direction: column; gap: 16px; }
+  .banquet-management__hotel { min-width: 0; }
+  .banquet-management__tab { padding: 11px 10px; font-size: .82rem; }
+}

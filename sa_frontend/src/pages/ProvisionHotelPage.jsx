@@ -31,6 +31,7 @@ export const ProvisionHotelPage = () => {
 
   // Form State
   const [formData, setFormData] = useState({
+    config: { banquetHallEnabled: false },
     personalDetails: {
       fullName: '',
       signature: null,
@@ -103,6 +104,7 @@ export const ProvisionHotelPage = () => {
             : '';
 
           setFormData({
+            config: { banquetHallEnabled: t.config?.banquetHallEnabled === true },
             personalDetails: {
               fullName: t.personalDetails?.fullName || t.owner?.name || '',
               signature: formatFileVal(t.personalDetails?.signature),
@@ -220,6 +222,7 @@ export const ProvisionHotelPage = () => {
     setSuccessMessage(null);
 
     const payload = {
+      config: { banquetHallEnabled: formData.config.banquetHallEnabled },
       name: formData.hotelDetails.hotelName,
       tenantId: formData.hotelDetails.tenantId,
       ownerName: formData.personalDetails.fullName,
@@ -661,6 +664,16 @@ export const ProvisionHotelPage = () => {
                 </div>
               </div>
 
+              {/* Hotel modules */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.config.banquetHallEnabled}
+                  onChange={(event) => setFormData((previous) => ({ ...previous, config: { ...previous.config, banquetHallEnabled: event.target.checked } }))}
+                />
+                <span><strong style={{ display: 'block', fontSize: '14px', color: '#0f172a' }}>Banquet Hall</strong><small style={{ color: '#64748b' }}>Enable the Banquet Hall module for this hotel’s admins.</small></span>
+              </label>
+
               {/* Plan & Expiry Date Row */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div>
@@ -871,6 +884,10 @@ export const ProvisionHotelPage = () => {
                     <span style={{ color: formData.hotelDetails.expiryDate ? '#2563eb' : '#64748b', fontWeight: '700' }}>
                       {formData.hotelDetails.expiryDate || 'No Expiry (Lifetime)'}
                     </span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Banquet Hall</span>
+                    <strong style={{ color: formData.config.banquetHallEnabled ? '#008e75' : '#64748b' }}>{formData.config.banquetHallEnabled ? 'Enabled' : 'Disabled'}</strong>
                   </div>
                 </div>
               </div>
